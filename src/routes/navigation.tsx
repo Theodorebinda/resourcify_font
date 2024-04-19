@@ -19,11 +19,11 @@ import { useAuthStore } from "../stores/useAuthStore";
 // }
 
 export const Navigation = () =>
-  //   {
-  //   className,
-  //   toggleTheme,
-  //   currentTheme,
-  // }: NavigationProps
+    {
+    className,
+    toggleTheme,
+    currentTheme,
+  }: NavigationProps
   {
     const [isScrolled, setIsScrolled] = useState(false);
     const { token } = useAuthStore();
