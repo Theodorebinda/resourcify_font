@@ -19,7 +19,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 // }
 
 export const Navigation = () =>
-    {
+  //   {
   //   className,
   //   toggleTheme,
   //   currentTheme,
