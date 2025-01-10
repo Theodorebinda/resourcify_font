@@ -1,18 +1,21 @@
-import type { Config } from "tailwindcss";
-
-export default {
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+// tailwind.config.js
+module.exports = {
   theme: {
     extend: {
+      backgroundImage: {
+        'grid-pattern': "url('/images/download.svg')",
+      },
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: {
+          light: '#ffffff',
+          dark: '#0a0a0a',
+        },
+        foreground: {
+          light: '#171717',
+          dark: '#ededed',
+        },
       },
     },
   },
-  plugins: [],
-} satisfies Config;
+  darkMode: 'media', // Active le mode sombre basé sur les préférences du système
+};
