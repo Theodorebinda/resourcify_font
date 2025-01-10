@@ -51,7 +51,7 @@ export const MobileNavigation = ({
             aria-label={"logo"}
           >
             <div className="bg-[#b2d2fa] hover:bg-[#5182be] w-6 rounded-full h-6"></div>
-            {currentTheme === "light" ? (
+            {/* {currentTheme === "light" ? (
               <p className="px-1 text-xl font-normal hover:text-[#464646]">
                 T.Samba
               </p>
@@ -59,7 +59,7 @@ export const MobileNavigation = ({
               <p className="px-1 text-xl font-normal hover:text-white">
                 T.Samba
               </p>
-            )}
+            )} */}
           </Link>
           {/* <ThemeToggleButton onClick={toggleTheme} aria-label={"theme"}>
             {currentTheme === "light" ? (

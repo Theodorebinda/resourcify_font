@@ -1,6 +1,6 @@
 "use client";
 // import styled from "styled-components";
-import Link from "next/link";
+// import Link from "next/link";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 
@@ -19,7 +19,7 @@ interface Props {
 
 export const Navigation = ({
   // toggleTheme,
-  currentTheme,
+  //   currentTheme,
   className,
 }: Props) => {
   //   const isActive = () => {
@@ -50,24 +50,24 @@ export const Navigation = ({
         { "shadow-md": isScrolled }
       )}
     >
-      <div
+      {/* <div
         className={`${currentTheme === "light" ? "bg-white" : "bg-[#1c1917]"} `}
       >
         <div className="mx-52 flex flex-row items-center w-ful justify-between   h-[7rem]">
           <Link href="/" className="flex justify-between items-center">
-            <div className="bg-[#b2d2fa] hover:bg-[#5182be] w-6 rounded-full h-6"></div>
-            {currentTheme === "light" ? (
+            <div className="bg-[#b2d2fa] hover:bg-[#5182be] w-6 rounded-full h-6"></div> */}
+      {/* {currentTheme === "light" ? (
               <p className="px-3  text-xl font-normal hover:text-[#000]">
                 T.Samba
               </p>
-            ) : (
+            // ) : (
               <p className="px-3 ] text-xl font-normal hover:text-white">
                 T.Samba
               </p>
-            )}
-          </Link>
-          <nav className="flex items-center justify-between gap-10">
-            {/* {MainRoutes.map((route) => (
+            )} */}
+      {/* </Link> */}
+      {/* <nav className="flex items-center justify-between gap-10"> */}
+      {/* {MainRoutes.map((route) => (
               <Typography
                 key={route.title}
                 variant="body-base"
@@ -91,18 +91,18 @@ export const Navigation = ({
                 )}
               </Typography>
             ))} */}
-          </nav>
-          <div className="flex justify-between items-center gap-10">
-            {/* <LinkMediaSocial currentTheme={currentTheme} /> */}
-            {/* <ThemeToggleButton onClick={toggleTheme} aria-label={"theme"}> */}
-            {/* {currentTheme === "light" ? ( */}
-            {/* // <FaMoon size={20} className=" hover:fill-[#464646]" /> */}) :
-            ({/* // <FaSun size={20} className=" hover:fill-[#ffffff]" /> */}
-            {/* //   )} */}
-            {/* // </ThemeToggleButton> */}
-          </div>
-        </div>
-      </div>
+      {/* </nav> */}
+      {/* <div className="flex justify-between items-center gap-10"> */}
+      {/* <LinkMediaSocial currentTheme={currentTheme} /> */}
+      {/* <ThemeToggleButton onClick={toggleTheme} aria-label={"theme"}> */}
+      {/* {currentTheme === "light" ? ( */}
+      {/* // <FaMoon size={20} className=" hover:fill-[#464646]" /> */}) : (
+      {/* // <FaSun size={20} className=" hover:fill-[#ffffff]" /> */}
+      {/* //   )} */}
+      {/* // </ThemeToggleButton> */}
+      {/* </div> */}
+      {/* </div> */}
+      {/* </div> */}
     </header>
   );
 };

@@ -17,7 +17,7 @@ function MainRoutesLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark text-foreground-light dark:text-foreground-dark bg-grid-pattern">
+    <div className="">
       {/* // <ThemeProvider theme={selectedTheme}> */}
       {/* <GlobalStyle /> */}
       <NavigationWrapper toggleTheme={toggleTheme} currentTheme={theme} />
