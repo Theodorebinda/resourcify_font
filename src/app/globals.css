@@ -16,8 +16,21 @@
 }
 
 body {
+  @apply lg:mx-36   mx-5 max-w-full relative mt-48;
   color: var(--foreground);
   background: var(--background) url("/images/download.svg");
   background-size: 4rem; /* Ajuste la taille de l'image */
   font-family: Arial, Helvetica, sans-serif;
+}
+.content-scroll-animation {
+  transition: transform 0.5s;
+}
+
+.animate {
+  @apply transition-all duration-200 ease-in-out;
+}
+@layer base {
+  :root {
+    --radius: 0.5rem;
+  }
 }
