@@ -1,10 +1,71 @@
-import Link from "next/link";
-
 export default function Home() {
+  const users = [
+    {
+      id: 1,
+      name: "User 1",
+      avatar:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+    },
+    {
+      id: 2,
+      name: "User 2",
+      avatar:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+    },
+    {
+      id: 3,
+      name: "User 2",
+      avatar:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+    },
+    {
+      id: 4,
+      name: "User 2",
+      avatar:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+    },
+    {
+      id: 5,
+      name: "User 2",
+      avatar:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+    },
+    {
+      id: 6,
+      name: "User 2",
+      avatar:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+    },
+    // ... more users ...
+  ];
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <h1>HELLO WORD</h1>
-      <Link href={"/about"}>About</Link>
+    <div className=" mx-56 flex flex-col gap-8  text-center mt-18 absolute ">
+      <h1 className="text-5xl font-bold">
+        {
+          "Partagez, collaborez et accédez à tout documents en toute simplicité."
+        }
+      </h1>
+      <p>
+        {
+          "Resourcify vous donne l'occasion non seulement de partager vos connaissances et ressources mais egalement egalement de trouver tout ceque vous desirez."
+        }
+      </p>
+      <div className="flex items-center justify-center ">
+        <div className="flex flex-row space-x-[-20px]">
+          {users.map((user) => (
+            <img
+              key={user.id}
+              src={user.avatar}
+              alt={user.name}
+              className="w-12 h-12 rounded-full border-2 border-white"
+            />
+          ))}
+        </div>
+        <div className="flex flex-col">
+          <p>+700 Utilisateurs</p>
+          <p>Voir les avis</p>
+        </div>
+      </div>
     </div>
   );
 }
