@@ -41,7 +41,7 @@ export const Navigation = () => {
       className={clsx(
         "fixed top-0 left-0 right-0 mt-10  mx-36 fex justify-center items-center rounded-full z-20",
 
-        { "bg-[#0a0a0a] border": isScrolled }
+        { "bg-[#1c1c1c] ": isScrolled }
       )}
     >
       <div className="flex items-center justify-between p-5">
