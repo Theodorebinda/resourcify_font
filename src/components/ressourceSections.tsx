@@ -1,7 +1,11 @@
 import { useState } from "react";
 
 const ResourceSection = () => {
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  // Déclarer un type pour les catégories
+  type Category = "All" | "Category1" | "Category2";
+
+  // Utiliser le type pour `selectedCategory`
+  const [selectedCategory, setSelectedCategory] = useState<Category>("All");
 
   const articles = [
     {
@@ -21,7 +25,7 @@ const ResourceSection = () => {
     // ... more articles
   ];
 
-  const documents = {
+  const documents: Record<Category, string[]> = {
     All: ["Document A", "Document B", "Document C"],
     Category1: ["Document D", "Document E"],
     Category2: ["Document F", "Document G"],
@@ -31,23 +35,18 @@ const ResourceSection = () => {
     <div className="flex justify-between gap-4 w-full px-5">
       <div className="w-3/4">
         <h2 className="text-2xl font-bold">Articles</h2>
-        {articles
-          //   .sort((a, b) => new Date(b.date) - new Date(a.date))
-          .map((article) => (
-            <div key={article.id} className="mb-4">
-              <h3 className="font-semibold">{article.title}</h3>
-              <p>{article.summary}</p>
-              <p>
-                <a
-                  href={`/profile/${article.author}`}
-                  className="text-blue-500"
-                >
-                  {article.author}
-                </a>{" "}
-                - {new Date(article.date).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
+        {articles.map((article) => (
+          <div key={article.id} className="mb-4">
+            <h3 className="font-semibold">{article.title}</h3>
+            <p>{article.summary}</p>
+            <p>
+              <a href={`/profile/${article.author}`} className="text-blue-500">
+                {article.author}
+              </a>{" "}
+              - {new Date(article.date).toLocaleDateString()}
+            </p>
+          </div>
+        ))}
       </div>
       <div className="w-1/4">
         <h2 className="text-2xl font-bold">Documents</h2>
@@ -56,7 +55,7 @@ const ResourceSection = () => {
             {Object.keys(documents).map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => setSelectedCategory(category as Category)}
                 className={`p-2 rounded ${
                   selectedCategory === category
                     ? "bg-blue-500 text-white"
@@ -68,12 +67,11 @@ const ResourceSection = () => {
             ))}
           </div>
           <div>
-            pppp
-            {/* {documents[selectedCategory].map((doc, index) => (
+            {documents[selectedCategory].map((doc, index) => (
               <p key={index} className="mb-2">
                 {doc}
               </p>
-            ))} */}
+            ))}
           </div>
         </div>
       </div>
