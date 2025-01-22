@@ -1,12 +1,19 @@
 "use client";
 
 import ResourceSection from "@/src/components/ressourceSections";
+import useUsers from "@/src/hooks/useUsers";
 import { HelloResponse } from "@/src/models/hello";
+import useUserStore from "@/src/stores/useStore";
 import { useState, useEffect } from "react";
 
 export default function Home() {
   const [datas, setDatas] = useState<HelloResponse | null>(); // Typage de l'état
   const [load, setLoad] = useState(false);
+  const { users } = useUserStore();
+
+  console.log(users);
+
+  useUsers();
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -36,33 +43,22 @@ export default function Home() {
   const exportedData = { datas, load };
   console.log(exportedData);
 
-  // useEffect(() => {
-  //   const fetchArticles = async () => {
-  //     const res = await fetch("http://localhost:3000/");
-  //     const data = await res.json();
-  //     setDatas(data);
-  //     setLoad(true);
-  //     console.log({ res });
-  //   };
-  //   fetchArticles();
-  // }, []);
-
   console.log({ datas });
 
-  const users = [
-    {
-      id: 1,
-      name: "User 1",
-      avatar:
-        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
-    },
-    {
-      id: 2,
-      name: "User 2",
-      avatar:
-        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
-    },
-  ];
+  // const userss = [
+  //   {
+  //     id: 1,
+  //     name: "User 1",
+  //     avatar:
+  //       "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "User 2",
+  //     avatar:
+  //       "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
+  //   },
+  // ];
 
   return (
     <div className="absolute flex flex-col gap-10">
@@ -75,7 +71,7 @@ export default function Home() {
             {users.map((user) => (
               <img
                 key={user.id}
-                src={user.avatar}
+                src={user.image}
                 alt={user.name}
                 className="w-12 h-12 rounded-full border-2 border-white"
               />
