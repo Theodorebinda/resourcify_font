@@ -44,22 +44,6 @@ export default function Home() {
   console.log(exportedData);
 
   console.log({ datas });
-
-  // const userss = [
-  //   {
-  //     id: 1,
-  //     name: "User 1",
-  //     avatar:
-  //       "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
-  //   },
-  //   {
-  //     id: 2,
-  //     name: "User 2",
-  //     avatar:
-  //       "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
-  //   },
-  // ];
-
   return (
     <div className="absolute flex flex-col gap-10">
       <div className="mx-56 flex flex-col gap-8 text-center mt-18">
