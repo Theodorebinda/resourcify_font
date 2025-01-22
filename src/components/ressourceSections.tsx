@@ -1,8 +1,13 @@
 import { useState } from "react";
+// import { useStore } from "zustand";
 
+// interface StoreState {
+//   bears: number;
+// }
 const ResourceSection = () => {
   // Déclarer un type pour les catégories
   type Category = "All" | "Category1" | "Category2";
+  // const bears = useStore<StoreState>((state: { bears: number }) => state.bears);
 
   // Utiliser le type pour `selectedCategory`
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
