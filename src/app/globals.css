@@ -16,7 +16,7 @@
 }
 
 body {
-  @apply lg:mx-36   mx-5 max-w-full relative mt-48;
+  
   color: var(--foreground);
   background: var(--background) url("/images/download.svg");
   background-size: 4rem; /* Ajuste la taille de l'image */

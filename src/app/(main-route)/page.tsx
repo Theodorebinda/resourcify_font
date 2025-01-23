@@ -46,7 +46,7 @@ export default function Home() {
 
   console.log({ datas });
   return (
-    <div className="absolute flex flex-col gap-20 overflow-hidden">
+    <div className="lg:mx-36   mx-5 max-w-full relative mt-48 flex flex-col gap-20 overflow-hidden">
       <HeroSection
         title={datas?.titre}
         message={datas?.message}
