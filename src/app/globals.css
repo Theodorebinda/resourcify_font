@@ -29,6 +29,30 @@ body {
 
   background-size: 4rem;
 }
+.mask-image {
+  -webkit-mask-image: linear-gradient(to top, transparent, black);
+  mask-image: linear-gradient(to top, transparent, black);
+}
+
+@keyframes spotlight {
+  0% {
+    transform: translate(-150%, -150%) scale(1.5);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-spotlight {
+  animation: spotlight 3s ease-out forwards;
+}
+
+
 .animate {
   @apply transition-all duration-200 ease-in-out;
 }

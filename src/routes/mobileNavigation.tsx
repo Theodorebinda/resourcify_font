@@ -41,7 +41,7 @@ export const MobileNavigation = ({
     >
       <div
         className={`${
-          currentTheme === "light" ? "bg-white" : "bg-[#1c1917]"
+          currentTheme === "light" ? "bg-white" : "bg-[#1c1d22]"
         }  flex flex-row items-center w-full justify-between px-4 py-8 h-[10vh]`}
       >
         <div className="flex justify-start items-center gap-3">
