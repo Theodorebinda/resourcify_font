@@ -46,13 +46,19 @@ export default function Home() {
 
   console.log({ datas });
   return (
-    <div className="lg:mx-36   mx-5 max-w-full relative mt-48 flex flex-col gap-20 overflow-hidden">
-      <HeroSection
-        title={datas?.titre}
-        message={datas?.message}
-        users={users}
-      />
-      <ResourceSection />
+    <div>
+      <div
+        className="bg-[url(/images/download.svg)] absolute h-[80vh] w-full custom-bg-size
+"
+      ></div>
+      <div className="lg:mx-36   mx-5 max-w-full  pt-48 flex flex-col gap-20 overflow-hidden ">
+        <HeroSection
+          title={datas?.titre}
+          message={datas?.message}
+          users={users}
+        />
+        <ResourceSection />
+      </div>
     </div>
   );
 }

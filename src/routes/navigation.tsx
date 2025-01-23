@@ -44,7 +44,6 @@ export const Navigation = () => {
         { "bg-[#1c1c1c] ": isScrolled }
       )}
     >
-      <div className="bg-[url('/images/download.svg')] custom-bg-size"></div>
       <div className="flex items-center justify-between p-5">
         <div className="">
           <p>Logo</p>

@@ -10,22 +10,25 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #0e1015;
     --foreground: #ededed;
   }
 }
 
 body {
-  
+  @apply relative;
   color: var(--foreground);
-  background: var(--background) url("/images/download.svg");
+  background: var(--background);
   background-size: 4rem; /* Ajuste la taille de l'image */
   font-family: Arial, Helvetica, sans-serif;
 }
 .content-scroll-animation {
   transition: transform 0.5s;
 }
+.custom-bg-size {
 
+  background-size: 4rem;
+}
 .animate {
   @apply transition-all duration-200 ease-in-out;
 }
