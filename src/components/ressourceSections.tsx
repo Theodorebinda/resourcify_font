@@ -60,7 +60,7 @@ const ResourceSection = () => {
 
   return (
     <div className="flex justify-between gap-6 w-full px-5">
-      <div className="w-3/5">
+      <div className="w-3/5 flex flex-col">
         <h2 className="text-2xl font-bold mb-4">Derniers Articles</h2>
         {articles.map((article) => (
           <div key={article.id} className="mb-4">
@@ -74,7 +74,9 @@ const ResourceSection = () => {
             </p>
           </div>
         ))}
-        <PopularArticles />
+        <div className="mt-8">
+          <PopularArticles />
+        </div>
       </div>
       <div className="w-1/3">
         <h2 className="text-2xl font-bold mb-4">Documents</h2>

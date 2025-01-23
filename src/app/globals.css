@@ -29,6 +29,12 @@ body {
 
   background-size: 4rem;
 }
+.mask-image {
+  -webkit-mask-image: linear-gradient(to top, transparent, black);
+  mask-image: linear-gradient(to top, transparent, black);
+}
+
+
 .animate {
   @apply transition-all duration-200 ease-in-out;
 }

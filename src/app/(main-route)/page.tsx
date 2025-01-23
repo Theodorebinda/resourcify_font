@@ -48,10 +48,10 @@ export default function Home() {
   return (
     <div>
       <div
-        className="bg-[url(/images/download.svg)] absolute h-[80vh] w-full custom-bg-size
+        className="bg-[url(/images/download.svg)] -z-20 absolute h-screen w-full custom-bg-size mask-image
 "
       ></div>
-      <div className="lg:mx-36   mx-5 max-w-full  pt-48 flex flex-col gap-20 overflow-hidden ">
+      <div className="lg:mx-36   mx-5 max-w-full  pt-44 pb-8 flex flex-col gap-20 overflow-hidden ">
         <HeroSection
           title={datas?.titre}
           message={datas?.message}
