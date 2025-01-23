@@ -9,12 +9,12 @@ interface Props {
 const NavigationWrapper = ({ toggleTheme, currentTheme }: Props) => (
   <>
     <Navigation
-      className="hidden lg:block"
-      toggleTheme={toggleTheme}
-      currentTheme={currentTheme}
+    // className="hidden lg:block"
+    // toggleTheme={toggleTheme}
+    // currentTheme={currentTheme}
     />
     <MobileNavigation
-      className="lg:hidden"
+      className="md:hidden"
       toggleTheme={toggleTheme}
       currentTheme={currentTheme}
     />
