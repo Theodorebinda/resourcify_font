@@ -1,4 +1,6 @@
 import { useState } from "react";
+import PopularArticles from "./postePopulars";
+import TutorielsList from "./tutoriels";
 // import { useStore } from "zustand";
 
 // interface StoreState {
@@ -72,6 +74,7 @@ const ResourceSection = () => {
             </p>
           </div>
         ))}
+        <PopularArticles />
       </div>
       <div className="w-1/3">
         <h2 className="text-2xl font-bold mb-4">Documents</h2>
@@ -104,6 +107,7 @@ const ResourceSection = () => {
             </div>
           </div>
         </div>
+        <TutorielsList />
       </div>
     </div>
   );
