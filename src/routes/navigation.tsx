@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import CustomDialog from "../ui/dialog";
 
 // const ThemeToggleButton = styled.button`
 //   color: ${(props) => props.theme.text};
@@ -54,7 +55,8 @@ export const Navigation = () =>
             <Link href="/">Home</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
-            <Link href="/login">login</Link>
+            {/* <Link href="/login">login</Link> */}
+            <CustomDialog />
           </div>
         </div>
       </header>
