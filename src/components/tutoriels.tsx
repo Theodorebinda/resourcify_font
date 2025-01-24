@@ -20,9 +20,22 @@ export const TutorielsList = () => {
   //     fetchTutoriels();
   //   }, []);
   const tutoriels = [
-    { id: 1, title: "Tutoriel 1", summary: "Résumé du tutoriel 1" },
-    { id: 2, title: "Tutoriel 2", summary: "Résumé du tutoriel 2" },
-    { id: 3, title: "Tutoriel 3", summary: "Résumé du tutoriel 3" },
+    {
+      id: 1,
+      title: "Apprendre a Preparer Du Fumbwa ",
+      summary:
+        "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Quisquam itaque aspernatur rerum nulla ad culpa quia ex eius cumque vel. ",
+    },
+    {
+      id: 2,
+      title: "Comment faire de bon formulair en React",
+      summary: "Résumé du tutoriel 2",
+    },
+    {
+      id: 3,
+      title: "Comment installer votre Canal sat vous meme",
+      summary: "Résumé du tutoriel 3",
+    },
   ];
 
   return (
