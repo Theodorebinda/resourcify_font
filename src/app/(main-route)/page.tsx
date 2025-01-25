@@ -2,7 +2,7 @@
 
 import HeroSection from "@/src/components/heroSection";
 import ResourceSection from "@/src/components/ressourceSections";
-import useUsers from "@/src/hooks/useUsers";
+import useUsers from "@/src/hooks/userUses";
 import { HelloResponse } from "@/src/models/hello";
 import useUserStore from "@/src/stores/useStore";
 import { useState, useEffect } from "react";
@@ -51,7 +51,6 @@ export default function Home() {
         className="bg-[url(/images/download.svg)] -z-20 absolute h-screen w-full custom-bg-size mask-image
 "
       ></div>
-
       <div className="md:mx-36   mx-5 max-w-full  pt-44 pb-8 flex flex-col gap-20 overflow-hidden ">
         <HeroSection
           title={datas?.titre}
@@ -59,7 +58,7 @@ export default function Home() {
           users={users}
         />
         <ResourceSection />
-      </div>
+      </div>{" "}
     </div>
   );
 }

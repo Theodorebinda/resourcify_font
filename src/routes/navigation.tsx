@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import CustomDialog from "../ui/dialog";
+import CustomDialog from "../components/dialog";
 
 // const ThemeToggleButton = styled.button`
 //   color: ${(props) => props.theme.text};
