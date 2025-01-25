@@ -1,6 +1,7 @@
 "use client";
 
 import Footer from "@/src/components/footer";
+import { Toaster } from "@/src/components/ui/toaster";
 import { useTheme } from "@/src/libs/useTheme/useTheme";
 import NavigationWrapper from "@/src/routes/navigationWraper";
 // import { GlobalStyle } from "@/src/styles/globalStyle";
@@ -23,6 +24,7 @@ function MainRoutesLayout({ children }: { children: React.ReactNode }) {
       {/* <GlobalStyle /> */}
       <NavigationWrapper toggleTheme={toggleTheme} currentTheme={theme} />
       {children}
+      <Toaster />
       <Footer />
 
       {/* // </ThemeProvider> */}

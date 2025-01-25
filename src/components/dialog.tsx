@@ -16,7 +16,7 @@ const CustomDialog = ({}) => {
       <DialogContent className="bg-inherit">
         <DialogHeader className="flex justify-center items-center">
           <DialogTitle>Are you absolutely sure?</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="px-5">
             This action cannot be undone. This will permanently delete your
             account and remove your data from our servers.
           </DialogDescription>

@@ -2,7 +2,7 @@
 
 import HeroSection from "@/src/components/heroSection";
 import ResourceSection from "@/src/components/ressourceSections";
-import useUsers from "@/src/hooks/useUsers";
+// import useUsers from "@/src/hooks/useUsers";
 import { HelloResponse } from "@/src/models/hello";
 import useUserStore from "@/src/stores/useStore";
 import { useState, useEffect } from "react";
@@ -14,7 +14,7 @@ export default function Home() {
 
   console.log(users);
 
-  useUsers();
+  // useUsers();
 
   useEffect(() => {
     const fetchArticles = async () => {

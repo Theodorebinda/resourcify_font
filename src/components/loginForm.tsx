@@ -14,12 +14,14 @@ import {
   FormMessage,
 } from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
+import { useToast } from "@/src/hooks/use-toast";
 
 const formSchema = z.object({
   username: z.string().min(2).max(50),
 });
 
 const LoginForm: React.FC = () => {
+  const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -58,7 +60,17 @@ const LoginForm: React.FC = () => {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <Button
+          type="submit"
+          onClick={() => {
+            toast({
+              title: "Submit",
+              description: "Your message has been sent.",
+            });
+          }}
+        >
+          Submit
+        </Button>
       </form>
     </Form>
   );
