@@ -14,6 +14,8 @@ import {
 } from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
 import { useToast } from "@/src/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "../stores/useAuthStore";
 
 const formSchema = z.object({
   email: z.string().email().min(2).max(50),
@@ -23,6 +25,8 @@ const formSchema = z.object({
 const LoginForm: React.FC = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const setToken = useAuthStore((state) => state.setToken);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -30,6 +34,7 @@ const LoginForm: React.FC = () => {
       password: "",
     },
   });
+  const router = useRouter(); // Initialiser useRouter
 
   async function authenticate(data: z.infer<typeof formSchema>) {
     setIsLoading(true); // Activer l'état de chargement
@@ -42,23 +47,24 @@ const LoginForm: React.FC = () => {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
+      const responseData = await response.json(); // Lire le corps de la réponse une seule fois
+
+      if (response.ok) {
+        setToken(responseData.token);
+        console.log(responseData);
+
+        // Afficher un toast de succès
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${data.email}!`,
+        });
+
+        router.push("/dashboard"); // Remplacez "/dashboard" par la page souhaitée
+      } else {
         // Gérer les erreurs de réponse HTTP (400, 500, etc.)
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to authenticate");
+        router.push("/");
+        throw new Error(responseData.message || "Failed to authenticate");
       }
-
-      const responseData = await response.json();
-
-      // Afficher un toast de succès
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${data.email}!`,
-        // variant: "success",
-      });
-
-      // Traitez la réponse ici (par exemple, stocker le token, redirection, etc.)
-      console.log(responseData);
     } catch (error: any) {
       // Afficher un toast d'erreur
       toast({
