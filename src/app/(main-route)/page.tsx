@@ -58,7 +58,7 @@ export default function Home() {
           users={users}
         />
         <ResourceSection />
-      </div>{" "}
+      </div>
     </div>
   );
 }

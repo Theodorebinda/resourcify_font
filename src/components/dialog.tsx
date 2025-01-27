@@ -13,7 +13,7 @@ const CustomDialog = ({}) => {
   return (
     <Dialog>
       <DialogTrigger>Sign In</DialogTrigger>
-      <DialogContent className="bg-inherit">
+      <DialogContent className="bg-[#090911] border border-slate-500">
         <DialogHeader className="flex justify-center items-center">
           <DialogTitle>Are you absolutely sure?</DialogTitle>
           <DialogDescription className="px-5">
