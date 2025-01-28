@@ -1,39 +1,119 @@
-import React from "react";
-import Link from "next/link";
+import {
+  Calendar,
+  ChevronUp,
+  Home,
+  Inbox,
+  Search,
+  Settings,
+  User2,
+} from "lucide-react";
 
-const AppSidebar = () => {
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  //   useSidebar,
+} from "@/src/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@radix-ui/react-dropdown-menu";
+
+// Menu items.
+const items = [
+  {
+    title: "Home",
+    url: "/home",
+    icon: Home,
+  },
+  {
+    title: "Inbox",
+    url: "/ressources",
+    icon: Inbox,
+  },
+  {
+    title: "Calendar",
+    url: "/home",
+    icon: Calendar,
+  },
+  {
+    title: "Search",
+    url: "/ressources",
+    icon: Search,
+  },
+  {
+    title: "Settings",
+    url: "/about",
+    icon: Settings,
+  },
+];
+
+export default function AppSidebar() {
+  // const {
+  //     state,
+  //     open,
+  //     setOpen,
+  //     openMobile,
+  //     setOpenMobile,
+  //     isMobile,
+  //     toggleSidebar,
+  //   } = useSidebar()
   return (
-    <aside className="w-64 bg-gray-800 text-white h-full p-4">
-      <h2 className="text-lg font-semibold mb-4">Navigation</h2>
-      <ul className="space-y-2">
-        <li>
-          <Link href="/" className="hover:text-gray-400">
-            Home
-          </Link>
-        </li>
-        <li>
-          <Link href="/about" className="hover:text-gray-400">
-            About
-          </Link>
-        </li>
-        <li>
-          <Link href="/services" className="hover:text-gray-400">
-            Services
-          </Link>
-        </li>
-        <li>
-          <Link href="/contact" className="hover:text-gray-400">
-            Contact
-          </Link>
-        </li>
-        <li>
-          <Link href="/not-found" className="hover:text-gray-400">
-            Not Found
-          </Link>
-        </li>
-      </ul>
-    </aside>
+    <Sidebar className="">
+      <SidebarHeader>
+        <SidebarGroupLabel>Ressoucify</SidebarGroupLabel>
+      </SidebarHeader>
+      <SidebarContent className="bg-inherit">
+        <SidebarGroup>
+          <SidebarGroupContent className="flex-col  justify-between h-[80vh]">
+            <SidebarMenu className="flex flex-col justify-between items-start">
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarFooter>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton>
+                <User2 /> Theo
+                <ChevronUp className="ml-auto" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="top"
+              className="w-[--radix-popper-anchor-width]"
+            >
+              <DropdownMenuItem>
+                <span>Account</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <span>Billing</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <span>Sign out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarFooter>
+      </SidebarContent>
+    </Sidebar>
   );
-};
-
-export default AppSidebar;
+}

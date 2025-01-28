@@ -1,16 +1,16 @@
 "use client";
-import ResourceSection from "@/src/components/ressourceSections";
-import React from "react";
 
-const HomePage = () => {
+import React, { JSX } from "react";
+
+function HomePage(): JSX.Element {
+  // Ajout du type de retour
   return (
     <div>
-      <div className="bg-[url(/images/landing-bg.svg)] -z-20 absolute h-screen w-full custom-bg-size mask-image"></div>
-      <div className="md:mx-36 mx-5 max-w-full pt-44 pb-8 flex flex-col gap-20 overflow-hidden">
-        <ResourceSection />
+      <div className=" pb-8 flex flex-col gap-20 overflow-hidden">
+        HOME PAGE
       </div>
     </div>
   );
-};
+}
 
 export default HomePage;
