@@ -69,10 +69,10 @@ export default function AppSidebar() {
   //   } = useSidebar()
   return (
     <Sidebar className="">
-      <SidebarHeader>
+      <SidebarHeader className="ml-20 mb-20  ">
         <SidebarGroupLabel>Ressoucify</SidebarGroupLabel>
       </SidebarHeader>
-      <SidebarContent className="bg-inherit">
+      <SidebarContent className="bg-inherit  ml-20  ">
         <SidebarGroup>
           <SidebarGroupContent className="flex-col  justify-between h-[80vh]">
             <SidebarMenu className="flex flex-col justify-between items-start">
@@ -89,31 +89,31 @@ export default function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarFooter>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton>
-                <User2 /> Theo
-                <ChevronUp className="ml-auto" />
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="top"
-              className="w-[--radix-popper-anchor-width]"
-            >
-              <DropdownMenuItem>
-                <span>Account</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Billing</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Sign out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarFooter>
       </SidebarContent>
+      <SidebarFooter className="ml-20  flex items-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton>
+              <User2 /> Theo
+              <ChevronUp className="ml-auto" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="top"
+            className="w-[--radix-popper-anchor-width]"
+          >
+            <DropdownMenuItem>
+              <span>Account</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <span>Billing</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <span>Sign out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
