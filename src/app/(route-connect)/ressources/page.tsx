@@ -4,7 +4,7 @@ import ResourceSection from "@/src/components/ressourceSections";
 
 const ResourcesPage = () => {
   return (
-    <div className="w-full ">
+    <div className="px-10">
       <h1 className="text-2xl font-bold">Resources</h1>
       <div className="">
         <ResourceSection />

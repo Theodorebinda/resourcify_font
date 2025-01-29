@@ -6,7 +6,7 @@ import React, { JSX } from "react";
 function HomePage(): JSX.Element {
   // Ajout du type de retour
   return (
-    <div className="w-full">
+    <div className="w-full px-10">
       <div className="flex flex-col ">
         <h1> HOME PAGE</h1>
         <ResourceSection />
