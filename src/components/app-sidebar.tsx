@@ -69,7 +69,7 @@ export default function AppSidebar() {
   //   } = useSidebar()
   return (
     <Sidebar className="">
-      <SidebarHeader className="ml-20 mb-20  ">
+      <SidebarHeader className="ml-20">
         <SidebarGroupLabel>Ressoucify</SidebarGroupLabel>
       </SidebarHeader>
       <SidebarContent className="bg-inherit  ml-20  ">
