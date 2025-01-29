@@ -59,10 +59,10 @@ const LoginForm: React.FC = () => {
           description: `Welcome back, ${data.email}!`,
         });
 
-        router.push("/dashboard"); // Remplacez "/dashboard" par la page souhaitée
+        router.push("/home"); // Remplacez "/dashboard" par la page souhaitée
       } else {
         // Gérer les erreurs de réponse HTTP (400, 500, etc.)
-        router.push("/");
+        router.push("/home");
         throw new Error(responseData.message || "Failed to authenticate");
       }
     } catch (error: any) {
