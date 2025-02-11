@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   Dialog,
@@ -7,12 +8,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/src/components/ui/dialog";
-import CardSing from "./cardSing";
+// import CardSing from "./cardSing";
 
 const CustomDialog = ({}) => {
   return (
     <Dialog>
       <DialogTrigger>Sign In</DialogTrigger>
+      <DialogTitle>Hey</DialogTitle>
       <DialogContent className="bg-[#090911] border border-slate-500">
         <DialogHeader className="flex justify-center items-center">
           <DialogTitle>Are you absolutely sure?</DialogTitle>
@@ -21,7 +23,6 @@ const CustomDialog = ({}) => {
             account and remove your data from our servers.
           </DialogDescription>
         </DialogHeader>
-        <CardSing />
       </DialogContent>
     </Dialog>
   );
