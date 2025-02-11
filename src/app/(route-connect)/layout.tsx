@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <SidebarTrigger />
         {children}
       </main>
-      <SidebarRight className="sticky top-10 right-0 lg:block hidden" />
+      <SidebarRight className="sticky top-20 right-8 lg:block hidden" />
     </SidebarProvider>
   );
 }

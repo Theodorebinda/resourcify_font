@@ -1,6 +1,7 @@
 "use client";
 
 import HeroSection from "@/src/components/heroSection";
+// import HeroSection from "@/src/components/heroSection";
 import ResourceSection from "@/src/components/ressourceSections";
 import useUsers from "@/src/hooks/userUses";
 import { HelloResponse } from "@/src/models/hello";
