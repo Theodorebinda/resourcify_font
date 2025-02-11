@@ -3,6 +3,10 @@ import React from "react";
 import {
   Card,
   CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   //   CardDescription,
   //   CardFooter,
   //   CardHeader,
@@ -13,10 +17,17 @@ import LoginForm from "./loginForm";
 
 const CardSing: React.FC = ({}) => {
   return (
-    <Card className="bg-inherit text-inherit border-none ">
+    <Card className="bg-[#1c1d22] text-inherit border-none w-full ">
+      <CardHeader>
+        <CardTitle>Card Title</CardTitle>
+        <CardDescription>Card Description</CardDescription>
+      </CardHeader>
       <CardContent>
         <LoginForm />
       </CardContent>
+      <CardFooter>
+        <p>Card Footer</p>
+      </CardFooter>
     </Card>
   );
 };

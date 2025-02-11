@@ -28,6 +28,9 @@ body {
 .custom-bg-size {
   background-size: 4rem;
 }
+.auth-bg-size {
+  background-size: 8rem;
+}
 .mask-image {
   -webkit-mask-image: linear-gradient(to top, transparent, black);
   mask-image: linear-gradient(to top, transparent, black);
