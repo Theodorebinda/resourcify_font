@@ -20,14 +20,13 @@ function MainRoutesLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="">
-      {/* // <ThemeProvider theme={selectedTheme}> */}
+      {/* <ThemeProvider theme={selectedTheme}> */}
       {/* <GlobalStyle /> */}
       <NavigationWrapper toggleTheme={toggleTheme} currentTheme={theme} />
       {children}
       <Toaster />
       <Footer />
-
-      {/* // </ThemeProvider> */}
+      {/* </ThemeProvider> */}
     </div>
   );
 }

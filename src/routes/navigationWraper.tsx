@@ -13,11 +13,11 @@ const NavigationWrapper = ({ toggleTheme, currentTheme }: Props) => (
     // toggleTheme={toggleTheme}
     // currentTheme={currentTheme}
     />
-    <MobileNavigation
+    {/* <MobileNavigation
       className="md:hidden"
       toggleTheme={toggleTheme}
       currentTheme={currentTheme}
-    />
+    /> */}
   </>
 );
 
