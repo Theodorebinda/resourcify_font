@@ -1,10 +1,17 @@
 import CardSing from "@/src/components/cardSing";
+import { Home } from "lucide-react";
+import Link from "next/link";
 import React from "react";
 
 const LoginPage = () => {
   return (
     <div className="flex flex-col flex-wrap md:flex-row  items-center justify-center min-h-screen md:w-[80rem] md:gap-10">
       <div className="md:w-[40%] md:h-[24rem] flex flex-col justify-start items-start gap-8   ">
+        <Link href="/" className="md:absolute top-20">
+          {" "}
+          {/* Changement ici pour faire un lien */}
+          <Home />
+        </Link>
         <h3 className="font-bold text-5xl ">Resourcify</h3>
         <div className="flex flex-col gap-4">
           <span className="text-3xl text-gray-100">
