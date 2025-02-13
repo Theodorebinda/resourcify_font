@@ -4,13 +4,8 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-  //   CardDescription,
-  //   CardFooter,
-  //   CardHeader,
-  //   CardTitle,
 } from "@/src/components/ui/card";
 import LoginForm from "./loginForm";
 // import { Button } from "./ui/button";
@@ -25,9 +20,6 @@ const CardSing: React.FC = ({}) => {
       <CardContent>
         <LoginForm />
       </CardContent>
-      <CardFooter>
-        <p>Card Footer</p>
-      </CardFooter>
     </Card>
   );
 };
