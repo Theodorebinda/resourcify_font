@@ -1,16 +1,15 @@
 import { SidebarProvider, SidebarTrigger } from "@/src/components/ui/sidebar";
 import AppSidebar from "@/src/components/app-sidebar";
-import SidebarRight from "@/src/components/sideBarRight";
+// import SidebarRight from "@/src/components/sideBarRight";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider className=" ">
+    <SidebarProvider className="  min-w-max">
       <AppSidebar />
-      <main className="">
+      <main className="w-full flex flex-col    ">
         <SidebarTrigger />
         {children}
       </main>
-      <SidebarRight className="sticky top-20 right-8 lg:block hidden" />
     </SidebarProvider>
   );
 }

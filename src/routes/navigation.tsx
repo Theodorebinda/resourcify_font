@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useAuthStore } from "../stores/useAuthStore";
 
 // const ThemeToggleButton = styled.button`
 //   color: ${(props) => props.theme.text};
@@ -24,24 +25,24 @@ export const Navigation = () =>
   //   currentTheme,
   // }: NavigationProps
   {
-    const [isScrolled, setIsScrolled] = useState(false); // État pour suivre le défilement
+    const [isScrolled, setIsScrolled] = useState(false);
+    const { token } = useAuthStore();
 
     useEffect(() => {
       const handleScroll = () => {
-        setIsScrolled(window.scrollY > 0); // mise à jour l'état en fonction de la position de défilement
+        setIsScrolled(window.scrollY > 0);
       };
 
-      window.addEventListener("scroll", handleScroll); //  l'écouteur d'événements
+      window.addEventListener("scroll", handleScroll);
 
       return () => {
-        window.removeEventListener("scroll", handleScroll); // Nettoie l'écouteur d'événements
+        window.removeEventListener("scroll", handleScroll);
       };
     }, []);
     return (
       <header
         className={clsx(
           "fixed top-0 left-0 right-0 mt-10  mx-36  r rounded-full z-20 ",
-
           { "bg-[#1c1d22] ": isScrolled }
         )}
       >
@@ -54,7 +55,13 @@ export const Navigation = () =>
             <Link href="/">Home</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
-            <Link href="/login">Login</Link>
+            {token ? (
+              <div className="avatar">
+                <p>Avatar</p>
+              </div>
+            ) : (
+              <Link href="/login">Login</Link>
+            )}
           </div>
         </div>
       </header>
