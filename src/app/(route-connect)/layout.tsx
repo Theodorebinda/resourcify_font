@@ -4,7 +4,7 @@ import AppSidebar from "@/src/components/app-sidebar";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider className="  min-w-max">
+    <SidebarProvider className=" ">
       <AppSidebar />
       <main className="w-full flex flex-col    ">
         <SidebarTrigger />

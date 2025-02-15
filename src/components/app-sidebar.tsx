@@ -31,17 +31,17 @@ import {
 // Menu items.
 const items = [
   {
-    title: "Home",
+    title: "Accueil",
     url: "/home",
     icon: Home,
   },
   {
-    title: "Inbox",
+    title: "Ressources",
     url: "/ressources",
     icon: Inbox,
   },
   {
-    title: "Calendar",
+    title: "Chat",
     url: "/home",
     icon: Calendar,
   },
@@ -68,7 +68,7 @@ export default function AppSidebar() {
   //     toggleSidebar,
   //   } = useSidebar()
   return (
-    <Sidebar className="">
+    <Sidebar className="bg-[#0d1117]">
       <SidebarHeader className="ml-20">
         <SidebarGroupLabel>Ressoucify</SidebarGroupLabel>
       </SidebarHeader>

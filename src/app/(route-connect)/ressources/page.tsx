@@ -1,13 +1,13 @@
 "use client";
+import SidebarRight from "@/src/components/sideBarRight";
 import React from "react";
-import ResourceSection from "@/src/components/ressourceSections";
 
 const ResourcesPage = () => {
   return (
-    <div className="">
-      {/* <h1 className="text-2xl font-bold">Resources</h1> */}
-      <div className="">
-        <ResourceSection />
+    <div className="w-full  flex justify-between px-10 ">
+      <div className="flex flex-col w-3/4 ">Ressources</div>
+      <div className="stocky  top-20  lg:block hidden w-1/3">
+        <SidebarRight className="" />
       </div>
     </div>
   );
