@@ -3,10 +3,12 @@ import React, { useState } from "react";
 import CustomSelectStart from "../ui/selectStart";
 import { MessageSquareTextIcon } from "lucide-react";
 import CustomReaction from "../ui/customReaction";
+import Link from "next/link";
 
 interface ArticleProps {
   title: string;
   content: string;
+  id: string;
   author: string;
   date: string;
   avatarUrl: string;
@@ -17,6 +19,7 @@ const Article: React.FC<ArticleProps> = ({
   content,
   author,
   date,
+  id,
   avatarUrl,
 }) => {
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
@@ -75,20 +78,26 @@ const Article: React.FC<ArticleProps> = ({
         <p className="text-gray-300 py-4">{content}</p>
       </div>
       <div className="flex justify-between mt-4">
-        <div className="flex justify-start items-center">
-          <CustomReaction onReact={handleReaction} />
+        <div className="flex justify-start items-center ">
+          <div className="py-1">
+            <CustomReaction onReact={handleReaction} />
+          </div>
+
           {selectedReaction && (
-            <span
-              onClick={() => handleReaction(selectedReaction)}
-              className="ml-2 bg-[#152a45] px-1 rounded text-slate-300"
-            >
-              {selectedReaction} {reactionCount[selectedReaction] || 0}
-            </span>
+            <div className="flex items-center justify-start ml-2 bg-[#152a45] px-1 rounded text-slate-300">
+              <span
+                onClick={() => handleReaction(selectedReaction)}
+                className=""
+              >
+                {selectedReaction}
+              </span>
+              <span> {reactionCount[selectedReaction] || 0}</span>
+            </div>
           )}
         </div>
-        <button className="text-white">
+        <Link className="text-white" href={`${"home"}/${id}`}>
           <MessageSquareTextIcon size={20} width={20} strokeWidth={0.8} />
-        </button>
+        </Link>
       </div>
     </article>
   );

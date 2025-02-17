@@ -4,9 +4,9 @@ import React from "react";
 
 const ResourcesPage = () => {
   return (
-    <div className="w-full  flex justify-between px-10 ">
+    <div className="w-full  flex justify-between px-10 relative ">
       <div className="flex flex-col w-3/4 ">Ressources</div>
-      <div className="stocky  top-20  lg:block hidden w-1/3">
+      <div className=" lg:block hidden w-1/3">
         <SidebarRight className="" />
       </div>
     </div>

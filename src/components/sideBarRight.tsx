@@ -12,7 +12,7 @@ const SidebarRight: React.FC<SidebarRightProps> = ({ className }) => {
     useState<Category>("All categories");
 
   return (
-    <div className={`${className} `}>
+    <div className={`${className} sticky top-4`}>
       <h2 className="text-2xl font-bold mb-4">Documents</h2>
       <div className="flex flex-col">
         <div className="flex gap-2 mb-4 flex-wrap ">

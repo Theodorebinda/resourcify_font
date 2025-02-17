@@ -6,6 +6,7 @@ import React, { JSX } from "react";
 function HomePage(): JSX.Element {
   const articleData = [
     {
+      id: "12",
       title: "Titre de l'article",
       content:
         "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations.",
@@ -15,6 +16,7 @@ function HomePage(): JSX.Element {
         "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
     },
     {
+      id: "10",
       title: "Titre de l'article",
       content:
         "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations.",
@@ -24,6 +26,7 @@ function HomePage(): JSX.Element {
         "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
     },
     {
+      id: "8",
       title: "Titre de l'article",
       content:
         "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations.",
@@ -33,6 +36,7 @@ function HomePage(): JSX.Element {
         "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
     },
     {
+      id: "7",
       title: "Titre de l'article",
       content:
         "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations Lorem, ipsum dolor sit amet consectetur adipisicing elit. Doloremque facere exercitationem deleniti eos enim. Explicabo cupiditate quibusdam amet, sed repudiandae commodi ea esse ex aspernatur, aliquam perspiciatis. At, officiis nulla?",
@@ -49,6 +53,7 @@ function HomePage(): JSX.Element {
         {articleData.map((article, index) => (
           <Article
             key={index}
+            id={article.id}
             title={article.title}
             content={article.content}
             author={article.author}
