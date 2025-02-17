@@ -11,6 +11,8 @@ function HomePage(): JSX.Element {
         "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations.",
       author: "Nom de l'auteur",
       date: "1 janvier 2023",
+      avatarUrl:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
     },
     {
       title: "Titre de l'article",
@@ -18,6 +20,8 @@ function HomePage(): JSX.Element {
         "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations.",
       author: "Nom de l'auteur",
       date: "1 janvier 2023",
+      avatarUrl:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
     },
     {
       title: "Titre de l'article",
@@ -25,13 +29,17 @@ function HomePage(): JSX.Element {
         "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations.",
       author: "Nom de l'auteur",
       date: "1 janvier 2023",
+      avatarUrl:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
     },
     {
       title: "Titre de l'article",
       content:
-        "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations.",
+        "Ceci est le contenu de l'article. Il peut contenir plusieurs paragraphes et informations Lorem, ipsum dolor sit amet consectetur adipisicing elit. Doloremque facere exercitationem deleniti eos enim. Explicabo cupiditate quibusdam amet, sed repudiandae commodi ea esse ex aspernatur, aliquam perspiciatis. At, officiis nulla?",
       author: "Nom de l'auteur",
       date: "1 janvier 2023",
+      avatarUrl:
+        "https://lh3.googleusercontent.com/a/ACg8ocKi7_sRkEisPwvp2TKaQQXOPC0DjsoGJ24BReynndwrm_7InhzT=s360-c-no",
     },
     // ... d'autres articles peuvent être ajoutés ici
   ];
@@ -45,6 +53,7 @@ function HomePage(): JSX.Element {
             content={article.content}
             author={article.author}
             date={article.date}
+            avatarUrl={article.avatarUrl}
           />
         ))}
       </div>
