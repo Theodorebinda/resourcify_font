@@ -30,7 +30,6 @@ const Article: React.FC<ArticleProps> = ({
   const handleReaction = (reaction: string) => {
     console.log("Réaction sélectionnée :", reaction);
 
-    // Si la réaction est déjà sélectionnée, on la désélectionne et on décrémente le compteur
     if (selectedReaction === reaction) {
       setSelectedReaction(null);
       setReactionCount((prev) => ({
@@ -38,7 +37,6 @@ const Article: React.FC<ArticleProps> = ({
         [reaction]: (prev[reaction] || 0) - 1,
       }));
     } else {
-      // Si une autre réaction était déjà sélectionnée, on décrémente son compteur
       if (selectedReaction) {
         setReactionCount((prev) => ({
           ...prev,
@@ -46,7 +44,6 @@ const Article: React.FC<ArticleProps> = ({
         }));
       }
 
-      // On sélectionne la nouvelle réaction et on incrémente son compteur
       setSelectedReaction(reaction);
       setReactionCount((prev) => ({
         ...prev,
