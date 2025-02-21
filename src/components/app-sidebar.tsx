@@ -69,19 +69,19 @@ export default function AppSidebar() {
   //   } = useSidebar()
   return (
     <Sidebar className="bg-[#0d1117]">
-      <SidebarHeader className="ml-20">
+      <SidebarHeader className="ml-10 mb-20">
         <SidebarGroupLabel>Ressoucify</SidebarGroupLabel>
       </SidebarHeader>
-      <SidebarContent className="bg-inherit  ml-20  ">
+      <SidebarContent className="bg-inherit  ml-10  ">
         <SidebarGroup>
           <SidebarGroupContent className="flex-col  justify-between h-[80vh]">
-            <SidebarMenu className="flex flex-col justify-between items-start">
+            <SidebarMenu className="flex gap-10 flex-col justify-between items-start">
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="">
                     <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
+                      <item.icon size={80} />
+                      <span className="text-2xl font-bold">{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

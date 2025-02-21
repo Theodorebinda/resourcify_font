@@ -19,7 +19,7 @@ const InputSearch: React.FC = () => {
         value={searchTerm}
         onChange={handleInputChange}
         placeholder="Rechercher..."
-        className="p-2 border rounded"
+        className="p-2 border rounded w-[20vw]"
         style={{ backgroundColor: "#0d1117", color: "#ffffff" }}
       />
       <button

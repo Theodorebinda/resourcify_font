@@ -19,7 +19,7 @@ const SidebarRight: React.FC<SidebarRightProps> = ({ className }) => {
             Learn more
           </a>
         </div>
-        <div className="advertisement bg-[#0d1117] p-4 rounded mt-4 h-[36vw]">
+        <div className="advertisement bg-[#0d1117] p-4 rounded mt-4 h-[26vw]">
           <h2 className="text-lg font-bold">Sponsored</h2>
           <p className="text-sm">Check out this amazing product!</p>
           <a href="https://example.com" className="text-blue-500 underline">
