@@ -1,56 +1,32 @@
 "use client";
-import Image from "next/image";
-import React, { useState } from "react";
-import { Category, documents } from "./ressourceSections";
-import TutorielsList from "./tutoriels";
+import React from "react";
+import InputSearch from "./inputSearch";
 
 interface SidebarRightProps {
   className?: string; // Définition du type pour className
 }
 const SidebarRight: React.FC<SidebarRightProps> = ({ className }) => {
-  const [selectedCategory, setSelectedCategory] =
-    useState<Category>("All categories");
-
   return (
     <div className={`${className} sticky top-4`}>
-      <h2 className="text-2xl font-bold mb-4">Documents</h2>
-      <div className="flex flex-col">
-        <div className="flex gap-2 mb-4 flex-wrap ">
-          {Object.keys(documents).map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category as Category)}
-              className={`p-1 text-xs rounded ${
-                selectedCategory === category
-                  ? "bg-blue-500 text-white font-medium"
-                  : "bg-gray-200 text-blue-900 font-medium"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+      <div className="w-full">
+        <InputSearch />
+      </div>
+      <div className="flex flex-col pt-10  ">
+        <div className="advertisement bg-[#0d1117] p-4 rounded mt-4 h-[28vh]">
+          <h2 className="text-lg font-bold">Sponsored</h2>
+          <p className="text-sm">Check out this amazing product!</p>
+          <a href="https://example.com" className="text-blue-500 underline">
+            Learn more
+          </a>
         </div>
-        <div className="flex flex-col gap-2 justify-between h-[35vh]">
-          <div className="flex justify-between flex-wrap gap-2">
-            {documents[selectedCategory].slice(0, 4).map((doc, index) => (
-              <Image
-                width={90}
-                height={100}
-                src={doc}
-                key={index}
-                className="mb-2"
-                alt="livre"
-              />
-            ))}
-          </div>
-          <div className="flex justify-end">
-            <button className="bg-blue-500 text-white font-medium p-1 text-xs rounded hover:bg-blue-600 transition duration-200">
-              Plus de livre
-            </button>
-          </div>
+        <div className="advertisement bg-[#0d1117] p-4 rounded mt-4 h-[36vw]">
+          <h2 className="text-lg font-bold">Sponsored</h2>
+          <p className="text-sm">Check out this amazing product!</p>
+          <a href="https://example.com" className="text-blue-500 underline">
+            Learn more
+          </a>
         </div>
       </div>
-      <TutorielsList />
     </div>
   );
 };
