@@ -1,6 +1,6 @@
 "use client";
-import Article from "@/src/components/article";
-import SidebarRight from "@/src/components/sideBarRight";
+import Article from "@/components/article";
+import SidebarRight from "@/components/sideBarRight";
 import React, { JSX } from "react";
 
 function HomePage(): JSX.Element {

@@ -1,5 +1,5 @@
 "use client";
-import SidebarRight from "@/src/components/sideBarRight";
+import SidebarRight from "@/components/sideBarRight";
 import React from "react";
 
 const ResourcesPage = () => {
