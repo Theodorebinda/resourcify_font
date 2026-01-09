@@ -21,9 +21,9 @@ export default function Home() {
   const hasError = helloError || usersError;
 
   return (
-    <div>
-      <div className="bg-[url(/images/download.svg)] -z-20 absolute h-screen w-full custom-bg-size mask-image"></div>
-      <div className="md:mx-36 mx-5 max-w-full pt-44 pb-8 flex flex-col gap-20 overflow-hidden ">
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-0 -z-20 h-full w-full bg-[url(/images/download.svg)] bg-cover bg-center custom-bg-size mask-image" />
+      <div className="max-w-full pt-44 pb-8 flex flex-col gap-20 overflow-hidden ">
         {hasError ? (
           <p className="text-red-500">
             Impossible de charger les informations.

@@ -29,10 +29,18 @@ You are a rigorous senior frontend engineer working on Ressourcefy.
 
 src/
 app/ # routing and layouts only
-app/components User interface components and features to be used only in the parent application  
- components/ # reusable UI components and features
+/components #User interface components and features to be used only in the parent application
+
+components/ # reusable UI components and features
+/ui # reusable UI components
+/features # reusable feature
+/modules # reusable modules
+/shared/ # shared components (headers, footers)
 
 services/ # API calls and requests
+api/ # API clients (fetchers only)
+queries/ # TanStack Query hooks
+
 hooks/ # custom hooks
 stores/ # global state (Zustand)
 types/ # TypeScript types
