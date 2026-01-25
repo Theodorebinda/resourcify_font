@@ -12,7 +12,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { loginSchema, type LoginFormData } from "../../../lib/validations/auth";
 import { useLogin } from "../../../services/api/queries/auth-queries";
 import { Button } from "../../ui/button";
@@ -32,7 +31,6 @@ import type { ApiError } from "../../../types";
 export function LoginForm() {
   const router = useRouter();
   const { toast: showToast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const loginMutation = useLogin();
 
   const form = useForm<LoginFormData>({
@@ -44,9 +42,13 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    setIsSubmitting(true);
     try {
       await loginMutation.mutateAsync(data);
+      
+      showToast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
       
       // On success, redirect will be handled by middleware based on user state
       router.push(ROUTES.APP.DASHBOARD);
@@ -54,7 +56,7 @@ export function LoginForm() {
     } catch (error) {
       const apiError = error as ApiError;
       
-      // Handle specific error codes
+      // Handle specific error codes from backend
       if (apiError.code === "account_not_activated") {
         showToast({
           title: "Account Not Activated",
@@ -71,8 +73,6 @@ export function LoginForm() {
           message: apiError.message || "An error occurred. Please try again.",
         });
       }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -126,9 +126,9 @@ export function LoginForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={isSubmitting || loginMutation.isPending}
+          disabled={loginMutation.isPending}
         >
-          {isSubmitting || loginMutation.isPending ? "Signing in..." : "Sign In"}
+          {loginMutation.isPending ? "Signing in..." : "Sign In"}
         </Button>
       </form>
     </Form>

@@ -22,7 +22,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiClient } from "../client";
 import { API_ENDPOINTS } from "../../../constants/api";
-import type { User, ApiError } from "../../../types";
+import type {
+  User,
+  ApiError,
+  LoginResponse,
+  RegisterResponse,
+  ActivationResponse,
+  ApiResponse,
+} from "../../../types";
 
 // Query keys
 export const authKeys = {
@@ -48,13 +55,14 @@ export function useUser() {
   const query = useQuery<User, ApiError>({
     queryKey: authKeys.user(),
     queryFn: async () => {
-      const response = await apiClient.get<User>(API_ENDPOINTS.USER.ME);
-      return response.data;
+      // Backend returns: { status: "ok", data: User }
+      const response = await apiClient.get<ApiResponse<User>>(API_ENDPOINTS.USER.ME);
+      return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
-    // Only fetch if authenticated (cookie exists)
-    enabled: typeof window !== "undefined",
+    // Only fetch if authenticated (token exists)
+    enabled: typeof window !== "undefined" && !!localStorage.getItem("access_token"),
   });
 
   // Derived flags - computed from user data
@@ -92,18 +100,28 @@ export function useUser() {
 
 /**
  * Login mutation
- * On success, invalidates user query to refetch
+ * Backend returns: { status: "ok", data: { access_token, refresh_token, user } }
+ * On success, stores tokens and invalidates user query
  */
 export function useLogin() {
   const queryClient = useQueryClient();
 
-  return useMutation<User, ApiError, { email: string; password: string }>({
+  return useMutation<LoginResponse, ApiError, { email: string; password: string }>({
     mutationFn: async (credentials) => {
-      const response = await apiClient.post<User>(
+      const response = await apiClient.post<ApiResponse<LoginResponse>>(
         API_ENDPOINTS.AUTH.LOGIN,
         credentials
       );
-      return response.data;
+      
+      const loginData = response.data.data;
+      
+      // Store tokens in localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("access_token", loginData.access_token);
+        localStorage.setItem("refresh_token", loginData.refresh_token);
+      }
+      
+      return loginData;
     },
     onSuccess: () => {
       // Invalidate user query to refetch
@@ -114,38 +132,40 @@ export function useLogin() {
 
 /**
  * Register mutation
- * Creates new user account
+ * Backend returns: { status: "ok", data: { user_id, message } }
+ * Creates new user account (inactive until activation)
  */
 export function useRegister() {
   return useMutation<
-    User,
+    RegisterResponse,
     ApiError,
-    { name: string; email: string; password: string }
+    { username: string; email: string; password: string; accepted_terms: boolean }
   >({
     mutationFn: async (data) => {
-      const response = await apiClient.post<User>(
+      const response = await apiClient.post<ApiResponse<RegisterResponse>>(
         API_ENDPOINTS.AUTH.REGISTER,
         data
       );
-      return response.data;
+      return response.data.data;
     },
   });
 }
 
 /**
  * Activate account mutation
+ * Backend returns: { status: "ok", data: { message } }
  * Activates account using token from email
  */
 export function useActivateAccount() {
   const queryClient = useQueryClient();
 
-  return useMutation<User, ApiError, { token: string }>({
+  return useMutation<ActivationResponse, ApiError, { token: string }>({
     mutationFn: async ({ token }) => {
-      const response = await apiClient.post<User>(
+      const response = await apiClient.post<ApiResponse<ActivationResponse>>(
         API_ENDPOINTS.AUTH.ACTIVATE,
         { token }
       );
-      return response.data;
+      return response.data.data;
     },
     onSuccess: () => {
       // Invalidate user query to refetch
@@ -156,20 +176,27 @@ export function useActivateAccount() {
 
 /**
  * Resend activation email mutation
+ * Note: Backend doesn't have explicit resend endpoint
+ * This could be implemented via a separate endpoint or by re-registering
+ * For now, we'll use a placeholder that the backend team can implement
  */
 export function useResendActivation() {
-  return useMutation<void, ApiError, void>({
+  return useMutation<{ message: string }, ApiError, void>({
     mutationFn: async () => {
-      await apiClient.post(API_ENDPOINTS.AUTH.ACTIVATE, {
-        action: "resend",
-      });
+      // TODO: Backend should provide /auth/resend-activation/ endpoint
+      // For now, this is a placeholder
+      const response = await apiClient.post<ApiResponse<{ message: string }>>(
+        API_ENDPOINTS.AUTH.ACTIVATE,
+        { action: "resend" }
+      );
+      return response.data.data;
     },
   });
 }
 
 /**
  * Logout mutation
- * Clears all queries on success
+ * Clears tokens and all queries on success
  */
 export function useLogout() {
   const queryClient = useQueryClient();
@@ -179,6 +206,11 @@ export function useLogout() {
       await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
     },
     onSuccess: () => {
+      // Clear tokens
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+      }
       // Clear all queries
       queryClient.clear();
     },

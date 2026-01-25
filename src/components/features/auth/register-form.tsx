@@ -24,10 +24,10 @@ import {
   FormMessage,
 } from "../../ui/form";
 import { Input } from "../../ui/input";
+import { Checkbox } from "../../ui/checkbox";
 import { useToast } from "../../../hooks/use-toast";
 import { ROUTES } from "../../../constants/routes";
-import { apiClient } from "../../../services/api/client";
-import { API_ENDPOINTS } from "../../../constants/api";
+import { useRegister } from "../../../services/api/queries/auth-queries";
 import type { ApiError } from "../../../types";
 
 export function RegisterForm() {
@@ -38,19 +38,21 @@ export function RegisterForm() {
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
+      accepted_terms: false,
     },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
       await registerMutation.mutateAsync({
-        name: data.name,
+        username: data.username,
         email: data.email,
         password: data.password,
+        accepted_terms: data.accepted_terms,
       });
 
       showToast({
@@ -61,9 +63,21 @@ export function RegisterForm() {
       router.push(ROUTES.ONBOARDING.ACTIVATION_REQUIRED);
     } catch (error) {
       const apiError = error as ApiError;
-      form.setError("root", {
-        message: apiError.message || "An error occurred. Please try again.",
-      });
+      
+      // Handle field-specific validation errors
+      if (apiError.details && typeof apiError.details === "object") {
+        Object.entries(apiError.details).forEach(([field, messages]) => {
+          if (Array.isArray(messages) && messages.length > 0) {
+            form.setError(field as keyof RegisterFormData, {
+              message: messages[0] as string,
+            });
+          }
+        });
+      } else {
+        form.setError("root", {
+          message: apiError.message || "An error occurred. Please try again.",
+        });
+      }
     }
   };
 
@@ -72,15 +86,15 @@ export function RegisterForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="name"
+          name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name</FormLabel>
+              <FormLabel>Username</FormLabel>
               <FormControl>
                 <Input
                   type="text"
-                  placeholder="John Doe"
-                  autoComplete="name"
+                  placeholder="john_doe"
+                  autoComplete="username"
                   {...field}
                 />
               </FormControl>
@@ -142,6 +156,34 @@ export function RegisterForm() {
                 />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="accepted_terms"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="text-sm font-normal">
+                  I accept the{" "}
+                  <Link
+                    href="/terms"
+                    className="text-primary hover:underline"
+                    target="_blank"
+                  >
+                    terms and conditions
+                  </Link>
+                </FormLabel>
+                <FormMessage />
+              </div>
             </FormItem>
           )}
         />

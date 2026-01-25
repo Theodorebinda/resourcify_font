@@ -51,6 +51,7 @@ export interface ApiError {
 export interface User {
   id: string;
   email: string;
+  username: string;
   name?: string;
   activated: boolean;
   /**
@@ -58,7 +59,40 @@ export interface User {
    * Frontend reads this value and never infers it
    */
   onboarding_step: OnboardingStep;
-  createdAt: string;
+  createdAt?: string;
+}
+
+// Login response from backend
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+  };
+}
+
+// Register response from backend
+export interface RegisterResponse {
+  user_id: string;
+  message: string;
+}
+
+// Activation response from backend
+export interface ActivationResponse {
+  message: string;
+}
+
+// API Response wrapper (backend returns { status: "ok", data: {...} })
+export interface ApiResponse<T> {
+  status: "ok";
+  data: T;
+}
+
+// API Error response wrapper (backend returns { error: {...} })
+export interface ApiErrorResponse {
+  error: ApiError;
 }
 
 // Middleware redirect target

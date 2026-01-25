@@ -52,21 +52,6 @@ function isCurrentStep(step: OnboardingStep, currentStep: OnboardingStep): boole
   return step === currentStep;
 }
 
-/**
- * Determines if a step is accessible (not a future step)
- */
-function isStepAccessible(
-  step: OnboardingStep,
-  currentStep: OnboardingStep
-): boolean {
-  // If current step is completed, all steps are accessible (but user should be in app)
-  if (currentStep === "completed") {
-    return true;
-  }
-  // Can access current step and previous steps
-  return isStepCompleted(step, currentStep) || isCurrentStep(step, currentStep);
-}
-
 export function OnboardingProgress() {
   const { data: currentStep, isLoading } = useOnboardingStep();
 
