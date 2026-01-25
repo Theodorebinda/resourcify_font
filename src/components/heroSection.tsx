@@ -1,30 +1,17 @@
 import React from "react";
-import { User } from "@/src/types/user";
+import { User } from "../models/users";
 
 interface HeroSectionProps {
   title?: string;
   message?: string;
   users: User[];
-  isLoading?: boolean;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({
-  title,
-  message,
-  users,
-  isLoading = false,
-}) => {
-  const resolvedTitle = title ?? "Resourcify";
-  const resolvedMessage =
-    message ??
-    "Partage de ressources, découvre des livres, rejoins une communauté de lecteurs.";
-
+const HeroSection: React.FC<HeroSectionProps> = ({ title, message, users }) => {
   return (
     <div className="mx-56 flex flex-col gap-8 text-center mt-18">
-      <h1 className="text-5xl font-bold">
-        {isLoading ? "Chargement..." : resolvedTitle}
-      </h1>
-      <p>{isLoading ? "Merci de patienter." : resolvedMessage}</p>
+      <h1 className="text-5xl font-bold">{title}</h1>
+      <p>{message}</p>
 
       <div className="flex items-center justify-center gap-2">
         <div className="flex flex-row space-x-[-20px]">

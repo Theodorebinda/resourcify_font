@@ -45,3 +45,26 @@ next-env.d.ts
 .cursor/*
 .cursor/
 .cursor/rules/
+
+# vscode
+.vscode/*
+.vscode/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+ARCHITECTURE.md
+PHASE1_README.md
+PHASE2_README.md
+PHASE3_README.md
+PHASE4_README.md
+PHASE5_README.md
+PHASE6_README.md
+PHASE7_README.md
+PHASE8_README.md
+PHASE9_README.md
+PHASE10_README.md

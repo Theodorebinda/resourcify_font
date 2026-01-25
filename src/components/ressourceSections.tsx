@@ -1,9 +1,9 @@
 import Image from "next/image";
 import { useState } from "react";
 
-import { useArticles } from "@/src/hooks/use-articles";
-import { useDocuments } from "@/src/hooks/use-documents";
-import { ResourceCategory } from "@/src/types/resource";
+import { useArticles } from "@/hooks/use-articles";
+import { useDocuments } from "@/hooks/use-documents";
+import { ResourceCategory } from "@/types/resource";
 
 import PopularArticles from "./postePopulars";
 import TutorielsList from "./tutoriels";
@@ -24,8 +24,7 @@ const ResourceSection = () => {
 
   const categories =
     (documentsByCategory &&
-      (Object.keys(documentsByCategory) as ResourceCategory[])) ||
-    [];
+      (Object.keys(documentsByCategory) as ResourceCategory[])) || [];
   const documents = documentsByCategory?.[selectedCategory] ?? [];
 
   const isLoading = articlesLoading || documentsLoading;
@@ -48,10 +47,7 @@ const ResourceSection = () => {
               <h3 className="font-semibold">{article.title}</h3>
               <p>{article.summary}</p>
               <p>
-                <a
-                  href={`/profile/${article.author}`}
-                  className="text-blue-500"
-                >
+                <a href={`/profile/${article.author}`} className="text-blue-500">
                   {article.author}
                 </a>{" "}
                 - {new Date(article.date).toLocaleDateString()}

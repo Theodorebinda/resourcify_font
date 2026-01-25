@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/src/components/ui/dialog";
 // import CardSing from "./cardSing";
 
 const CustomDialog = ({}) => {

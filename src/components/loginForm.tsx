@@ -15,7 +15,7 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { useToast } from "@/src/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/src/stores/useAuthStore";
+import { useAuthStore } from "../stores/useAuthStore";
 
 const formSchema = z.object({
   email: z.string().email().min(2).max(50),
@@ -65,12 +65,11 @@ const LoginForm: React.FC = () => {
         router.push("/home");
         throw new Error(responseData.message || "Failed to authenticate");
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       // Afficher un toast d'erreur
       toast({
         title: "Login failed",
-        description:
-          error instanceof Error ? error.message : "An error occurred.",
+        description: error.message || "An error occurred.",
         variant: "destructive",
       });
       console.error(error);
