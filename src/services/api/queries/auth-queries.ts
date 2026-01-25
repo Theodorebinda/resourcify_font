@@ -19,7 +19,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { apiClient } from "../client";
 import { API_ENDPOINTS } from "../../../constants/api";
 import type {
@@ -52,17 +52,53 @@ export const authKeys = {
  * ```
  */
 export function useUser() {
+  // Use state to prevent hydration mismatch
+  // Start with false, then check localStorage after mount
+  const [isMounted, setIsMounted] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    setHasToken(!!localStorage.getItem("access_token"));
+  }, []);
+
   const query = useQuery<User, ApiError>({
     queryKey: authKeys.user(),
     queryFn: async () => {
       // Backend returns: { status: "ok", data: User }
       const response = await apiClient.get<ApiResponse<User>>(API_ENDPOINTS.USER.ME);
-      return response.data.data;
+      const userData = response.data.data;
+      
+      // Update cookies with latest user state (for middleware)
+      // This ensures middleware has correct activated/onboarding_step values
+      // Only update cookies on client side after mount
+      if (isMounted) {
+        try {
+          await fetch("/api/auth/set-cookies", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              access_token: localStorage.getItem("access_token") || "",
+              user_id: userData.id,
+              user_activated: userData.activated,
+              onboarding_step: userData.onboarding_step || "not_started",
+            }),
+          });
+        } catch (cookieError) {
+          // Silent fail - cookies update is best effort
+          console.debug("Failed to update cookies:", cookieError);
+        }
+      }
+      
+      return userData;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
-    // Only fetch if authenticated (token exists)
-    enabled: typeof window !== "undefined" && !!localStorage.getItem("access_token"),
+    // Only fetch if mounted (client-side) and token exists
+    // This prevents hydration mismatch
+    enabled: isMounted && hasToken,
   });
 
   // Derived flags - computed from user data
@@ -101,7 +137,7 @@ export function useUser() {
 /**
  * Login mutation
  * Backend returns: { status: "ok", data: { access_token, refresh_token, user } }
- * On success, stores tokens and invalidates user query
+ * On success, stores tokens, sets cookies via API route, and invalidates user query
  */
 export function useLogin() {
   const queryClient = useQueryClient();
@@ -115,10 +151,37 @@ export function useLogin() {
       
       const loginData = response.data.data;
       
-      // Store tokens in localStorage
+      // Store tokens in localStorage (for API client)
       if (typeof window !== "undefined") {
         localStorage.setItem("access_token", loginData.access_token);
         localStorage.setItem("refresh_token", loginData.refresh_token);
+        
+        // Set cookies via Next.js API route (for middleware)
+        // This allows middleware to detect authenticated state
+        // Note: Backend login response may not include activated/onboarding_step
+        // We'll use defaults and let /user/me update them on next request
+        try {
+          const cookieResponse = await fetch("/api/auth/set-cookies", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              access_token: loginData.access_token,
+              user_id: loginData.user.id,
+              // Default values - will be updated when /user/me is called
+              user_activated: false, // Assume not activated until confirmed
+              onboarding_step: "not_started", // Default onboarding step
+            }),
+          });
+          
+          if (!cookieResponse.ok) {
+            console.error("Failed to set cookies:", await cookieResponse.text());
+          }
+        } catch (cookieError) {
+          console.error("Failed to set cookies:", cookieError);
+          // Continue even if cookie setting fails - tokens are in localStorage
+        }
       }
       
       return loginData;
@@ -176,18 +239,19 @@ export function useActivateAccount() {
 
 /**
  * Resend activation email mutation
- * Note: Backend doesn't have explicit resend endpoint
- * This could be implemented via a separate endpoint or by re-registering
- * For now, we'll use a placeholder that the backend team can implement
+ * Sends a new activation email to the user
+ * Used when user tries to login but account is not activated
+ * 
+ * Backend requires: { email: string } in body
  */
 export function useResendActivation() {
-  return useMutation<{ message: string }, ApiError, void>({
-    mutationFn: async () => {
-      // TODO: Backend should provide /auth/resend-activation/ endpoint
-      // For now, this is a placeholder
+  return useMutation<{ message: string }, ApiError, { email: string }>({
+    mutationFn: async ({ email }) => {
+      // Backend endpoint: POST /auth/resend-activation/
+      // Body: { email: string } (required)
       const response = await apiClient.post<ApiResponse<{ message: string }>>(
-        API_ENDPOINTS.AUTH.ACTIVATE,
-        { action: "resend" }
+        API_ENDPOINTS.AUTH.RESEND_ACTIVATION,
+        { email }
       );
       return response.data.data;
     },

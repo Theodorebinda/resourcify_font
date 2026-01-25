@@ -43,6 +43,11 @@ export function LoginForm() {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
+      // Store email in localStorage for resend activation
+      if (typeof window !== "undefined") {
+        localStorage.setItem("last_login_email", data.email);
+      }
+
       await loginMutation.mutateAsync(data);
       
       showToast({

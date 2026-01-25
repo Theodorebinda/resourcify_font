@@ -17,20 +17,21 @@ export const API_ENDPOINTS = {
     FORGOT_PASSWORD: "/auth/forgot-password/",
     RESET_PASSWORD: "/auth/reset-password/",
     ACTIVATE: "/auth/activate/",
+    RESEND_ACTIVATION: "/auth/resend-activation/",
   },
 
   // User endpoints
   USER: {
-    ME: "/user/me",
-    PROFILE: "/user/profile",
-    UPDATE_PROFILE: "/user/profile",
+    ME: "/user/me/",
+    PROFILE: "/user/profile/",
+    UPDATE_PROFILE: "/user/profile/",
   },
 
   // Onboarding endpoints
   ONBOARDING: {
-    STATUS: "/onboarding/status",
-    PROFILE: "/onboarding/profile",
-    INTERESTS: "/onboarding/interests",
-    COMPLETE: "/onboarding/complete",
+    STATUS: "/onboarding/status/",
+    PROFILE: "/onboarding/profile/",
+    INTERESTS: "/onboarding/interests/",
+    COMPLETE: "/onboarding/complete/ ",
   },
 } as const;

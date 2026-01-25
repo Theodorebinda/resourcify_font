@@ -7,8 +7,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { useResendActivation } from "../../../services/api/queries/auth-queries";
+import { useState, useMemo } from "react";
+import { useResendActivation, useUser } from "../../../services/api/queries/auth-queries";
 import { Button } from "../../ui/button";
 import { useToast } from "../../../hooks/use-toast";
 import { useServerError } from "../../../hooks/use-server-error";
@@ -18,21 +18,44 @@ interface ResendActivationProps {
   email?: string;
 }
 
-export function ResendActivation({ email }: ResendActivationProps) {
+export function ResendActivation({ email: propEmail }: ResendActivationProps) {
   const { toast: showToast } = useToast();
+  const { user } = useUser();
   const resendMutation = useResendActivation();
   const serverError = useServerError(resendMutation.error, () => resendMutation.reset());
   const [hasResent, setHasResent] = useState(false);
 
+  // Get email from prop, user data, or last login email from localStorage
+  const email = useMemo(() => {
+    // Priority: prop > user email > last login email
+    if (propEmail) return propEmail;
+    if (user?.email) return user.email;
+    
+    // Fallback: get last login email from localStorage
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("last_login_email") || "";
+    }
+    return "";
+  }, [propEmail, user?.email]);
+
   const handleResend = async () => {
+    if (!email) {
+      showToast({
+        title: "Email Required",
+        description: "Please provide an email address to resend the activation link.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      await resendMutation.mutateAsync();
+      await resendMutation.mutateAsync({ email });
       setHasResent(true);
       showToast({
         title: "Activation Email Sent",
         description: "Please check your email for the activation link.",
       });
-    } catch (error) {
+    } catch {
       // Error is handled by mutation error state
     }
   };
