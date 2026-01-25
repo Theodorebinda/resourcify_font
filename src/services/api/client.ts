@@ -1,61 +1,65 @@
 /**
  * API Client setup
  * 
- * Centralized Axios client with automatic Bearer token injection.
+ * Centralized Axios client that proxies requests through Next.js API routes.
+ * 
+ * Architecture:
+ * - Tokens are stored ONLY in httpOnly cookies (set by /api/auth/session)
+ * - All API calls go through /api/proxy/* routes
+ * - Proxy routes read access_token from cookies and attach to backend requests
+ * - No client-side token exposure
  * 
  * Features:
- * - Automatic token injection from localStorage
- * - Token is added to ALL requests automatically
- * - Handles token refresh on 401 (future)
+ * - Automatic proxying through /api/proxy
  * - Centralized error handling
+ * - Handles token refresh on 401 (future)
  */
 
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
-import { API_BASE_URL } from "../../constants/api";
 import type { ApiError } from "../../types";
 
 /**
- * Get access token from localStorage
- * Safe to call on server (returns null)
+ * Get proxy URL for backend endpoint
+ * Converts: /user/me/ -> /api/proxy/user/me/
  */
-function getAccessToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return localStorage.getItem("access_token");
+function getProxyUrl(endpoint: string): string {
+  // Remove leading slash if present
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+  return `/api/proxy/${cleanEndpoint}`;
 }
 
 /**
  * Create Axios client instance
+ * 
+ * Base URL is empty - we'll use proxy routes
+ * All requests go through /api/proxy/*
  */
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: "", // Empty - we use proxy routes
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // For cookie-based auth
+  withCredentials: true, // Important: include cookies in requests
 });
 
 /**
  * Request Interceptor
  * 
- * Automatically injects Bearer token in ALL requests.
+ * Converts backend endpoints to proxy routes.
  * 
  * Flow:
- * 1. Check if token exists in localStorage
- * 2. If token exists, add Authorization header
- * 3. Token is automatically included in all subsequent requests
+ * 1. Intercept request to backend endpoint (e.g., /user/me/)
+ * 2. Convert to proxy route (e.g., /api/proxy/user/me/)
+ * 3. Proxy route reads access_token from httpOnly cookie
+ * 4. Proxy route makes request to backend with token
  * 
- * This interceptor runs for EVERY request made via apiClient.
+ * No token handling in client - all done server-side via cookies.
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Get token from localStorage
-    const token = getAccessToken();
-    
-    // If token exists, add Authorization header
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Convert backend endpoint to proxy route
+    if (config.url) {
+      config.url = getProxyUrl(config.url);
     }
     
     return config;
@@ -91,7 +95,7 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     // Log error responses
-    console.error("[API Error]", {
+    console.log("[API Error]", {
       url: error.config?.url,
       method: error.config?.method?.toUpperCase(),
       status: error.response?.status,

@@ -33,6 +33,8 @@ export function useOnboardingStep() {
       const response = await apiClient.get<{ onboarding_step: OnboardingStep }>(
         API_ENDPOINTS.ONBOARDING.STATUS
       );
+
+      console.log("[Onboarding Step]", response.data);
       return response.data.onboarding_step;
     },
     staleTime: 30 * 1000, // 30 seconds - onboarding state can change frequently

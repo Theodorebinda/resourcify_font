@@ -18,14 +18,43 @@ import type { OnboardingStep } from "../types";
  * - is_active? (activated)
  * - onboarding_step? (current step from server)
  */
+/**
+ * Get auth cookie from Next.js cookies()
+ * 
+ * Reads cookies set by:
+ * - Backend (if backend sets cookies directly)
+ * - /api/auth/session route (if backend cannot set cookies)
+ * 
+ * This is the ONLY source of truth for middleware.
+ * Middleware NEVER reads localStorage.
+ */
+/**
+ * Get auth cookie from Next.js cookies()
+ * 
+ * Reads cookies set by:
+ * - Backend (if backend sets cookies directly)
+ * - /api/auth/session route (if backend cannot set cookies)
+ * 
+ * This is the ONLY source of truth for middleware.
+ * Middleware NEVER reads localStorage.
+ * 
+ * Cookies structure:
+ * - access_token (httpOnly) - for API routes to attach to backend calls
+ * - refresh_token (httpOnly) - for token refresh
+ * - activated (non-httpOnly) - readable by middleware
+ * - onboarding_step (non-httpOnly) - readable by middleware
+ */
 export async function getAuthCookie(): Promise<AuthCookie | null> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value;
-    const userId = cookieStore.get("user_id")?.value;
-    const activated = cookieStore.get("user_activated")?.value === "true";
     
-    // Read onboarding_step from cookie (set by backend)
+    // Read access_token (httpOnly cookie set by /api/auth/session or backend)
+    const token = cookieStore.get("access_token")?.value;
+    
+    // Read activated (non-httpOnly, readable by middleware)
+    const activated = cookieStore.get("activated")?.value === "true";
+    
+    // Read onboarding_step from cookie (set by backend or /api/auth/session)
     // This is the source of truth - never infer or guess
     const onboardingStepCookie = cookieStore.get("onboarding_step")?.value;
     const onboardingStep: OnboardingStep | undefined = 
@@ -34,17 +63,23 @@ export async function getAuthCookie(): Promise<AuthCookie | null> {
         ? (onboardingStepCookie as OnboardingStep)
         : undefined;
 
-    if (!token || !userId) {
+    // Must have token to be considered authenticated
+    if (!token) {
       return null;
     }
 
+    // Extract user_id from token if needed, or use a separate cookie
+    // For now, we'll use token presence as authentication indicator
+    // user_id can be extracted from token or stored in separate cookie
     return {
       token,
-      userId,
+      userId: token, // Temporary - can be extracted from token or separate cookie
       activated,
       onboardingStep,
     };
-  } catch {
+  } catch (error) {
+    // Silent fail - middleware treats as unauthenticated
+    console.debug("[getAuthCookie] Error reading cookies:", error);
     return null;
   }
 }

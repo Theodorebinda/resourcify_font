@@ -19,7 +19,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { apiClient } from "../client";
 import { API_BASE_URL, API_ENDPOINTS } from "../../../constants/api";
 import type {
@@ -53,13 +53,12 @@ export const authKeys = {
  */
 export function useUser() {
   // Use state to prevent hydration mismatch
-  // Start with false, then check localStorage after mount
+  // Cookies are checked server-side by middleware
+  // Client-side, we just need to know when component is mounted
   const [isMounted, setIsMounted] = useState(false);
-  const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-    setHasToken(!!localStorage.getItem("access_token"));
   }, []);
 
   const query = useQuery<User, ApiError>({
@@ -72,23 +71,35 @@ export function useUser() {
       // Update cookies with latest user state (for middleware)
       // This ensures middleware has correct activated/onboarding_step values
       // Only update cookies on client side after mount
+      // Use /api/auth/session to sync state
       if (isMounted) {
         try {
-          await fetch("/api/auth/set-cookies", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              access_token: localStorage.getItem("access_token") || "",
-              user_id: userData.id,
-              user_activated: userData.activated,
-              onboarding_step: userData.onboarding_step || "not_started",
-            }),
-          });
+          const accessToken = localStorage.getItem("access_token");
+          const refreshToken = localStorage.getItem("refresh_token");
+          
+          if (accessToken) {
+            await fetch("/api/auth/session", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                user: {
+                  id: userData.id,
+                  email: userData.email,
+                  username: userData.username,
+                  activated: userData.activated,
+                  onboarding_step: userData.onboarding_step || "not_started",
+                },
+              }),
+            });
+          }
         } catch (cookieError) {
           // Silent fail - cookies update is best effort
-          console.debug("Failed to update cookies:", cookieError);
+          console.debug("[useUser] Failed to sync cookies:", cookieError);
         }
       }
       
@@ -96,9 +107,9 @@ export function useUser() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
-    // Only fetch if mounted (client-side) and token exists
-    // This prevents hydration mismatch
-    enabled: isMounted && hasToken,
+    // Only fetch if mounted (client-side)
+    // Token is in httpOnly cookie, checked by proxy route
+    enabled: isMounted,
   });
 
   // Derived flags - computed from user data
@@ -169,45 +180,23 @@ export function useLogin() {
       const data = await response.json() as ApiResponse<LoginResponse>;
       const loginData = data.data;
       
-      // Store tokens in localStorage
-      // The API client interceptor will automatically use these tokens
-      // for ALL subsequent requests via the Authorization Bearer header
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access_token", loginData.access_token);
-        localStorage.setItem("refresh_token", loginData.refresh_token);
-        
-        // Token is now saved and will be automatically injected by apiClient interceptor
-        
-        // Set cookies via Next.js API route (for middleware)
-        // Use actual values from login response
-        // Backend sends activated and onboarding_step in login response when account is activated
-        // onboarding_step represents the Progressive Disclosure level (information user must provide)
-        try {
-          const cookieResponse = await fetch("/api/auth/set-cookies", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              access_token: loginData.access_token,
-              user_id: loginData.user.id,
-              // Use actual values from login response
-              // If activated is true, use the onboarding_step from response (Progressive Disclosure)
-              // If activated is false, user hasn't activated account yet
-              user_activated: loginData.user.activated ?? false,
-              onboarding_step: loginData.user.activated 
-                ? (loginData.user.onboarding_step || "not_started")
-                : "not_started", // Not activated users haven't started onboarding
-            }),
-          });
-          
-          if (!cookieResponse.ok) {
-            console.error("Failed to set cookies:", await cookieResponse.text());
-          }
-        } catch (cookieError) {
-          console.error("Failed to set cookies:", cookieError);
-          // Continue even if cookie setting fails - tokens are in localStorage
-        }
+      // Establish session via Next.js API route
+      // This sets HTTP cookies that middleware and API routes can read
+      // Cookies are the ONLY source of truth - no localStorage
+      // Backend SHOULD set cookies directly, but this route acts as a bridge
+      // if backend cannot set cross-domain cookies
+      const sessionResponse = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Important: include cookies in request/response
+        body: JSON.stringify(loginData), // Send full login response
+      });
+      
+      if (!sessionResponse.ok) {
+        const errorText = await sessionResponse.text();
+        throw new Error(`Failed to establish session: ${errorText}`);
       }
       
       return loginData;
