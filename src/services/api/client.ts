@@ -74,13 +74,32 @@ apiClient.interceptors.request.use(
  * - 401 Unauthorized (token expired/invalid)
  * - Validation errors
  * - Generic errors
+ * - Logging responses for debugging
  */
 apiClient.interceptors.response.use(
   (response) => {
+    // Log successful responses
+    console.log("[API Response]", {
+      url: response.config.url,
+      method: response.config.method?.toUpperCase(),
+      status: response.status,
+      data: response.data,
+    });
+    
     // Success response - return as-is
     return response;
   },
   async (error: AxiosError) => {
+    // Log error responses
+    console.error("[API Error]", {
+      url: error.config?.url,
+      method: error.config?.method?.toUpperCase(),
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data as unknown,
+      message: error.message,
+    });
+
     // Handle 401 Unauthorized (token expired or invalid)
     if (error.response?.status === 401) {
       // Clear invalid token
@@ -95,7 +114,7 @@ apiClient.interceptors.response.use(
       const apiError: ApiError = {
         code: "unauthorized",
         message: "Your session has expired. Please log in again.",
-        details: error.response?.data,
+        details: error.response?.data as Record<string, unknown> | undefined,
       };
       return Promise.reject(apiError);
     }
@@ -106,7 +125,7 @@ apiClient.interceptors.response.use(
       const apiError: ApiError = {
         code: errorData.error.code || "unknown_error",
         message: errorData.error.message || error.message || "An error occurred",
-        details: errorData.error.details,
+        details: errorData.error.details as Record<string, unknown> | undefined,
       };
       return Promise.reject(apiError);
     }
@@ -116,7 +135,7 @@ apiClient.interceptors.response.use(
       const apiError: ApiError = {
         code: "validation_error",
         message: "Validation failed",
-        details: error.response.data,
+        details: error.response.data as Record<string, unknown>,
       };
       return Promise.reject(apiError);
     }
@@ -125,7 +144,7 @@ apiClient.interceptors.response.use(
     const apiError: ApiError = {
       code: error.response?.status?.toString() || "unknown_error",
       message: error.message || "An unexpected error occurred",
-      details: error.response?.data,
+      details: error.response?.data as Record<string, unknown> | undefined,
     };
 
     return Promise.reject(apiError);
