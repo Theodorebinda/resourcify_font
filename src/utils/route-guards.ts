@@ -43,10 +43,10 @@ export type RouteCategory =
 export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
   // Public routes - accessible ONLY to VISITOR (unauthenticated users)
   // Authenticated users are redirected to their appropriate destination
-  [ROUTES.HOME]: ["VISITOR"],
-  [ROUTES.PRICING]: ["VISITOR"],
-  [ROUTES.ABOUT]: ["VISITOR"],
-  [ROUTES.CONTACT]: ["VISITOR"],
+  [ROUTES.HOME]: ["VISITOR", "APP_READY"],
+  [ROUTES.PRICING]: ["VISITOR", "APP_READY"],
+  [ROUTES.ABOUT]: ["VISITOR", "APP_READY"],
+  [ROUTES.CONTACT]: ["VISITOR", "APP_READY"],
   "/error": ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"], // Error page accessible to all
 
   // Auth routes - accessible ONLY to VISITOR (unauthenticated users)
