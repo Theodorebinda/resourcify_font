@@ -13,6 +13,12 @@ import type { UserState } from "./user-state";
 import { ROUTES } from "../constants/routes";
 
 /**
+ * Post-login route - canonical entry point after login
+ * Middleware redirects based on user state
+ */
+const POST_LOGIN_ROUTE = ROUTES.AUTH.POST_LOGIN;
+
+/**
  * Route category for grouping
  */
 export type RouteCategory =
@@ -43,6 +49,10 @@ export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
   [ROUTES.AUTH.FORGOT_PASSWORD]: ["VISITOR", "AUTHENTICATED"],
   [ROUTES.AUTH.RESET_PASSWORD]: ["VISITOR", "AUTHENTICATED"],
   [ROUTES.AUTH.ACTIVATE]: ["VISITOR", "AUTHENTICATED"],
+  
+  // Post-login route - accessible to all authenticated states
+  // Middleware will redirect based on state
+  [POST_LOGIN_ROUTE]: ["AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"],
 
   // Activation routes - accessible to AUTHENTICATED only
   [ROUTES.ONBOARDING.ACTIVATION_REQUIRED]: ["AUTHENTICATED"],
@@ -68,6 +78,11 @@ export function canAccessRoute(userState: UserState, route: string): boolean {
   }
 
   // Check route patterns (starts with)
+  // Post-login is special - accessible to all authenticated states
+  if (route === ROUTES.AUTH.POST_LOGIN) {
+    return ["AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"].includes(userState);
+  }
+  
   if (route.startsWith("/auth/")) {
     return ["VISITOR", "AUTHENTICATED"].includes(userState);
   }
@@ -121,6 +136,16 @@ export function getRedirectRouteForState(userState: UserState): string {
 }
 
 /**
+ * Get redirect route for post-login page
+ * 
+ * When user accesses /auth/post-login, middleware redirects based on state
+ */
+export function getPostLoginRedirect(userState: UserState): string {
+  // Post-login always redirects based on state
+  return getRedirectRouteForState(userState);
+}
+
+/**
  * Determine if a route requires authentication
  */
 export function isProtectedRoute(route: string): boolean {
@@ -135,6 +160,11 @@ export function isProtectedRoute(route: string): boolean {
 
   if (publicRoutes.includes(route)) {
     return false;
+  }
+
+  // Post-login route is protected (requires auth to determine redirect)
+  if (route === ROUTES.AUTH.POST_LOGIN) {
+    return true;
   }
 
   // Auth routes are public (for login/register)

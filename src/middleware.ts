@@ -28,7 +28,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthCookie } from "./utils/cookies";
 import { getUserState } from "./utils/user-state";
-import { canAccessRoute, getRedirectRouteForState, isProtectedRoute } from "./utils/route-guards";
+import { canAccessRoute, getRedirectRouteForState, getPostLoginRedirect, isProtectedRoute } from "./utils/route-guards";
+import { ROUTES } from "./constants/routes";
 
 /**
  * Main middleware function
@@ -50,13 +51,20 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const authCookie = await getAuthCookie();
   const userState = getUserState(authCookie);
 
-  // Step 3: Check if user state can access this route
+  // Step 3: Special handling for post-login route
+  // Post-login always redirects based on user state
+  if (pathname === ROUTES.AUTH.POST_LOGIN) {
+    const redirectRoute = getPostLoginRedirect(userState);
+    return NextResponse.redirect(new URL(redirectRoute, request.url));
+  }
+
+  // Step 4: Check if user state can access this route
   // Deterministic check: same state + route → same result
   if (canAccessRoute(userState, pathname)) {
     return NextResponse.next();
   }
 
-  // Step 4: User cannot access route → redirect to correct route for their state
+  // Step 5: User cannot access route → redirect to correct route for their state
   // Deterministic redirect: same state → same redirect route
   const redirectRoute = getRedirectRouteForState(userState);
   return NextResponse.redirect(new URL(redirectRoute, request.url));

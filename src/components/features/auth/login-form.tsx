@@ -50,8 +50,9 @@ export function LoginForm() {
         description: "Welcome back!",
       });
       
-      // On success, redirect will be handled by middleware based on user state
-      router.push(ROUTES.APP.DASHBOARD);
+      // Redirect to canonical post-login entry point
+      // Middleware will decide the next step based on user state
+      router.push(ROUTES.AUTH.POST_LOGIN);
       router.refresh();
     } catch (error) {
       const apiError = error as ApiError;
@@ -63,7 +64,9 @@ export function LoginForm() {
           description: apiError.message || "Please activate your account via email before logging in",
           variant: "destructive",
         });
-        router.push(ROUTES.ONBOARDING.ACTIVATION_REQUIRED);
+        // Still redirect to post-login - middleware will handle it
+        router.push(ROUTES.AUTH.POST_LOGIN);
+        router.refresh();
       } else if (apiError.code === "invalid_credentials") {
         form.setError("root", {
           message: apiError.message || "Invalid email or password",

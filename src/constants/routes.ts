@@ -17,6 +17,7 @@ export const ROUTES = {
     FORGOT_PASSWORD: "/auth/forgot-password",
     RESET_PASSWORD: "/auth/reset-password",
     ACTIVATE: "/auth/activate",
+    POST_LOGIN: "/auth/post-login", // Canonical post-login entry point
   },
 
   // Onboarding routes

@@ -19,7 +19,7 @@ import { SomethingWentWrong } from "../../../../components/error/something-went-
 import { useServerError } from "../../../../hooks/use-server-error";
 
 export default function ActivationRequiredPage() {
-  const { user, isLoading, error, isActivated } = useUser();
+  const { user, isLoading, error } = useUser();
   const serverError = useServerError(error, () => {});
 
   // Infrastructure error
@@ -36,11 +36,9 @@ export default function ActivationRequiredPage() {
     );
   }
 
-  // If somehow activated, this shouldn't happen (middleware should redirect)
-  // But handle gracefully
-  if (isActivated) {
-    return null; // Will redirect via middleware
-  }
+  // Note: If user is activated, middleware should have redirected
+  // This component assumes middleware has already enforced access control
+  // No redirect logic here - middleware handles it
 
   return (
     <div className="space-y-6">
