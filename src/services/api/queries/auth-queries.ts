@@ -21,7 +21,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { apiClient } from "../client";
-import { API_ENDPOINTS } from "../../../constants/api";
+import { API_BASE_URL, API_ENDPOINTS } from "../../../constants/api";
 import type {
   User,
   ApiError,
@@ -138,28 +138,50 @@ export function useUser() {
  * Login mutation
  * Backend returns: { status: "ok", data: { access_token, refresh_token, user } }
  * On success, stores tokens, sets cookies via API route, and invalidates user query
+ * 
+ * Note: Login is a public endpoint - no Bearer token in headers
  */
 export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation<LoginResponse, ApiError, { email: string; password: string }>({
     mutationFn: async (credentials) => {
-      const response = await apiClient.post<ApiResponse<LoginResponse>>(
-        API_ENDPOINTS.AUTH.LOGIN,
-        credentials
-      );
+      // Use fetch directly for public endpoints (no Bearer token needed)
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // For cookies
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const apiError: ApiError = {
+          code: errorData.error?.code || "unknown_error",
+          message: errorData.error?.message || response.statusText,
+          details: errorData.error?.details,
+        };
+        throw apiError;
+      }
+
+      const data = await response.json() as ApiResponse<LoginResponse>;
+      const loginData = data.data;
       
-      const loginData = response.data.data;
-      
-      // Store tokens in localStorage (for API client)
+      // Store tokens in localStorage
+      // The API client interceptor will automatically use these tokens
+      // for ALL subsequent requests via the Authorization Bearer header
       if (typeof window !== "undefined") {
         localStorage.setItem("access_token", loginData.access_token);
         localStorage.setItem("refresh_token", loginData.refresh_token);
         
+        // Token is now saved and will be automatically injected by apiClient interceptor
+        
         // Set cookies via Next.js API route (for middleware)
-        // This allows middleware to detect authenticated state
-        // Note: Backend login response may not include activated/onboarding_step
-        // We'll use defaults and let /user/me update them on next request
+        // Use actual values from login response
+        // Backend sends activated and onboarding_step in login response when account is activated
+        // onboarding_step represents the Progressive Disclosure level (information user must provide)
         try {
           const cookieResponse = await fetch("/api/auth/set-cookies", {
             method: "POST",
@@ -169,9 +191,13 @@ export function useLogin() {
             body: JSON.stringify({
               access_token: loginData.access_token,
               user_id: loginData.user.id,
-              // Default values - will be updated when /user/me is called
-              user_activated: false, // Assume not activated until confirmed
-              onboarding_step: "not_started", // Default onboarding step
+              // Use actual values from login response
+              // If activated is true, use the onboarding_step from response (Progressive Disclosure)
+              // If activated is false, user hasn't activated account yet
+              user_activated: loginData.user.activated ?? false,
+              onboarding_step: loginData.user.activated 
+                ? (loginData.user.onboarding_step || "not_started")
+                : "not_started", // Not activated users haven't started onboarding
             }),
           });
           
@@ -197,6 +223,8 @@ export function useLogin() {
  * Register mutation
  * Backend returns: { status: "ok", data: { user_id, message } }
  * Creates new user account (inactive until activation)
+ * 
+ * Note: Register is a public endpoint - no Bearer token in headers
  */
 export function useRegister() {
   return useMutation<
@@ -205,11 +233,28 @@ export function useRegister() {
     { username: string; email: string; password: string; accepted_terms: boolean }
   >({
     mutationFn: async (data) => {
-      const response = await apiClient.post<ApiResponse<RegisterResponse>>(
-        API_ENDPOINTS.AUTH.REGISTER,
-        data
-      );
-      return response.data.data;
+      // Use fetch directly for public endpoints (no Bearer token needed)
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REGISTER}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // For cookies
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const apiError: ApiError = {
+          code: errorData.error?.code || "unknown_error",
+          message: errorData.error?.message || response.statusText,
+          details: errorData.error?.details || errorData,
+        };
+        throw apiError;
+      }
+
+      const result = await response.json() as ApiResponse<RegisterResponse>;
+      return result.data;
     },
   });
 }
@@ -224,11 +269,28 @@ export function useActivateAccount() {
 
   return useMutation<ActivationResponse, ApiError, { token: string }>({
     mutationFn: async ({ token }) => {
-      const response = await apiClient.post<ApiResponse<ActivationResponse>>(
-        API_ENDPOINTS.AUTH.ACTIVATE,
-        { token }
-      );
-      return response.data.data;
+      // Use fetch directly for public endpoints (no Bearer token needed)
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.ACTIVATE}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // For cookies
+        body: JSON.stringify({ token }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const apiError: ApiError = {
+          code: errorData.error?.code || "unknown_error",
+          message: errorData.error?.message || response.statusText,
+          details: errorData.error?.details,
+        };
+        throw apiError;
+      }
+
+      const result = await response.json() as ApiResponse<ActivationResponse>;
+      return result.data;
     },
     onSuccess: () => {
       // Invalidate user query to refetch
@@ -243,17 +305,33 @@ export function useActivateAccount() {
  * Used when user tries to login but account is not activated
  * 
  * Backend requires: { email: string } in body
+ * Note: Resend activation is a public endpoint - no Bearer token in headers
  */
 export function useResendActivation() {
   return useMutation<{ message: string }, ApiError, { email: string }>({
     mutationFn: async ({ email }) => {
-      // Backend endpoint: POST /auth/resend-activation/
-      // Body: { email: string } (required)
-      const response = await apiClient.post<ApiResponse<{ message: string }>>(
-        API_ENDPOINTS.AUTH.RESEND_ACTIVATION,
-        { email }
-      );
-      return response.data.data;
+      // Use fetch directly for public endpoints (no Bearer token needed)
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.RESEND_ACTIVATION}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // For cookies
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const apiError: ApiError = {
+          code: errorData.error?.code || "unknown_error",
+          message: errorData.error?.message || response.statusText,
+          details: errorData.error?.details,
+        };
+        throw apiError;
+      }
+
+      const result = await response.json() as ApiResponse<{ message: string }>;
+      return result.data;
     },
   });
 }

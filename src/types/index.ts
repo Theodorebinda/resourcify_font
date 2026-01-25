@@ -70,6 +70,8 @@ export interface LoginResponse {
     id: string;
     email: string;
     username: string;
+    activated: boolean;
+    onboarding_step: OnboardingStep;
   };
 }
 

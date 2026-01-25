@@ -1,13 +1,33 @@
 /**
  * API Client setup
- * Phase 1: Minimal axios configuration
- * TODO: Add interceptors, error handling, token refresh in Phase 2
+ * 
+ * Centralized Axios client with automatic Bearer token injection.
+ * 
+ * Features:
+ * - Automatic token injection from localStorage
+ * - Token is added to ALL requests automatically
+ * - Handles token refresh on 401 (future)
+ * - Centralized error handling
  */
 
-import axios from "axios";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL } from "../../constants/api";
 import type { ApiError } from "../../types";
 
+/**
+ * Get access token from localStorage
+ * Safe to call on server (returns null)
+ */
+function getAccessToken(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return localStorage.getItem("access_token");
+}
+
+/**
+ * Create Axios client instance
+ */
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -16,32 +36,77 @@ export const apiClient = axios.create({
   withCredentials: true, // For cookie-based auth
 });
 
-// Request interceptor - Add JWT token to requests
+/**
+ * Request Interceptor
+ * 
+ * Automatically injects Bearer token in ALL requests.
+ * 
+ * Flow:
+ * 1. Check if token exists in localStorage
+ * 2. If token exists, add Authorization header
+ * 3. Token is automatically included in all subsequent requests
+ * 
+ * This interceptor runs for EVERY request made via apiClient.
+ */
 apiClient.interceptors.request.use(
-  (config) => {
-    // Get access token from localStorage (if available)
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("access_token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+  (config: InternalAxiosRequestConfig) => {
+    // Get token from localStorage
+    const token = getAccessToken();
+    
+    // If token exists, add Authorization header
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    // Request error (before sending)
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor for error handling
+/**
+ * Response Interceptor
+ * 
+ * Handles:
+ * - API error format transformation
+ * - 401 Unauthorized (token expired/invalid)
+ * - Validation errors
+ * - Generic errors
+ */
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Backend returns errors in format: { error: { code, message, details? } }
-    // Or validation errors: { field_name: ["error message"] }
-    if (error.response?.data?.error) {
+  (response) => {
+    // Success response - return as-is
+    return response;
+  },
+  async (error: AxiosError) => {
+    // Handle 401 Unauthorized (token expired or invalid)
+    if (error.response?.status === 401) {
+      // Clear invalid token
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+      }
+      
+      // TODO: Implement token refresh logic here
+      // For now, we just clear the token and let the user re-login
+      
       const apiError: ApiError = {
-        code: error.response.data.error.code || "unknown_error",
-        message: error.response.data.error.message || error.message,
-        details: error.response.data.error.details,
+        code: "unauthorized",
+        message: "Your session has expired. Please log in again.",
+        details: error.response?.data,
+      };
+      return Promise.reject(apiError);
+    }
+
+    // Backend returns errors in format: { error: { code, message, details? } }
+    if (error.response?.data && typeof error.response.data === "object" && "error" in error.response.data) {
+      const errorData = error.response.data as { error: { code?: string; message?: string; details?: unknown } };
+      const apiError: ApiError = {
+        code: errorData.error.code || "unknown_error",
+        message: errorData.error.message || error.message || "An error occurred",
+        details: errorData.error.details,
       };
       return Promise.reject(apiError);
     }
