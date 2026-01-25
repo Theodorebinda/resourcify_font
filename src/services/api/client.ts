@@ -5,8 +5,8 @@
  */
 
 import axios from "axios";
-import { API_BASE_URL } from "../../../constants/api";
-import type { ApiError } from "../../../types";
+import { API_BASE_URL } from "../../constants/api";
+import type { ApiError } from "../../types";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

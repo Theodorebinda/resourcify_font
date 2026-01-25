@@ -1,7 +1,13 @@
 /**
  * Register Page
- * Auth route
+ * 
+ * Auth route - handles new user registration.
+ * On success, redirects to activation-required page.
  */
+
+"use client";
+
+import { RegisterForm } from "../../../../components/features/auth/register-form";
 
 export default function RegisterPage() {
   return (
@@ -12,10 +18,8 @@ export default function RegisterPage() {
           Sign up to get started with Ressourcefy
         </p>
       </div>
-      {/* TODO: Add registration form component in Phase 2 */}
-      <div className="border border-input rounded-md p-8 text-center text-muted-foreground">
-        Registration form placeholder
-      </div>
+      
+      <RegisterForm />
     </div>
   );
 }

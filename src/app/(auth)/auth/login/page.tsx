@@ -1,7 +1,15 @@
 /**
  * Login Page
- * Auth route - redirects to app if already authenticated
+ * 
+ * Auth route - handles user authentication.
+ * Redirects handled by middleware based on user state.
  */
+
+"use client";
+
+import { LoginForm } from "../../../../components/features/auth/login-form";
+import Link from "next/link";
+import { ROUTES } from "../../../../constants/routes";
 
 export default function LoginPage() {
   return (
@@ -12,9 +20,17 @@ export default function LoginPage() {
           Enter your credentials to access your account
         </p>
       </div>
-      {/* TODO: Add login form component in Phase 2 */}
-      <div className="border border-input rounded-md p-8 text-center text-muted-foreground">
-        Login form placeholder
+      
+      <LoginForm />
+
+      <div className="text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link
+          href={ROUTES.AUTH.REGISTER}
+          className="text-primary hover:underline"
+        >
+          Sign up
+        </Link>
       </div>
     </div>
   );
