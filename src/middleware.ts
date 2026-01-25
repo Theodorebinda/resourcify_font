@@ -1,114 +1,65 @@
 /**
- * Next.js Middleware - Access Control ONLY
+ * Next.js Middleware - Deterministic Route Guards
  * 
- * Responsibilities:
- * - Read minimal auth payload: authenticated?, is_active?, onboarding_step?
- * - Enforce correct onboarding step order
- * - Block access to future onboarding steps
- * - Block access to /app before onboarding is completed
- * - Redirect to the correct step
+ * Implements formal user state machine as executable routing guards.
  * 
- * IMPORTANT:
- * - Middleware decides ACCESS, not UX
- * - No API fetching inside middleware
- * - No UI logic in middleware
- * - No guessing or client-side fixes
- * - Redirects must be deterministic and testable
+ * User States:
+ * - VISITOR: Not authenticated
+ * - AUTHENTICATED: Authenticated but not activated
+ * - ACTIVATED: Activated but not onboarded
+ * - ONBOARDING.profile: Onboarding step 1
+ * - ONBOARDING.interests: Onboarding step 2
+ * - APP_READY: Fully onboarded
+ * 
+ * Rules:
+ * - Middleware is the ONLY place that decides redirects
+ * - Components must never redirect based on auth/onboarding
+ * - Every route must map to allowed states
+ * - Deterministic: same input state → same output route
+ * - No side effects, no async client logic
+ * 
+ * Explicitly forbidden:
+ * - Redirects in React components
+ * - Zustand-based auth logic
+ * - Client-side state inference
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthCookie } from "./utils/cookies";
-import { ROUTES } from "./constants/routes";
-import {
-  getRouteForStep,
-  canAccessRoute,
-} from "./utils/onboarding-routes";
+import { getUserState } from "./utils/user-state";
+import { canAccessRoute, getRedirectRouteForState, isProtectedRoute } from "./utils/route-guards";
 
+/**
+ * Main middleware function
+ * 
+ * Deterministic: same request → same response
+ * No side effects, no async client logic
+ */
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
-  // Public routes - no access control
-  const publicRoutes = [
-    ROUTES.HOME,
-    ROUTES.PRICING,
-    ROUTES.ABOUT,
-    ROUTES.CONTACT,
-    ROUTES.AUTH.LOGIN,
-    ROUTES.AUTH.REGISTER,
-    ROUTES.AUTH.FORGOT_PASSWORD,
-    ROUTES.AUTH.RESET_PASSWORD,
-    ROUTES.AUTH.ACTIVATE,
-    "/error", // Error page must be accessible
-  ];
-
-  if (publicRoutes.includes(pathname)) {
+  // Step 1: Check if route is protected
+  // Public routes (home, pricing, about, contact, error) are always accessible
+  if (!isProtectedRoute(pathname)) {
     return NextResponse.next();
   }
 
-  // Get auth state from cookies (minimal payload)
+  // Step 2: Get user state from cookies (minimal payload)
+  // This is the ONLY source of truth for user state
   const authCookie = await getAuthCookie();
+  const userState = getUserState(authCookie);
 
-  // Unauthenticated users trying to access protected routes
-  if (!authCookie) {
-    if (pathname.startsWith("/app") || pathname.startsWith("/onboarding")) {
-      return NextResponse.redirect(new URL(ROUTES.AUTH.LOGIN, request.url));
-    }
+  // Step 3: Check if user state can access this route
+  // Deterministic check: same state + route → same result
+  if (canAccessRoute(userState, pathname)) {
     return NextResponse.next();
   }
 
-  // Authenticated but NOT activated
-  if (!authCookie.activated) {
-    // Allow access to activation-required page and auth routes
-    if (
-      pathname === ROUTES.ONBOARDING.ACTIVATION_REQUIRED ||
-      pathname.startsWith("/auth/")
-    ) {
-      return NextResponse.next();
-    }
-    // Redirect to activation required
-    if (pathname.startsWith("/app") || pathname.startsWith("/onboarding")) {
-      return NextResponse.redirect(
-        new URL(ROUTES.ONBOARDING.ACTIVATION_REQUIRED, request.url)
-      );
-    }
-    return NextResponse.next();
-  }
-
-  // Activated - check onboarding step
-  const onboardingStep = authCookie.onboardingStep || "not_started";
-
-  // If onboarding is completed, allow access to app
-  if (onboardingStep === "completed") {
-    // Redirect onboarding routes to app
-    if (pathname.startsWith("/onboarding")) {
-      return NextResponse.redirect(new URL(ROUTES.APP.DASHBOARD, request.url));
-    }
-    // Allow access to app routes
-    if (pathname.startsWith("/app")) {
-      return NextResponse.next();
-    }
-    return NextResponse.next();
-  }
-
-  // Onboarding in progress - enforce step order
-  if (pathname.startsWith("/app")) {
-    // Block access to app before onboarding is completed
-    const correctRoute = getRouteForStep(onboardingStep);
-    return NextResponse.redirect(new URL(correctRoute, request.url));
-  }
-
-  if (pathname.startsWith("/onboarding")) {
-    // Check if user can access this onboarding route
-    if (!canAccessRoute(onboardingStep, pathname)) {
-      // Redirect to the correct step
-      const correctRoute = getRouteForStep(onboardingStep);
-      return NextResponse.redirect(new URL(correctRoute, request.url));
-    }
-    return NextResponse.next();
-  }
-
-  return NextResponse.next();
+  // Step 4: User cannot access route → redirect to correct route for their state
+  // Deterministic redirect: same state → same redirect route
+  const redirectRoute = getRedirectRouteForState(userState);
+  return NextResponse.redirect(new URL(redirectRoute, request.url));
 }
 
 export const config = {
