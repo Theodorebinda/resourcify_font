@@ -28,7 +28,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthCookie } from "./utils/cookies";
 import { getUserState } from "./utils/user-state";
-import { canAccessRoute, getRedirectRouteForState, getPostLoginRedirect, isProtectedRoute } from "./utils/route-guards";
+import { canAccessRoute, getRedirectRouteForState, getPostLoginRedirect } from "./utils/route-guards";
 import { ROUTES } from "./constants/routes";
 
 /**
@@ -40,9 +40,8 @@ import { ROUTES } from "./constants/routes";
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
-  // Step 1: Check if route is protected
-  // Public routes (home, pricing, about, contact, error) are always accessible
-  if (!isProtectedRoute(pathname)) {
+  // Step 1: Error page is always accessible (no redirects)
+  if (pathname === "/error") {
     return NextResponse.next();
   }
 
@@ -60,11 +59,15 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   // Step 4: Check if user state can access this route
   // Deterministic check: same state + route → same result
+  // - VISITOR can access public routes and auth routes
+  // - Authenticated users are redirected away from public/auth routes
   if (canAccessRoute(userState, pathname)) {
     return NextResponse.next();
   }
 
   // Step 5: User cannot access route → redirect to correct route for their state
+  // - VISITOR trying to access protected route → redirect to login
+  // - Authenticated user trying to access public/auth route → redirect to their destination
   // Deterministic redirect: same state → same redirect route
   const redirectRoute = getRedirectRouteForState(userState);
   return NextResponse.redirect(new URL(redirectRoute, request.url));

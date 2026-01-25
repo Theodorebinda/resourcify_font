@@ -34,21 +34,28 @@ export type RouteCategory =
  * Maps route patterns to allowed user states
  * 
  * Format: route pattern → array of allowed states
+ * 
+ * Rules:
+ * - Public routes (home, pricing, about, contact) are ONLY accessible to VISITOR
+ * - Auth routes (login, register, etc.) are ONLY accessible to VISITOR
+ * - Once authenticated, users are redirected to their appropriate destination
  */
 export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
-  // Public routes - accessible to all
-  [ROUTES.HOME]: ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"],
-  [ROUTES.PRICING]: ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"],
-  [ROUTES.ABOUT]: ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"],
-  [ROUTES.CONTACT]: ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"],
-  "/error": ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"],
+  // Public routes - accessible ONLY to VISITOR (unauthenticated users)
+  // Authenticated users are redirected to their appropriate destination
+  [ROUTES.HOME]: ["VISITOR"],
+  [ROUTES.PRICING]: ["VISITOR"],
+  [ROUTES.ABOUT]: ["VISITOR"],
+  [ROUTES.CONTACT]: ["VISITOR"],
+  "/error": ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"], // Error page accessible to all
 
-  // Auth routes - accessible to VISITOR and AUTHENTICATED
-  [ROUTES.AUTH.LOGIN]: ["VISITOR", "AUTHENTICATED"],
-  [ROUTES.AUTH.REGISTER]: ["VISITOR", "AUTHENTICATED"],
-  [ROUTES.AUTH.FORGOT_PASSWORD]: ["VISITOR", "AUTHENTICATED"],
-  [ROUTES.AUTH.RESET_PASSWORD]: ["VISITOR", "AUTHENTICATED"],
-  [ROUTES.AUTH.ACTIVATE]: ["VISITOR", "AUTHENTICATED"],
+  // Auth routes - accessible ONLY to VISITOR (unauthenticated users)
+  // Authenticated users are redirected to their appropriate destination
+  [ROUTES.AUTH.LOGIN]: ["VISITOR"],
+  [ROUTES.AUTH.REGISTER]: ["VISITOR"],
+  [ROUTES.AUTH.FORGOT_PASSWORD]: ["VISITOR"],
+  [ROUTES.AUTH.RESET_PASSWORD]: ["VISITOR"],
+  [ROUTES.AUTH.ACTIVATE]: ["VISITOR"], // Activation can be accessed via email link even if not logged in
   
   // Post-login route - accessible to all authenticated states
   // Middleware will redirect based on state
@@ -83,8 +90,9 @@ export function canAccessRoute(userState: UserState, route: string): boolean {
     return ["AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"].includes(userState);
   }
   
+  // Auth routes - ONLY accessible to VISITOR (unauthenticated)
   if (route.startsWith("/auth/")) {
-    return ["VISITOR", "AUTHENTICATED"].includes(userState);
+    return userState === "VISITOR";
   }
 
   if (route.startsWith("/onboarding/")) {
@@ -147,31 +155,24 @@ export function getPostLoginRedirect(userState: UserState): string {
 
 /**
  * Determine if a route requires authentication
+ * 
+ * Note: Public routes and auth routes are "protected" in the sense that
+ * authenticated users are redirected away from them.
  */
 export function isProtectedRoute(route: string): boolean {
-  // Public routes
-  const publicRoutes = [
-    ROUTES.HOME,
-    ROUTES.PRICING,
-    ROUTES.ABOUT,
-    ROUTES.CONTACT,
-    "/error",
-  ];
-
-  if (publicRoutes.includes(route)) {
+  // Error page is always accessible
+  if (route === "/error") {
     return false;
   }
 
+  // All routes (including public and auth) are processed by middleware
+  // to enforce redirects for authenticated users
   // Post-login route is protected (requires auth to determine redirect)
   if (route === ROUTES.AUTH.POST_LOGIN) {
     return true;
   }
 
-  // Auth routes are public (for login/register)
-  if (route.startsWith("/auth/")) {
-    return false;
-  }
-
-  // All other routes require authentication
+  // All routes are processed by middleware
+  // Public routes and auth routes will redirect authenticated users
   return true;
 }
