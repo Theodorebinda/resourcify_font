@@ -7,9 +7,16 @@
 import { cookies } from "next/headers";
 import type { AuthCookie } from "../types";
 
+import type { OnboardingStep } from "../types";
+
 /**
  * Parse auth cookie from Next.js cookies()
  * Returns minimal auth state for middleware access control
+ * 
+ * Reads:
+ * - authenticated? (token + userId)
+ * - is_active? (activated)
+ * - onboarding_step? (current step from server)
  */
 export async function getAuthCookie(): Promise<AuthCookie | null> {
   try {
@@ -17,8 +24,15 @@ export async function getAuthCookie(): Promise<AuthCookie | null> {
     const token = cookieStore.get("auth_token")?.value;
     const userId = cookieStore.get("user_id")?.value;
     const activated = cookieStore.get("user_activated")?.value === "true";
-    const onboardingCompleted =
-      cookieStore.get("onboarding_completed")?.value === "true";
+    
+    // Read onboarding_step from cookie (set by backend)
+    // This is the source of truth - never infer or guess
+    const onboardingStepCookie = cookieStore.get("onboarding_step")?.value;
+    const onboardingStep: OnboardingStep | undefined = 
+      onboardingStepCookie && 
+      ["not_started", "profile", "interests", "completed"].includes(onboardingStepCookie)
+        ? (onboardingStepCookie as OnboardingStep)
+        : undefined;
 
     if (!token || !userId) {
       return null;
@@ -28,7 +42,7 @@ export async function getAuthCookie(): Promise<AuthCookie | null> {
       token,
       userId,
       activated,
-      onboardingCompleted,
+      onboardingStep,
     };
   } catch {
     return null;

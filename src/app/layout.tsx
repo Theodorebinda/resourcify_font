@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "../components/ui/toaster";
 import { QueryProvider } from "../providers/query-provider";
 import { ThemeProvider } from "../providers/theme-provider";
+import { ErrorBoundary } from "../components/error/error-boundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,12 +25,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.variable}>
-        <QueryProvider>
-          <ThemeProvider>
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </QueryProvider>
+        <ErrorBoundary>
+          <QueryProvider>
+            <ThemeProvider>
+              {children}
+              <Toaster />
+            </ThemeProvider>
+          </QueryProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

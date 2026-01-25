@@ -1,11 +1,19 @@
 /**
  * Zustand store for UI state ONLY
- * Phase 1: Theme, modals, sidebar state
  * 
  * IMPORTANT:
  * - NO server data in this store
  * - NO user data in this store
+ * - NO authentication state in this store
  * - Client-side UI state only
+ * 
+ * Theme System:
+ * ============
+ * The theme is a LOCAL UI PREFERENCE, completely decoupled from authentication.
+ * - Works for visitors and authenticated users alike
+ * - Persisted in localStorage (not backend)
+ * - Default: "system" (follows prefers-color-scheme)
+ * - Values: "light" | "dark" | "system"
  */
 
 import { create } from "zustand";
@@ -14,7 +22,7 @@ import { persist } from "zustand/middleware";
 export type Theme = "light" | "dark" | "system";
 
 interface UIState {
-  // Theme
+  // Theme - LOCAL UI PREFERENCE, NOT tied to authentication
   theme: Theme;
   setTheme: (theme: Theme) => void;
 

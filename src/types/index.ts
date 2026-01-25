@@ -14,15 +14,30 @@ export type UserState =
 // Account activation status
 export type ActivationStatus = "pending" | "activated" | "expired";
 
-// Onboarding completion status
-export type OnboardingStatus = "not_started" | "in_progress" | "completed";
+/**
+ * Onboarding step - Server-driven source of truth
+ * 
+ * The backend exposes this field and the frontend MUST read it.
+ * The frontend NEVER infers or guesses the step.
+ * All onboarding transitions must be validated by the backend.
+ * Skipping steps is forbidden.
+ */
+export type OnboardingStep =
+  | "not_started"
+  | "profile"
+  | "interests"
+  | "completed";
 
-// Auth cookie structure (placeholder - will be replaced by actual backend)
+// Auth cookie structure (minimal payload for middleware)
 export interface AuthCookie {
   token?: string;
   userId?: string;
   activated?: boolean;
-  onboardingCompleted?: boolean;
+  /**
+   * Current onboarding step from server
+   * This is the source of truth - never infer or guess
+   */
+  onboardingStep?: OnboardingStep;
 }
 
 // API Error response structure
@@ -38,7 +53,11 @@ export interface User {
   email: string;
   name?: string;
   activated: boolean;
-  onboardingCompleted: boolean;
+  /**
+   * Current onboarding step - server is the source of truth
+   * Frontend reads this value and never infers it
+   */
+  onboarding_step: OnboardingStep;
   createdAt: string;
 }
 

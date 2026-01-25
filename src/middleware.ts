@@ -1,25 +1,31 @@
 /**
  * Next.js Middleware - Access Control ONLY
- * Phase 1: Minimal access control logic
  * 
  * Responsibilities:
- * - Detect authentication state via cookies
- * - Detect account activation state
- * - Detect onboarding completion state
- * - Redirect accordingly
+ * - Read minimal auth payload: authenticated?, is_active?, onboarding_step?
+ * - Enforce correct onboarding step order
+ * - Block access to future onboarding steps
+ * - Block access to /app before onboarding is completed
+ * - Redirect to the correct step
  * 
  * IMPORTANT:
  * - Middleware decides ACCESS, not UX
  * - No API fetching inside middleware
  * - No UI logic in middleware
+ * - No guessing or client-side fixes
+ * - Redirects must be deterministic and testable
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthCookie } from "./utils/cookies";
 import { ROUTES } from "./constants/routes";
+import {
+  getRouteForStep,
+  canAccessRoute,
+} from "./utils/onboarding-routes";
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   // Public routes - no access control
@@ -33,13 +39,14 @@ export async function middleware(request: NextRequest) {
     ROUTES.AUTH.FORGOT_PASSWORD,
     ROUTES.AUTH.RESET_PASSWORD,
     ROUTES.AUTH.ACTIVATE,
+    "/error", // Error page must be accessible
   ];
 
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next();
   }
 
-  // Get auth state from cookies
+  // Get auth state from cookies (minimal payload)
   const authCookie = await getAuthCookie();
 
   // Unauthenticated users trying to access protected routes
@@ -60,35 +67,43 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
     // Redirect to activation required
-    if (pathname.startsWith("/app") || pathname !== ROUTES.ONBOARDING.ACTIVATION_REQUIRED) {
+    if (pathname.startsWith("/app") || pathname.startsWith("/onboarding")) {
       return NextResponse.redirect(
         new URL(ROUTES.ONBOARDING.ACTIVATION_REQUIRED, request.url)
       );
     }
+    return NextResponse.next();
   }
 
-  // Activated but onboarding incomplete
-  if (authCookie.activated && !authCookie.onboardingCompleted) {
-    const onboardingRoutes = Object.values(ROUTES.ONBOARDING);
-    
-    // Allow access to onboarding routes
-    if (onboardingRoutes.includes(pathname as typeof onboardingRoutes[number])) {
-      return NextResponse.next();
-    }
-    
-    // Redirect to onboarding if trying to access app
-    if (pathname.startsWith("/app")) {
-      return NextResponse.redirect(
-        new URL(ROUTES.ONBOARDING.PROFILE, request.url)
-      );
-    }
-  }
+  // Activated - check onboarding step
+  const onboardingStep = authCookie.onboardingStep || "not_started";
 
-  // Fully onboarded users - allow access to app
-  if (authCookie.activated && authCookie.onboardingCompleted) {
+  // If onboarding is completed, allow access to app
+  if (onboardingStep === "completed") {
     // Redirect onboarding routes to app
     if (pathname.startsWith("/onboarding")) {
       return NextResponse.redirect(new URL(ROUTES.APP.DASHBOARD, request.url));
+    }
+    // Allow access to app routes
+    if (pathname.startsWith("/app")) {
+      return NextResponse.next();
+    }
+    return NextResponse.next();
+  }
+
+  // Onboarding in progress - enforce step order
+  if (pathname.startsWith("/app")) {
+    // Block access to app before onboarding is completed
+    const correctRoute = getRouteForStep(onboardingStep);
+    return NextResponse.redirect(new URL(correctRoute, request.url));
+  }
+
+  if (pathname.startsWith("/onboarding")) {
+    // Check if user can access this onboarding route
+    if (!canAccessRoute(onboardingStep, pathname)) {
+      // Redirect to the correct step
+      const correctRoute = getRouteForStep(onboardingStep);
+      return NextResponse.redirect(new URL(correctRoute, request.url));
     }
     return NextResponse.next();
   }
