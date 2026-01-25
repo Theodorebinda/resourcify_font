@@ -56,7 +56,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (access_token) {
       response.cookies.set("access_token", access_token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        // secure: process.env.NODE_ENV === "production",
+        secure: false,
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -67,7 +68,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (refresh_token) {
       response.cookies.set("refresh_token", refresh_token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        // secure: process.env.NODE_ENV === "production",
+        secure: false,
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 30, // 30 days
@@ -75,9 +77,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Set activated cookie (readable by middleware)
-    response.cookies.set("user_activated", String(user.activated ?? false), {
+    response.cookies.set("activated", String(user.activated ?? false), {
       httpOnly: false, // Middleware needs to read this
-      secure: process.env.NODE_ENV === "production",
+      // secure: process.env.NODE_ENV === "production",
+      secure: false,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -88,7 +91,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const onboardingStep = user.onboarding_step || "not_started";
     response.cookies.set("onboarding_step", onboardingStep, {
       httpOnly: false, // Middleware and frontend need to read this
-      secure: process.env.NODE_ENV === "production",
+      //  secure: process.env.NODE_ENV === "production",
+      secure: false,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days

@@ -39,7 +39,7 @@ import type { OnboardingStep } from "../types";
  * Middleware NEVER reads localStorage.
  * 
  * Cookies structure:
- * - access_token (httpOnly) - for API routes to attach to backend calls
+ * - access_token (httpOnly) - ALWAYS attached as Authorization in proxy routes
  * - refresh_token (httpOnly) - for token refresh
  * - activated (non-httpOnly) - readable by middleware
  * - onboarding_step (non-httpOnly) - readable by middleware

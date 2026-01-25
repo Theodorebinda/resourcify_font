@@ -29,9 +29,9 @@ export const API_ENDPOINTS = {
 
   // Onboarding endpoints
   ONBOARDING: {
-    STATUS: "onboarding/status/",
+    STATUS: "/onboarding/status/",
     PROFILE: "/onboarding/profile/",
     INTERESTS: "/onboarding/interests/",
-    COMPLETE: "/onboarding/complete/ ",
+    COMPLETE: "/onboarding/complete/",
   },
 } as const;
