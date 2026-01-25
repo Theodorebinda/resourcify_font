@@ -10,13 +10,13 @@ export const API_BASE_URL =
 export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
-    LOGIN: "/auth/login",
-    REGISTER: "/auth/register",
-    LOGOUT: "/auth/logout",
+    LOGIN: "/auth/login/",
+    REGISTER: "/auth/register/",
+    LOGOUT: "/auth/logout/",
     REFRESH: "/auth/refresh",
-    FORGOT_PASSWORD: "/auth/forgot-password",
-    RESET_PASSWORD: "/auth/reset-password",
-    ACTIVATE: "/auth/activate",
+    FORGOT_PASSWORD: "/auth/forgot-password/",
+    RESET_PASSWORD: "/auth/reset-password/",
+    ACTIVATE: "/auth/activate/",
   },
 
   // User endpoints
