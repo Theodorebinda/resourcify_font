@@ -88,7 +88,10 @@ async function handleProxyRequest(
     const path = params.path.join("/");
     // Ensure path starts with / for consistency
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    const backendUrl = `${API_BASE_URL}${cleanPath}`;
+    const backendUrl = `${API_BASE_URL}${cleanPath}/`;
+
+
+
 
     const normalizedPath = path.replace(/\/+$/, "");
     const isPublicEndpoint = PUBLIC_ENDPOINTS.some((entry) =>
@@ -124,6 +127,8 @@ async function handleProxyRequest(
     const urlWithQuery = searchParams
       ? `${backendUrl}?${searchParams}`
       : backendUrl;
+
+    console.log("urlWithQuery", urlWithQuery);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

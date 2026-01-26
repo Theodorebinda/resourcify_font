@@ -5,7 +5,9 @@
  */
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL
+  ? process.env.NEXT_PUBLIC_API_BASE_URL
+  : "http://127.0.0.1:8000/api";
 
 export const API_ENDPOINTS = {
   // Auth endpoints
@@ -13,7 +15,7 @@ export const API_ENDPOINTS = {
     LOGIN: "/auth/login/",
     REGISTER: "/auth/register/",
     LOGOUT: "/auth/logout/",
-    REFRESH: "/auth/refresh",
+    REFRESH: "/auth/refresh/",
     FORGOT_PASSWORD: "/auth/forgot-password/",
     RESET_PASSWORD: "/auth/reset-password/",
     ACTIVATE: "/auth/activate/",
