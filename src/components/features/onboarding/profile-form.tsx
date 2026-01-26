@@ -11,6 +11,7 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { useUser } from "../../../services/api/queries/auth-queries";
 import {
+  useOnboardingStep,
   useSubmitOnboardingProfile,
   type OnboardingProfilePayload,
 } from "../../../services/api/queries/onboarding-queries";
@@ -23,6 +24,7 @@ const DEFAULT_FORM: OnboardingProfilePayload = {
 
 export function OnboardingProfileForm() {
   const { user, isLoading, refetch } = useUser();
+  const { data: onboardingStep, refetch: refetchOnboarding } = useOnboardingStep();
   const submitProfile = useSubmitOnboardingProfile();
   const [formState, setFormState] = useState<OnboardingProfilePayload>(DEFAULT_FORM);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,6 +64,12 @@ export function OnboardingProfileForm() {
       return;
     }
 
+    if (onboardingStep && onboardingStep !== "profile") {
+      setErrorMessage("Étape expirée, redirection...");
+      await refetchOnboarding();
+      return;
+    }
+
     try {
       await submitProfile.mutateAsync({
         username: formState.username.trim(),
@@ -69,18 +77,28 @@ export function OnboardingProfileForm() {
         avatar_url: formState.avatar_url?.trim() || "",
       });
 
+      await refetchOnboarding();
       await refetch();
       window.location.reload();
     } catch (error) {
       const apiError = error as { code?: string };
       if (apiError.code === "invalid_onboarding_step") {
+        setErrorMessage("Étape expirée, redirection...");
+        await refetchOnboarding();
         await refetch();
-        window.location.reload();
         return;
       }
       setErrorMessage("Impossible d'enregistrer le profil. Réessaie dans un instant.");
     }
   };
+
+  if (onboardingStep && onboardingStep !== "profile") {
+    return (
+      <div className="rounded-md border border-input bg-muted/30 p-6 text-sm text-muted-foreground">
+        Étape expirée, redirection...
+      </div>
+    );
+  }
 
   if (!isReady) {
     return (

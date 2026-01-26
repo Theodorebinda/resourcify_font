@@ -71,6 +71,7 @@ export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
 
   // App routes - accessible to APP_READY only
   [ROUTES.APP.DASHBOARD]: ["APP_READY"],
+  [ROUTES.APP.USER]: ["APP_READY"],
 };
 
 /**
@@ -104,7 +105,7 @@ export function canAccessRoute(userState: UserState, route: string): boolean {
     return ["ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests"].includes(userState);
   }
 
-  if (route.startsWith("/app")) {
+  if (route.startsWith("/app") || route.startsWith("/user")) {
     return userState === "APP_READY";
   }
 
@@ -135,8 +136,8 @@ export function getRedirectRouteForState(userState: UserState): string {
       // On interests step → stay on interests
       return ROUTES.ONBOARDING.INTERESTS;
     case "APP_READY":
-      // Fully onboarded → dashboard
-      return ROUTES.APP.DASHBOARD;
+      // Fully onboarded → user space
+      return ROUTES.APP.USER;
     default:
       // Fallback → login
       return ROUTES.AUTH.LOGIN;

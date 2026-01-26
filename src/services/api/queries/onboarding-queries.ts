@@ -51,6 +51,21 @@ export function useOnboardingStep() {
   });
 }
 
+export function useStartOnboarding() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, void>({
+    mutationFn: async () => {
+      await apiClient.post<ApiResponse<{ message?: string }>>(
+        API_ENDPOINTS.ONBOARDING.START
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.step() });
+    },
+  });
+}
+
 export interface OnboardingProfilePayload {
   username: string;
   bio?: string;

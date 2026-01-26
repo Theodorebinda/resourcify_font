@@ -10,10 +10,10 @@ import { ROUTES } from "../constants/routes";
  * Maps onboarding step to the corresponding route
  */
 export const ONBOARDING_STEP_TO_ROUTE: Record<OnboardingStep, string> = {
-  not_started: ROUTES.ONBOARDING.PROFILE,
+  not_started: ROUTES.ONBOARDING.ROOT,
   profile: ROUTES.ONBOARDING.PROFILE,
   interests: ROUTES.ONBOARDING.INTERESTS,
-  completed: ROUTES.APP.DASHBOARD,
+  completed: ROUTES.APP.USER,
 };
 
 /**
@@ -42,7 +42,7 @@ export function canAccessRoute(
 ): boolean {
   // If completed, can access app routes
   if (currentStep === "completed") {
-    return targetRoute.startsWith("/app");
+    return targetRoute.startsWith("/app") || targetRoute.startsWith("/user");
   }
 
   // If not_started, can only access profile

@@ -9,8 +9,8 @@ import { useMemo, useState } from "react";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
 import { Label } from "../../ui/label";
-import { useUser } from "../../../services/api/queries/auth-queries";
 import {
+  useOnboardingStep,
   useSubmitOnboardingInterests,
 } from "../../../services/api/queries/onboarding-queries";
 
@@ -24,7 +24,7 @@ const TAGS = [
 ];
 
 export function OnboardingInterestsForm() {
-  const { refetch } = useUser();
+  const { data: onboardingStep, refetch: refetchOnboarding } = useOnboardingStep();
   const submitInterests = useSubmitOnboardingInterests();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -47,20 +47,34 @@ export function OnboardingInterestsForm() {
       return;
     }
 
+    if (onboardingStep && onboardingStep !== "interests") {
+      setErrorMessage("Étape expirée, redirection...");
+      await refetchOnboarding();
+      return;
+    }
+
     try {
       await submitInterests.mutateAsync({ tag_ids: selectedTags });
-      await refetch();
+      await refetchOnboarding();
       window.location.reload();
     } catch (error) {
       const apiError = error as { code?: string };
       if (apiError.code === "invalid_onboarding_step") {
-        await refetch();
-        window.location.reload();
+        setErrorMessage("Étape expirée, redirection...");
+        await refetchOnboarding();
         return;
       }
       setErrorMessage("Impossible d'enregistrer les intérêts. Réessaie dans un instant.");
     }
   };
+
+  if (onboardingStep && onboardingStep !== "interests") {
+    return (
+      <div className="rounded-md border border-input bg-muted/30 p-6 text-sm text-muted-foreground">
+        Étape expirée, redirection...
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
