@@ -48,6 +48,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    const isCrossSite = process.env.NEXT_PUBLIC_COOKIE_CROSS_SITE === "true";
+    const sameSite = isCrossSite ? "none" : "lax";
+    const secure = isCrossSite || process.env.NODE_ENV === "production";
+
     // Create response
     const response = NextResponse.json({ ok: true });
 
@@ -56,8 +60,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (access_token) {
       response.cookies.set("access_token", access_token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure,
+        sameSite,
         path: "/",
         maxAge: 60 * 60 * 24 * 7, // 7 days
       });
@@ -67,18 +71,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (refresh_token) {
       response.cookies.set("refresh_token", refresh_token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure,
+        sameSite,
         path: "/",
         maxAge: 60 * 60 * 24 * 30, // 30 days
       });
     }
 
     // Set activated cookie (readable by middleware)
-    response.cookies.set("user_activated", String(user.activated ?? false), {
+    response.cookies.set("activated", String(user.activated ?? false), {
       httpOnly: false, // Middleware needs to read this
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure,
+      sameSite,
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
@@ -88,8 +92,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const onboardingStep = user.onboarding_step || "not_started";
     response.cookies.set("onboarding_step", onboardingStep, {
       httpOnly: false, // Middleware and frontend need to read this
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure,
+      sameSite,
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });

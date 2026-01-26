@@ -19,7 +19,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { apiClient } from "../client";
 import { API_BASE_URL, API_ENDPOINTS } from "../../../constants/api";
 import type {
@@ -30,7 +30,8 @@ import type {
   ActivationResponse,
   ApiResponse,
 } from "../../../types";
-
+// import { cookies } from "next/headers";
+  
 // Query keys
 export const authKeys = {
   all: ["auth"] as const,
@@ -52,64 +53,15 @@ export const authKeys = {
  * ```
  */
 export function useUser() {
-  // Use state to prevent hydration mismatch
-  // Cookies are checked server-side by middleware
-  // Client-side, we just need to know when component is mounted
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   const query = useQuery<User, ApiError>({
     queryKey: authKeys.user(),
     queryFn: async () => {
       // Backend returns: { status: "ok", data: User }
       const response = await apiClient.get<ApiResponse<User>>(API_ENDPOINTS.USER.ME);
-      const userData = response.data.data;
-      
-      // Update cookies with latest user state (for middleware)
-      // This ensures middleware has correct activated/onboarding_step values
-      // Only update cookies on client side after mount
-      // Use /api/auth/session to sync state
-      if (isMounted) {
-        try {
-          const accessToken = localStorage.getItem("access_token");
-          const refreshToken = localStorage.getItem("refresh_token");
-          
-          if (accessToken) {
-            await fetch("/api/auth/session", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              credentials: "include",
-              body: JSON.stringify({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-                user: {
-                  id: userData.id,
-                  email: userData.email,
-                  username: userData.username,
-                  activated: userData.activated,
-                  onboarding_step: userData.onboarding_step || "not_started",
-                },
-              }),
-            });
-          }
-        } catch (cookieError) {
-          // Silent fail - cookies update is best effort
-          console.debug("[useUser] Failed to sync cookies:", cookieError);
-        }
-      }
-      
-      return userData;
+      return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1,
-    // Only fetch if mounted (client-side)
-    // Token is in httpOnly cookie, checked by proxy route
-    enabled: isMounted,
+    retry: false,
   });
 
   // Derived flags - computed from user data
@@ -118,19 +70,18 @@ export function useUser() {
     
     return {
       // Authentication status
-      isAuthenticated: !!user,
-      
+      isAuthenticated: Boolean(user),
       // Activation status
-      isActivated: user?.activated ?? false,
-      
+      isActivated: Boolean(user?.activated),
       // Onboarding status
+      onboardingStep: user?.onboarding_step,
       isOnboardingComplete: user?.onboarding_step === "completed",
     };
   }, [query.data]);
 
   return {
     // Raw data
-    user: query.data,
+    user: query.data ?? null,
     error: query.error ?? null,
     
     // Loading states
@@ -337,12 +288,12 @@ export function useLogout() {
       await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
     },
     onSuccess: () => {
-      // Clear tokens
+      
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
       }
-      // Clear all queries
+     
       queryClient.clear();
     },
   });
