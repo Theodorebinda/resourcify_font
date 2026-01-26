@@ -88,7 +88,10 @@ async function handleProxyRequest(
     const path = params.path.join("/");
     // Ensure path starts with / for consistency
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    const backendUrl = `${API_BASE_URL}${cleanPath}`;
+    const backendUrl = `${API_BASE_URL}${cleanPath}/`;
+
+
+
 
     const normalizedPath = path.replace(/\/+$/, "");
     const isPublicEndpoint = PUBLIC_ENDPOINTS.some((entry) =>
@@ -125,6 +128,8 @@ async function handleProxyRequest(
       ? `${backendUrl}?${searchParams}`
       : backendUrl;
 
+    console.log("urlWithQuery", urlWithQuery);
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -157,22 +162,36 @@ async function handleProxyRequest(
       );
       response.cookies.delete("access_token");
       response.cookies.delete("refresh_token");
-      response.cookies.delete("activated");
-      response.cookies.delete("onboarding_step");
       return response;
     }
+
+    const setCookieHeaders =
+      typeof backendResponse.headers.getSetCookie === "function"
+        ? backendResponse.headers.getSetCookie()
+        : (() => {
+            const rawCookie = backendResponse.headers.get("set-cookie");
+            return rawCookie ? [rawCookie] : [];
+          })();
+
+    const appendSetCookies = (response: NextResponse) => {
+      setCookieHeaders.forEach((cookie) => {
+        response.headers.append("set-cookie", cookie);
+      });
+      return response;
+    };
 
     // Handle non-JSON responses
     const contentType = backendResponse.headers.get("content-type");
     if (contentType?.includes("application/json")) {
       try {
         const responseData = await backendResponse.json();
-        return NextResponse.json(responseData, {
+        const response = NextResponse.json(responseData, {
           status: backendResponse.status,
           headers: {
             "Content-Type": "application/json",
           },
         });
+        return appendSetCookies(response);
       } catch (jsonError) {
         // If JSON parsing fails, return error
         console.error("[API Proxy] JSON parse error:", jsonError);
@@ -190,12 +209,13 @@ async function handleProxyRequest(
 
     // For non-JSON responses, return text
     const responseText = await backendResponse.text();
-    return new NextResponse(responseText, {
+    const response = new NextResponse(responseText, {
       status: backendResponse.status,
       headers: {
         "Content-Type": contentType || "text/plain",
       },
     });
+    return appendSetCookies(response);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       return NextResponse.json(

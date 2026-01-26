@@ -2,23 +2,49 @@
  * Post-Login Page
  * 
  * Canonical entry point after successful login.
+ * Conforme à ONBOARDING_REFONTE.md
  * 
- * Rules:
- * - NO business logic
- * - NO redirect logic in component
- * - NO user state checks
- * - Middleware decides the next step based on user state
- * 
- * Purpose:
- * - Single entry point for all post-login flows
- * - Lets middleware redirect to:
- *   - /onboarding/activation-required (if not activated)
- *   - /onboarding/profile (if activated but not onboarded)
- *   - /app (if fully onboarded)
+ * Fetches user state via API and redirects to the correct page using getRouteForStep().
  */
 
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "../../../../services/api/queries/auth-queries";
+import { getRouteForStep } from "../../../../utils/onboarding-routes";
+import { ROUTES } from "../../../../constants/routes";
+
 export default function PostLoginPage() {
-  // Minimal UI - middleware will redirect immediately
+  const router = useRouter();
+  const { user, isLoading } = useUser();
+
+  useEffect(() => {
+    // Wait for query to complete
+    if (isLoading) {
+      return;
+    }
+
+    // If user is not activated, redirect to activation required
+    if (user && !user.activated) {
+      router.replace(ROUTES.ONBOARDING.ACTIVATION_REQUIRED);
+      return;
+    }
+
+    // If user is activated, check onboarding step from user data
+    // Utilise getRouteForStep() comme source unique de vérité
+    if (user && user.activated && user.onboarding_step) {
+      const targetRoute = getRouteForStep(user.onboarding_step);
+      router.replace(targetRoute);
+      return;
+    }
+
+    // Fallback: if no user data, redirect to login
+    if (!user) {
+      router.replace(ROUTES.AUTH.LOGIN);
+    }
+  }, [user, isLoading, router]);
+
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center space-y-2">

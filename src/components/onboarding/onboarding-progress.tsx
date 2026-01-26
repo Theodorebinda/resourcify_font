@@ -15,6 +15,7 @@
 import { useOnboardingStep } from "../../services/api/queries/onboarding-queries";
 import { cn } from "../../libs/utils";
 import type { OnboardingStep } from "../../types";
+import { API_ENDPOINTS } from "@/src/constants/api";
 
 interface StepConfig {
   step: OnboardingStep;
@@ -23,8 +24,8 @@ interface StepConfig {
 }
 
 const ONBOARDING_STEPS: StepConfig[] = [
-  { step: "profile", label: "Profile", route: "/onboarding/profile" },
-  { step: "interests", label: "Interests", route: "/onboarding/interests" },
+  { step: "profile", label: "Profile", route: API_ENDPOINTS.ONBOARDING.PROFILE },
+  { step: "interests", label: "Interests", route: API_ENDPOINTS.ONBOARDING.INTERESTS },
 ];
 
 /**

@@ -57,20 +57,25 @@ export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
   [ROUTES.AUTH.RESET_PASSWORD]: ["VISITOR"],
   [ROUTES.AUTH.ACTIVATE]: ["VISITOR"], // Activation can be accessed via email link even if not logged in
   
-  // Post-login route - accessible to all authenticated states
-  // Middleware will redirect based on state
-  [POST_LOGIN_ROUTE]: ["AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"],
+  // Post-login route - accessible to authenticated users
+  // Components will handle routing based on API calls
+  [POST_LOGIN_ROUTE]: ["AUTHENTICATED"],
 
-  // Activation routes - accessible to AUTHENTICATED only
+  // Activation routes - accessible to authenticated users
   [ROUTES.ONBOARDING.ACTIVATION_REQUIRED]: ["AUTHENTICATED"],
 
-  // Onboarding routes - accessible to specific states
-  [ROUTES.ONBOARDING.PROFILE]: ["ACTIVATED", "ONBOARDING.profile"],
-  [ROUTES.ONBOARDING.INTERESTS]: ["ONBOARDING.profile", "ONBOARDING.interests"],
-  [ROUTES.ONBOARDING.DONE]: ["ONBOARDING.interests"],
+  // Onboarding routes - accessible to authenticated users
+  // Components will handle access control based on API calls
+  [ROUTES.ONBOARDING.ROOT]: ["AUTHENTICATED"],
+  [ROUTES.ONBOARDING.START]: ["AUTHENTICATED"],
+  [ROUTES.ONBOARDING.PROFILE]: ["AUTHENTICATED"],
+  [ROUTES.ONBOARDING.INTERESTS]: ["AUTHENTICATED"],
+  [ROUTES.ONBOARDING.DONE]: ["AUTHENTICATED"],
 
-  // App routes - accessible to APP_READY only
-  [ROUTES.APP.DASHBOARD]: ["APP_READY"],
+  // App routes - accessible to authenticated users
+  // Components will handle access control based on API calls
+  [ROUTES.APP.DASHBOARD]: ["AUTHENTICATED"],
+  [ROUTES.APP.USER]: ["AUTHENTICATED"],
 };
 
 /**
@@ -85,9 +90,9 @@ export function canAccessRoute(userState: UserState, route: string): boolean {
   }
 
   // Check route patterns (starts with)
-  // Post-login is special - accessible to all authenticated states
+  // Post-login is accessible to authenticated users
   if (route === ROUTES.AUTH.POST_LOGIN) {
-    return ["AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"].includes(userState);
+    return userState === "AUTHENTICATED";
   }
   
   // Auth routes - ONLY accessible to VISITOR (unauthenticated)
@@ -95,17 +100,10 @@ export function canAccessRoute(userState: UserState, route: string): boolean {
     return userState === "VISITOR";
   }
 
-  if (route.startsWith("/onboarding/")) {
-    // Activation required is special
-    if (route === ROUTES.ONBOARDING.ACTIVATION_REQUIRED) {
-      return userState === "AUTHENTICATED";
-    }
-    // Other onboarding routes
-    return ["ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests"].includes(userState);
-  }
-
-  if (route.startsWith("/app")) {
-    return userState === "APP_READY";
+  // Onboarding and app routes - accessible to authenticated users
+  // Components will handle access control based on API calls
+  if (route.startsWith("/onboarding/") || route.startsWith("/app") || route.startsWith("/user")) {
+    return userState === "AUTHENTICATED";
   }
 
   // Default: allow (for public routes not explicitly listed)
@@ -123,20 +121,8 @@ export function getRedirectRouteForState(userState: UserState): string {
       // Visitors trying to access protected routes → login
       return ROUTES.AUTH.LOGIN;
     case "AUTHENTICATED":
-      // Authenticated but not activated → activation required
-      return ROUTES.ONBOARDING.ACTIVATION_REQUIRED;
-    case "ACTIVATED":
-      // Activated but not started onboarding → profile step
-      return ROUTES.ONBOARDING.PROFILE;
-    case "ONBOARDING.profile":
-      // On profile step → stay on profile
-      return ROUTES.ONBOARDING.PROFILE;
-    case "ONBOARDING.interests":
-      // On interests step → stay on interests
-      return ROUTES.ONBOARDING.INTERESTS;
-    case "APP_READY":
-      // Fully onboarded → dashboard
-      return ROUTES.APP.DASHBOARD;
+      // Authenticated → post-login (components will handle routing based on API calls)
+      return ROUTES.AUTH.POST_LOGIN;
     default:
       // Fallback → login
       return ROUTES.AUTH.LOGIN;
@@ -146,11 +132,13 @@ export function getRedirectRouteForState(userState: UserState): string {
 /**
  * Get redirect route for post-login page
  * 
- * When user accesses /auth/post-login, middleware redirects based on state
+ * Post-login page will fetch user state via API and redirect client-side
+ * Middleware just allows access - no redirect needed
  */
-export function getPostLoginRedirect(userState: UserState): string {
-  // Post-login always redirects based on state
-  return getRedirectRouteForState(userState);
+export function getPostLoginRedirect(): string {
+  // Post-login page handles its own redirects via API calls
+  // Middleware just allows access (no redirect loop)
+  return ROUTES.AUTH.POST_LOGIN;
 }
 
 /**

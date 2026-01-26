@@ -496,6 +496,31 @@ POST /api/auth/password-reset/   # Request reset link
 POST /api/auth/password-reset/confirm/  # Confirm reset
 ```
 
+**Onboarding Endpoints**
+```
+GET  /api/onboarding/status/     # Get current onboarding state (read-only)
+POST /api/onboarding/start/      # Start onboarding (not_started → profile)
+POST /api/onboarding/profile/    # Submit profile (profile → interests)
+POST /api/onboarding/interests/  # Submit interests (interests → completed)
+```
+
+**Onboarding Flow** (strict step order, server-enforced):
+```
+not_started
+  ↓ POST /onboarding/start/
+profile
+  ↓ POST /onboarding/profile/
+interests
+  ↓ POST /onboarding/interests/
+completed
+```
+
+**Important Notes**:
+- Each step transition is explicit and server-enforced
+- `POST /onboarding/profile/` CANNOT be called until `POST /onboarding/start/` has been executed
+- `POST /onboarding/interests/` CANNOT be called until `POST /onboarding/profile/` has been executed
+- Steps cannot be skipped - attempting to call a step out of order returns `403 invalid_onboarding_step`
+
 **Login Response Example**
 ```json
 {
@@ -568,12 +593,23 @@ Response: {
   "data": {
     "id": "uuid",
     "email": "user@example.com",
-    "username": "username",
+    "username": "username" | null,
+    "bio": "User biography" | null,
+    "avatar_url": "https://..." | null,
     "activated": true,
     "onboarding_step": "not_started" | "profile" | "interests" | "completed",
     "createdAt": "2026-01-25T12:00:00Z"
   }
 }
+
+Note:
+  - Profile fields (username, bio, avatar_url) are provided for UI pre-filling
+  - These fields come from the Profile model (OneToOne with User)
+  - If Profile doesn't exist, these fields will be null (no error)
+  - Profile modification is handled exclusively by onboarding endpoints:
+    * POST /onboarding/start/ (transitions not_started → profile)
+    * POST /onboarding/profile/ (creates/updates Profile, transitions profile → interests)
+  - This endpoint is READ-ONLY - it does not modify any data
 ```
 
 ### 6.3 Health Endpoints
@@ -1291,6 +1327,7 @@ back_ressourcefy/
 ### Authentication & User Management
 - ✅ Added `onboarding_step` field to User model with automatic calculation
 - ✅ Created `/api/user/me/` endpoint for authenticated user details
+- ✅ Extended `/api/user/me/` to include profile fields (username, bio, avatar_url) for UI pre-filling
 - ✅ Added `/api/auth/resend-activation/` endpoint
 - ✅ JWT authentication configured in REST_FRAMEWORK settings
 - ✅ Login response now includes `onboarding_step` in user data
