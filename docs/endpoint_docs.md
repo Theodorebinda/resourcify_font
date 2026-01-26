@@ -8,20 +8,27 @@
 ## Table of Contents
 
 1. [Authentication](#authentication)
-2. [Command Endpoints (Write Operations)](#command-endpoints)
+2. [Onboarding](#onboarding)
+   - [Get Onboarding Status](#get-onboarding-status)
+   - [Submit Profile](#submit-profile)
+   - [Submit Interests](#submit-interests)
+3. [User Management](#user-management)
+   - [Get Current User](#get-current-user)
+4. [Command Endpoints (Write Operations)](#command-endpoints)
    - [Vote on Comment](#vote-on-comment)
    - [Create Resource Version](#create-resource-version)
    - [Access Resource](#access-resource)
    - [Create Checkout Session](#create-checkout-session)
-3. [Query Endpoints (Read Operations)](#query-endpoints)
+5. [Query Endpoints (Read Operations)](#query-endpoints)
    - [Get Resource Feed](#get-resource-feed)
    - [Get Resource Detail](#get-resource-detail)
    - [Get Author Profile](#get-author-profile)
-4. [Webhook Endpoints](#webhook-endpoints)
+6. [Webhook Endpoints](#webhook-endpoints)
    - [Stripe Webhook](#stripe-webhook)
-5. [Health Endpoints](#health-endpoints)
-6. [Error Handling](#error-handling)
-7. [Frontend Integration Examples](#frontend-integration-examples)
+7. [Health Endpoints](#health-endpoints)
+8. [Error Handling](#error-handling)
+9. [Frontend Integration Examples](#frontend-integration-examples)
+10. [HTTP Cookies & Middleware Support](#http-cookies--middleware-support)
 
 ---
 
@@ -33,8 +40,9 @@ The Ressourcefy API uses **JWT (JSON Web Tokens)** for authentication. Users mus
 
 1. **Register** → `POST /auth/register/`
 2. **Verify Email** → `POST /auth/activate/` (with token from email)
-3. **Login** → `POST /auth/login/` (receive JWT tokens)
-4. **Use API** → Include `Authorization: Bearer <access_token>` header
+3. **Login** → `POST /auth/login/` (receive JWT tokens + HTTP cookies)
+4. **Complete Onboarding** → `POST /onboarding/profile/` → `POST /onboarding/interests/`
+5. **Use API** → Include `Authorization: Bearer <access_token>` header or use cookies
 
 ### Token Types
 
@@ -297,11 +305,22 @@ Content-Type: application/json
     "user": {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "email": "user@example.com",
-      "username": "john_doe"
+      "username": "john_doe",
+      "activated": true,
+      "onboarding_step": "profile"
     }
   }
 }
 ```
+
+**HTTP Cookies Set** (for Next.js middleware):
+The backend automatically sets the following HTTP cookies:
+- `access_token` (HttpOnly, Secure in production, SameSite=Lax)
+- `refresh_token` (HttpOnly, Secure in production, SameSite=Lax)
+- `activated` (readable by JS, Secure in production, SameSite=Lax) - Value: `"true"` or `"false"`
+- `onboarding_step` (readable by JS, Secure in production, SameSite=Lax) - Value: `"not_started"`, `"profile"`, `"interests"`, or `"completed"`
+
+**Note**: Cookies are automatically set by the backend. The frontend does NOT need to manually set them. The middleware can read these cookies to determine user state.
 
 **Error (401 Unauthorized)** - Wrong credentials:
 ```json
@@ -341,6 +360,7 @@ async function login(email, password) {
     headers: {
       'Content-Type': 'application/json'
     },
+    credentials: 'include', // Important: Include cookies
     body: JSON.stringify({ email, password })
   });
   
@@ -351,11 +371,14 @@ async function login(email, password) {
   
   const data = await response.json();
   
-  // Store tokens
+  // Cookies are automatically set by backend
+  // Optional: Store tokens in localStorage for API calls
   localStorage.setItem('authToken', data.data.access_token);
   localStorage.setItem('refreshToken', data.data.refresh_token);
   localStorage.setItem('user', JSON.stringify(data.data.user));
   
+  // Middleware will read cookies and redirect based on onboarding_step
+  // No need to manually redirect here - let middleware handle it
   return data.data;
 }
 
@@ -363,7 +386,10 @@ async function login(email, password) {
 try {
   const userData = await login('user@example.com', 'SecurePassword123!');
   console.log('Logged in as:', userData.user.username);
-  window.location.href = '/dashboard';
+  console.log('Onboarding step:', userData.user.onboarding_step);
+  
+  // Redirect to post-login handler (middleware will decide final destination)
+  window.location.href = '/auth/post-login';
 } catch (error) {
   console.error('Login error:', error.message);
 }
@@ -1711,6 +1737,118 @@ You can import this collection to Postman:
 
 ---
 
+## HTTP Cookies & Middleware Support
+
+The Ressourcefy backend sets HTTP cookies to support Next.js Edge Middleware for deterministic routing and access control.
+
+### Cookies Set by Backend
+
+| Cookie Name | Purpose | HttpOnly | Secure | SameSite | Accessible By |
+|------------|---------|----------|--------|----------|---------------|
+| `access_token` | JWT access token | ✅ Yes | ✅ (prod) | Lax | Backend only |
+| `refresh_token` | JWT refresh token | ✅ Yes | ✅ (prod) | Lax | Backend only |
+| `activated` | Account activation status | ❌ No | ✅ (prod) | Lax | JS/Middleware |
+| `onboarding_step` | Onboarding progression | ❌ No | ✅ (prod) | Lax | JS/Middleware |
+
+### Cookie Configuration
+
+- **Secure**: `True` in production (HTTPS), `False` in development
+- **HttpOnly**: `True` for tokens (security), `False` for state cookies (middleware access)
+- **SameSite**: `Lax` (allows cross-origin requests with credentials)
+- **Path**: `/` (accessible on entire domain)
+- **Max-Age**: 7 days for `access_token`, 30 days for others
+
+### When Cookies Are Set/Updated
+
+1. **Login** (`POST /auth/login/`): Sets all 4 cookies
+2. **Activation** (`POST /auth/activate/`): Updates `activated` and `onboarding_step`
+3. **Profile Submission** (`POST /onboarding/profile/`): Updates `onboarding_step`
+4. **Interests Submission** (`POST /onboarding/interests/`): Updates `onboarding_step`
+5. **Get Current User** (`GET /user/me/`): Syncs `activated` and `onboarding_step`
+
+### Middleware Integration
+
+The Next.js middleware can read these cookies to:
+
+1. **Detect Authentication**: Check for `access_token` cookie
+2. **Check Activation**: Read `activated` cookie (`"true"` or `"false"`)
+3. **Determine Onboarding State**: Read `onboarding_step` cookie
+4. **Redirect Deterministically**:
+   - No `access_token` → `/login`
+   - `activated === "false"` → `/activation-required`
+   - `onboarding_step === "profile"` → `/onboarding/profile`
+   - `onboarding_step === "interests"` → `/onboarding/interests`
+   - `onboarding_step === "completed"` → `/dashboard`
+
+### Frontend Requirements
+
+⚠️ **Important**: The frontend should:
+- ✅ Use `credentials: 'include'` in fetch requests
+- ✅ Let middleware handle routing decisions
+- ✅ NOT store auth state in Zustand/Redux
+- ✅ NOT manually redirect based on client state
+- ✅ NOT infer onboarding state from profile completeness
+- ✅ Rely on cookies as the single source of truth
+
+### Example Middleware (Next.js)
+
+```typescript
+// middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  const accessToken = request.cookies.get('access_token');
+  const activated = request.cookies.get('activated');
+  const onboardingStep = request.cookies.get('onboarding_step');
+  
+  // No token → login
+  if (!accessToken) {
+    if (request.nextUrl.pathname.startsWith('/auth/')) {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+  
+  // Not activated → activation required
+  if (activated?.value !== 'true') {
+    if (request.nextUrl.pathname.startsWith('/auth/activate')) {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL('/activation-required', request.url));
+  }
+  
+  // Onboarding incomplete → redirect to onboarding
+  if (onboardingStep?.value !== 'completed') {
+    if (request.nextUrl.pathname.startsWith('/onboarding/')) {
+      return NextResponse.next();
+    }
+    
+    if (onboardingStep?.value === 'profile') {
+      return NextResponse.redirect(new URL('/onboarding/profile', request.url));
+    }
+    if (onboardingStep?.value === 'interests') {
+      return NextResponse.redirect(new URL('/onboarding/interests', request.url));
+    }
+  }
+  
+  // Dashboard access requires completed onboarding
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    if (onboardingStep?.value !== 'completed') {
+      return NextResponse.redirect(new URL('/onboarding/profile', request.url));
+    }
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+---
+
 **Last Updated**: 2026-01-25  
-**API Version**: 1.0  
+**API Version**: 1.1  
 **Support**: For questions, contact the backend team or refer to `docs/all_features.md`

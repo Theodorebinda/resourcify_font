@@ -55,6 +55,8 @@ stripe==7.13.0
 python-json-logger==3.2.1
 djangorestframework-simplejwt==5.3.1
 itsdangerous==2.2.0
+django-cors-headers==4.3.1
+resend==2.1.0  # Optional: for production email sending
 ```
 
 ---
@@ -130,6 +132,10 @@ Manager: SoftDeleteManager with .active(), .deleted()
 - is_staff: Boolean
 - is_active: Boolean
 - is_activated: Boolean (email verification flag)
+- onboarding_step: TextChoices (NOT_STARTED, PROFILE, INTERESTS, COMPLETED)
+
+Methods:
+  get_onboarding_step() → Calculates current onboarding step based on profile/interests progress
 ```
 
 **Profile** (OneToOne with User)
@@ -245,12 +251,19 @@ Immutability: amount_cents and currency are immutable after creation
 
 **AuditLog** (Change Tracking)
 ```python
-- actor: ForeignKey(User, nullable)
-- action: CharField(100)
-- target_model: CharField(100)
-- target_id: CharField(50)
-- changes: JSONField
-- metadata: JSONField
+- content_type: ForeignKey(ContentType, nullable) - Generic relation
+- object_id: CharField(255) - Supports UUIDs
+- content_object: GenericForeignKey - Points to any model instance
+- entity_name: CharField(100) - Human-readable entity name
+- action: TextChoices (CREATE, UPDATE, DELETE)
+- actor: ForeignKey(User, nullable) - User who performed the action
+- before_state: JSONField (nullable) - State before change
+- after_state: JSONField (nullable) - State after change
+- created_at: DateTime (auto_now_add)
+
+Usage:
+  Use core.services.audit.audit_change() helper function
+  Never use AuditLog.objects.create() directly
 ```
 
 ---
@@ -301,6 +314,7 @@ application/
 │       ├── register_user.py
 │       ├── activate_user.py
 │       ├── authenticate_user.py
+│       ├── resend_activation.py
 │       ├── request_password_reset.py
 │       └── confirm_password_reset.py
 ├── services/
@@ -475,10 +489,29 @@ Response: {"status": "received"}
 **Authentication Endpoints**
 ```
 POST /api/auth/register/        # Register new user
-POST /api/auth/activate/         # Verify email
-POST /api/auth/login/            # Get JWT tokens
+POST /api/auth/activate/        # Verify email (token from URL or body)
+POST /api/auth/resend-activation/  # Resend activation email
+POST /api/auth/login/            # Get JWT tokens (includes onboarding_step)
 POST /api/auth/password-reset/   # Request reset link
 POST /api/auth/password-reset/confirm/  # Confirm reset
+```
+
+**Login Response Example**
+```json
+{
+  "status": "ok",
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "uuid",
+      "email": "user@example.com",
+      "username": "username",
+      "activated": true,
+      "onboarding_step": "not_started" | "profile" | "interests" | "completed"
+    }
+  }
+}
 ```
 
 ### 6.2 Query Endpoints (Read)
@@ -523,6 +556,22 @@ Response: {
     "username": "...",
     "stats": {"total_resources": 10},
     "recent_resources": [...]
+  }
+}
+```
+
+**Current User**
+```
+GET /api/user/me/  # Requires JWT authentication
+Response: {
+  "status": "ok",
+  "data": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "username",
+    "activated": true,
+    "onboarding_step": "not_started" | "profile" | "interests" | "completed",
+    "createdAt": "2026-01-25T12:00:00Z"
   }
 }
 ```
@@ -621,6 +670,8 @@ Outbox processor picks up events
 # settings.py
 STRIPE_SECRET_KEY = 'sk_test_xxx'
 STRIPE_WEBHOOK_SECRET = 'whsec_xxx'
+RESEND_API_KEY = None  # Optional: Set to 're_xxxxx' for production email
+DEFAULT_FROM_EMAIL = 'no-reply@ressourcefy.dev'
 ```
 
 ### 8.2 Checkout Session Creation
@@ -746,11 +797,35 @@ python manage.py process_events --loop --interval=5
 
 **Dispatcher** (`core/outbox.py`)
 ```python
-def dispatch_event(event):
+def _dispatch_event(event):
     if event.event_type == 'billing.subscription_activated':
         send_welcome_email(event.payload)
     elif event.event_type == 'billing.payment_completed':
         track_payment_analytics(event.payload)
+    elif event.event_type == 'user.registered':
+        _send_activation_email(event.payload)
+    elif event.event_type == 'user.password_reset_requested':
+        _send_password_reset_email(event.payload)
+    elif event.event_type == 'user.activated':
+        _send_welcome_email(event.payload)
+```
+
+**Email Service** (`core/services/email_service.py`)
+```python
+def send_email(to: str, subject: str, message: str, html_message: str = None):
+    """
+    Sends email using configured backend.
+    - If RESEND_API_KEY is set: Uses Resend API (production)
+    - Otherwise: Uses Django send_mail or logger (development)
+    """
+```
+
+**Email Configuration** (`settings.py`)
+```python
+# Resend Email Service (optional - for production)
+RESEND_API_KEY = None  # Set to your Resend API key: "re_xxxxx"
+DEFAULT_FROM_EMAIL = "no-reply@ressourcefy.dev"
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # Development
 ```
 
 ---
@@ -892,6 +967,7 @@ DJANGO_DEBUG=False
 DATABASE_URL=postgres://...
 STRIPE_SECRET_KEY=sk_live_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
+RESEND_API_KEY=re_xxxxx  # Optional: for production email sending
 ```
 
 **Services Required**
@@ -1084,7 +1160,11 @@ back_ressourcefy/
 │   │
 │   ├── core/
 │   │   ├── models.py (BaseModel, SoftDelete, Tag, OutboxEvent)
-│   │   ├── outbox.py (emit_event, process_outbox)
+│   │   ├── outbox.py (emit_event, process_outbox, email handlers)
+│   │   ├── tokens.py (activation & password reset tokens)
+│   │   ├── services/
+│   │   │   ├── audit.py (audit_change helper)
+│   │   │   └── email_service.py (Resend/Django email abstraction)
 │   │   ├── management/commands/process_events.py
 │   │   └── tests/
 │   │
@@ -1112,7 +1192,7 @@ back_ressourcefy/
 │   │
 │   ├── audit/
 │   │   ├── models.py (AuditLog)
-│   │   └── services/audit.py
+│   │   └── services/
 │   │
 │   ├── application/
 │   │   ├── dto/commands.py
@@ -1122,7 +1202,14 @@ back_ressourcefy/
 │   │   ├── use_cases/
 │   │   │   ├── vote_on_comment.py
 │   │   │   ├── create_checkout_session.py
-│   │   │   └── handle_stripe_webhook.py
+│   │   │   ├── handle_stripe_webhook.py
+│   │   │   └── auth/
+│   │   │       ├── register_user.py
+│   │   │       ├── activate_user.py
+│   │   │       ├── authenticate_user.py
+│   │   │       ├── resend_activation.py
+│   │   │       ├── request_password_reset.py
+│   │   │       └── confirm_password_reset.py
 │   │   ├── services/stripe_service.py
 │   │   ├── exceptions.py
 │   │   └── tests/
@@ -1138,6 +1225,8 @@ back_ressourcefy/
 │       ├── views/
 │       │   ├── vote_comment.py
 │       │   ├── billing.py
+│       │   ├── user.py (CurrentUserView - /user/me/)
+│       │   ├── auth.py (Register, Activate, Login, etc.)
 │       │   ├── read/__init__.py
 │       │   └── health.py
 │       ├── serializers/
@@ -1186,15 +1275,50 @@ back_ressourcefy/
 ### Critical Files to Understand
 
 1. `core/models.py` - Foundation for all models
-2. `core/outbox.py` - Reliability engine
-3. `application/use_cases/handle_stripe_webhook.py` - Payment flow
-4. `api/exception_handlers.py` - Error translation
-5. `read_models/resources/resource_feed.py` - Performance optimization
+2. `core/outbox.py` - Reliability engine & event handlers
+3. `core/services/email_service.py` - Email abstraction (Resend/Django)
+4. `core/services/audit.py` - Audit logging helper
+5. `users/models.py` - User model with onboarding_step
+6. `application/use_cases/handle_stripe_webhook.py` - Payment flow
+7. `api/views/user.py` - Current user endpoint
+8. `api/exception_handlers.py` - Error translation
+9. `read_models/resources/resource_feed.py` - Performance optimization
+
+---
+
+## 17. Recent Updates (2026-01-25)
+
+### Authentication & User Management
+- ✅ Added `onboarding_step` field to User model with automatic calculation
+- ✅ Created `/api/user/me/` endpoint for authenticated user details
+- ✅ Added `/api/auth/resend-activation/` endpoint
+- ✅ JWT authentication configured in REST_FRAMEWORK settings
+- ✅ Login response now includes `onboarding_step` in user data
+
+### Email Service
+- ✅ Created email service abstraction (`core/services/email_service.py`)
+- ✅ Resend integration for production email sending
+- ✅ Automatic fallback to Django send_mail or logger in development
+- ✅ All email handlers updated to use new service
+
+### Audit System
+- ✅ Fixed all AuditLog usage to use `audit_change()` helper function
+- ✅ Updated use cases: register_user, activate_user, resend_activation, request_password_reset, confirm_password_reset
+- ✅ AuditLog now uses GenericForeignKey pattern with content_type/object_id
+
+### Token Handling
+- ✅ Improved activation token validation with URL decoding support
+- ✅ Token can be passed in URL query parameter or request body
+- ✅ Handles double-encoded tokens automatically
+
+### CORS Configuration
+- ✅ Added django-cors-headers for cross-origin requests
+- ✅ Configured allowed origins and credentials
 
 ---
 
 **End of Documentation**
 
 *Last Updated: 2026-01-25*
-*Version: 1.0*
+*Version: 1.1*
 *Maintainer: Development Team*
