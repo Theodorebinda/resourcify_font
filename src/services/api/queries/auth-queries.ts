@@ -19,7 +19,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { apiClient } from "../client";
 import { API_BASE_URL, API_ENDPOINTS } from "../../../constants/api";
 import type {
@@ -53,6 +53,13 @@ export const authKeys = {
  * ```
  */
 export function useUser() {
+  // Flag pour s'assurer que le code ne s'exécute qu'après l'hydratation
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const query = useQuery<User, ApiError>({
     queryKey: authKeys.user(),
     queryFn: async () => {
@@ -71,21 +78,24 @@ export function useUser() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
-    // Use placeholderData from localStorage to avoid hydration mismatch
-    placeholderData: () => {
-      if (typeof window === "undefined") {
-        return undefined;
-      }
-      try {
-        const stored = localStorage.getItem("user");
-        if (stored) {
-          return JSON.parse(stored) as User;
+    // Use placeholderData from localStorage ONLY after hydration
+    // This prevents hydration mismatch by ensuring placeholderData is undefined on server
+    placeholderData: isMounted
+      ? () => {
+          if (typeof window === "undefined") {
+            return undefined;
+          }
+          try {
+            const stored = localStorage.getItem("user");
+            if (stored) {
+              return JSON.parse(stored) as User;
+            }
+          } catch {
+            // Ignore parse errors
+          }
+          return undefined;
         }
-      } catch {
-        // Ignore parse errors
-      }
-      return undefined;
-    },
+      : undefined,
   });
 
   // Derived flags - computed from user data
