@@ -65,7 +65,7 @@ const LoginForm: React.FC = () => {
         router.push("/home");
         throw new Error(responseData.message || "Failed to authenticate");
       }
-    } catch (error: any) {
+    } catch (error) {
       // Afficher un toast d'erreur
       toast({
         title: "Login failed",

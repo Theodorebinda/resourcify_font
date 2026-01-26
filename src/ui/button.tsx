@@ -1,5 +1,5 @@
 "use client";
-import { Button as _Button } from "@/components/ui/button";
+import { Button as _Button } from "@/src/components/ui/button";
 import clsx from "clsx";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
@@ -8,7 +8,7 @@ import Image, { StaticImageData } from "next/image";
 interface Props {
   action?: () => void;
   baseUrl?: string;
-  variant?: "primary" | "secondary" | "accent" | "ghost";
+  variant?: "primary" | "secondary" | "accent" | "destructive" | "ghost";
   className?: string;
   children?: React.ReactNode;
   disabled?: boolean;
