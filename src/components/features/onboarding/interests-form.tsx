@@ -1,18 +1,28 @@
 /**
  * Onboarding Interests Form
- * Minimal UI that submits data to backend and relies on middleware for redirects.
+ * 
+ * Étape 3: Sélection Intérêts
+ * Conforme à ONBOARDING_REFONTE.md - Section 3.3
+ * 
+ * - Utilise useUser() comme source unique de vérité
+ * - Auto-réparation silencieuse en cas d'incohérence
+ * - Pas de window.location.reload()
  */
 
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
 import { Label } from "../../ui/label";
-import {
-  useOnboardingStep,
-  useSubmitOnboardingInterests,
-} from "../../../services/api/queries/onboarding-queries";
+import { useUser } from "../../../services/api/queries/auth-queries";
+import { useSubmitOnboardingInterests } from "../../../services/api/queries/onboarding-queries";
+import { useOnboardingGuard } from "../../../hooks/use-onboarding-guard";
+import { getRouteForStep } from "../../../utils/onboarding-routes";
+import { authKeys } from "../../../services/api/queries/auth-queries";
+import type { User } from "../../../types";
 
 const TAGS = [
   { id: "frontend", label: "Frontend" },
@@ -24,12 +34,16 @@ const TAGS = [
 ];
 
 export function OnboardingInterestsForm() {
-  const { data: onboardingStep, refetch: refetchOnboarding } = useOnboardingStep();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user, isLoading: isLoadingUser } = useUser();
+  const { isValid, isLoading: isLoadingGuard } = useOnboardingGuard("interests");
   const submitInterests = useSubmitOnboardingInterests();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSubmitting = submitInterests.isPending;
+  const isLoading = isLoadingUser || isLoadingGuard;
 
   const canSubmit = useMemo(() => selectedTags.length > 0, [selectedTags]);
 
@@ -47,33 +61,56 @@ export function OnboardingInterestsForm() {
       return;
     }
 
-    if (onboardingStep && onboardingStep !== "interests") {
-      setErrorMessage("Étape expirée, redirection...");
-      await refetchOnboarding();
+    // Vérification pré-submit (optimiste)
+    if (user?.onboarding_step && user.onboarding_step !== "interests") {
+      // État a changé entre le montage et la soumission
+      await queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      await queryClient.refetchQueries({ queryKey: authKeys.user() });
+      const updatedUser = queryClient.getQueryData<typeof user>(authKeys.user());
+      if (updatedUser?.onboarding_step) {
+        router.replace(getRouteForStep(updatedUser.onboarding_step));
+      }
       return;
     }
 
     try {
       await submitInterests.mutateAsync({ tag_ids: selectedTags });
-      await refetchOnboarding();
-      window.location.reload();
+
+      // Mutation invalide authKeys.user()
+      // Refetch et redirection
+      await queryClient.refetchQueries({ queryKey: authKeys.user() });
+      const updatedUser = queryClient.getQueryData<typeof user>(authKeys.user());
+      if (updatedUser?.onboarding_step) {
+        router.replace(getRouteForStep(updatedUser.onboarding_step));
+      }
     } catch (error) {
       const apiError = error as { code?: string };
       if (apiError.code === "invalid_onboarding_step") {
-        setErrorMessage("Étape expirée, redirection...");
-        await refetchOnboarding();
-        return;
+        // Auto-réparation silencieuse (RÈGLE #9)
+        await queryClient.invalidateQueries({ queryKey: authKeys.user() });
+        await queryClient.refetchQueries({ queryKey: authKeys.user() });
+        const updatedUser = queryClient.getQueryData<User>(authKeys.user());
+        if (updatedUser?.onboarding_step) {
+          router.replace(getRouteForStep(updatedUser.onboarding_step));
+        }
+      } else {
+        // Erreur réseau ou validation
+        setErrorMessage("Impossible d'enregistrer les intérêts. Réessaie dans un instant.");
       }
-      setErrorMessage("Impossible d'enregistrer les intérêts. Réessaie dans un instant.");
     }
   };
 
-  if (onboardingStep && onboardingStep !== "interests") {
+  // Affichage: spinner si loading, redirection silencieuse si étape incohérente
+  if (isLoading) {
     return (
       <div className="rounded-md border border-input bg-muted/30 p-6 text-sm text-muted-foreground">
-        Étape expirée, redirection...
+        Chargement des intérêts...
       </div>
     );
+  }
+
+  if (!isValid) {
+    return null; // Redirection en cours (silencieuse)
   }
 
   return (

@@ -1,20 +1,32 @@
 /**
  * Onboarding Profile Form
- * Minimal UI that submits data to backend and relies on middleware for redirects.
+ * 
+ * Étape 2: Formulaire Profil
+ * Conforme à ONBOARDING_REFONTE.md - Section 3.2
+ * 
+ * - Utilise useUser() comme source unique de vérité
+ * - Pré-remplissage avec données backend
+ * - Auto-réparation silencieuse en cas d'incohérence
+ * - Pas de window.location.reload()
  */
 
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { useUser } from "../../../services/api/queries/auth-queries";
 import {
-  useOnboardingStep,
   useSubmitOnboardingProfile,
   type OnboardingProfilePayload,
 } from "../../../services/api/queries/onboarding-queries";
+import { useOnboardingGuard } from "../../../hooks/use-onboarding-guard";
+import { getRouteForStep } from "../../../utils/onboarding-routes";
+import { authKeys } from "../../../services/api/queries/auth-queries";
+import type { User } from "../../../types";
 
 const DEFAULT_FORM: OnboardingProfilePayload = {
   username: "",
@@ -23,15 +35,18 @@ const DEFAULT_FORM: OnboardingProfilePayload = {
 };
 
 export function OnboardingProfileForm() {
-  const { user, isLoading, refetch } = useUser();
-  const { data: onboardingStep, refetch: refetchOnboarding } = useOnboardingStep();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user, isLoading: isLoadingUser } = useUser();
+  const { isValid, isLoading: isLoadingGuard } = useOnboardingGuard("profile");
   const submitProfile = useSubmitOnboardingProfile();
   const [formState, setFormState] = useState<OnboardingProfilePayload>(DEFAULT_FORM);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSubmitting = submitProfile.isPending;
-  const isReady = !isLoading;
+  const isLoading = isLoadingUser || isLoadingGuard;
 
+  // Pré-remplir le formulaire avec les données utilisateur
   useEffect(() => {
     if (!user) {
       return;
@@ -64,9 +79,15 @@ export function OnboardingProfileForm() {
       return;
     }
 
-    if (onboardingStep && onboardingStep !== "profile") {
-      setErrorMessage("Étape expirée, redirection...");
-      await refetchOnboarding();
+    // Vérification pré-submit (optimiste)
+    if (user?.onboarding_step && user.onboarding_step !== "profile") {
+      // État a changé entre le montage et la soumission
+      await queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      await queryClient.refetchQueries({ queryKey: authKeys.user() });
+      const updatedUser = queryClient.getQueryData<typeof user>(authKeys.user());
+      if (updatedUser?.onboarding_step) {
+        router.replace(getRouteForStep(updatedUser.onboarding_step));
+      }
       return;
     }
 
@@ -77,35 +98,41 @@ export function OnboardingProfileForm() {
         avatar_url: formState.avatar_url?.trim() || "",
       });
 
-      await refetchOnboarding();
-      await refetch();
-      window.location.reload();
+      // Mutation invalide authKeys.user()
+      // Refetch et redirection
+      await queryClient.refetchQueries({ queryKey: authKeys.user() });
+      const updatedUser = queryClient.getQueryData<typeof user>(authKeys.user());
+      if (updatedUser?.onboarding_step) {
+        router.replace(getRouteForStep(updatedUser.onboarding_step));
+      }
     } catch (error) {
       const apiError = error as { code?: string };
       if (apiError.code === "invalid_onboarding_step") {
-        setErrorMessage("Étape expirée, redirection...");
-        await refetchOnboarding();
-        await refetch();
-        return;
+        // Auto-réparation silencieuse (RÈGLE #9)
+        await queryClient.invalidateQueries({ queryKey: authKeys.user() });
+        await queryClient.refetchQueries({ queryKey: authKeys.user() });
+        const updatedUser = queryClient.getQueryData<User>(authKeys.user());
+        if (updatedUser?.onboarding_step) {
+          router.replace(getRouteForStep(updatedUser.onboarding_step));
+        }
+      } else {
+        // Erreur réseau ou validation
+        setErrorMessage("Impossible d'enregistrer. Réessaie dans un instant.");
       }
-      setErrorMessage("Impossible d'enregistrer le profil. Réessaie dans un instant.");
     }
   };
 
-  if (onboardingStep && onboardingStep !== "profile") {
-    return (
-      <div className="rounded-md border border-input bg-muted/30 p-6 text-sm text-muted-foreground">
-        Étape expirée, redirection...
-      </div>
-    );
-  }
-
-  if (!isReady) {
+  // Affichage: spinner si loading, redirection silencieuse si étape incohérente
+  if (isLoading) {
     return (
       <div className="rounded-md border border-input bg-muted/30 p-6 text-sm text-muted-foreground">
         Chargement du profil...
       </div>
     );
+  }
+
+  if (!isValid) {
+    return null; // Redirection en cours (silencieuse)
   }
 
   return (

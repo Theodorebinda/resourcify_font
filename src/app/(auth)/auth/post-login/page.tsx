@@ -2,8 +2,9 @@
  * Post-Login Page
  * 
  * Canonical entry point after successful login.
+ * Conforme à ONBOARDING_REFONTE.md
  * 
- * Fetches user state via API and redirects to the correct page.
+ * Fetches user state via API and redirects to the correct page using getRouteForStep().
  */
 
 "use client";
@@ -11,6 +12,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "../../../../services/api/queries/auth-queries";
+import { getRouteForStep } from "../../../../utils/onboarding-routes";
 import { ROUTES } from "../../../../constants/routes";
 
 export default function PostLoginPage() {
@@ -30,16 +32,10 @@ export default function PostLoginPage() {
     }
 
     // If user is activated, check onboarding step from user data
+    // Utilise getRouteForStep() comme source unique de vérité
     if (user && user.activated && user.onboarding_step) {
-      if (user.onboarding_step === "not_started") {
-        router.replace(ROUTES.ONBOARDING.START);
-      } else if (user.onboarding_step === "profile") {
-        router.replace(ROUTES.ONBOARDING.PROFILE);
-      } else if (user.onboarding_step === "interests") {
-        router.replace(ROUTES.ONBOARDING.INTERESTS);
-      } else if (user.onboarding_step === "completed") {
-        router.replace(ROUTES.APP.USER);
-      }
+      const targetRoute = getRouteForStep(user.onboarding_step);
+      router.replace(targetRoute);
       return;
     }
 

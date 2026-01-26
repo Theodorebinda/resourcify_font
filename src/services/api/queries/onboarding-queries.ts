@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../client";
 import { API_ENDPOINTS } from "../../../constants/api";
+import { authKeys } from "./auth-queries";
 import type { OnboardingStep, ApiError, ApiResponse } from "../../../types";
 
 // Query keys
@@ -60,7 +61,11 @@ export function useStartOnboarding() {
         API_ENDPOINTS.ONBOARDING.START
       );
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Invalider authKeys.user() (source unique de vérité)
+      // Conforme à ONBOARDING_REFONTE.md - RÈGLE #7
+      await queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      // Optionnel: invalider aussi onboardingKeys.step()
       queryClient.invalidateQueries({ queryKey: onboardingKeys.step() });
     },
   });
@@ -86,7 +91,11 @@ export function useSubmitOnboardingProfile() {
         payload
       );
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Invalider authKeys.user() (source unique de vérité)
+      // Conforme à ONBOARDING_REFONTE.md - RÈGLE #7
+      await queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      // Optionnel: invalider aussi onboardingKeys.step()
       queryClient.invalidateQueries({ queryKey: onboardingKeys.step() });
     },
   });
@@ -102,7 +111,11 @@ export function useSubmitOnboardingInterests() {
         payload
       );
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Invalider authKeys.user() (source unique de vérité)
+      // Conforme à ONBOARDING_REFONTE.md - RÈGLE #7
+      await queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      // Optionnel: invalider aussi onboardingKeys.step()
       queryClient.invalidateQueries({ queryKey: onboardingKeys.step() });
     },
   });

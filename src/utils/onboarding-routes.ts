@@ -1,6 +1,9 @@
 /**
  * Onboarding route utilities
  * Maps onboarding steps to routes
+ * 
+ * Source unique de vérité pour les routes d'onboarding
+ * Conforme à ONBOARDING_REFONTE.md
  */
 
 import type { OnboardingStep } from "../types";
@@ -10,7 +13,7 @@ import { ROUTES } from "../constants/routes";
  * Maps onboarding step to the corresponding route
  */
 export const ONBOARDING_STEP_TO_ROUTE: Record<OnboardingStep, string> = {
-  not_started: ROUTES.ONBOARDING.ROOT,
+  not_started: ROUTES.ONBOARDING.START,
   profile: ROUTES.ONBOARDING.PROFILE,
   interests: ROUTES.ONBOARDING.INTERESTS,
   completed: ROUTES.APP.USER,
@@ -20,6 +23,7 @@ export const ONBOARDING_STEP_TO_ROUTE: Record<OnboardingStep, string> = {
  * Maps route to onboarding step
  */
 export const ROUTE_TO_ONBOARDING_STEP: Record<string, OnboardingStep> = {
+  [ROUTES.ONBOARDING.START]: "not_started",
   [ROUTES.ONBOARDING.PROFILE]: "profile",
   [ROUTES.ONBOARDING.INTERESTS]: "interests",
   [ROUTES.ONBOARDING.DONE]: "completed",
@@ -27,8 +31,18 @@ export const ROUTE_TO_ONBOARDING_STEP: Record<string, OnboardingStep> = {
 
 /**
  * Get the correct route for a given onboarding step
+ * 
+ * Source unique de vérité pour les routes d'onboarding
+ * Gère le cas undefined (redirige vers login)
+ * 
+ * @param step - Onboarding step (peut être undefined)
+ * @returns Route correspondante ou ROUTES.AUTH.LOGIN si step est undefined
  */
-export function getRouteForStep(step: OnboardingStep): string {
+export function getRouteForStep(step: OnboardingStep | undefined): string {
+  if (!step) {
+    return ROUTES.AUTH.LOGIN;
+  }
+  
   return ONBOARDING_STEP_TO_ROUTE[step];
 }
 
