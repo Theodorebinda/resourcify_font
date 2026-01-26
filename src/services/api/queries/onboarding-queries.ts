@@ -34,8 +34,17 @@ export function useOnboardingStep() {
         API_ENDPOINTS.ONBOARDING.STATUS
       );
 
-      console.log("[Onboarding Step]", response.data);
-      return response.data.onboarding_step;
+      const step = response.data?.onboarding_step;
+      if (!step) {
+        const apiError: ApiError = {
+          code: "invalid_response",
+          message: "Missing onboarding_step in response",
+          details: response.data as Record<string, unknown>,
+        };
+        throw apiError;
+      }
+
+      return step;
     },
     staleTime: 30 * 1000, // 30 seconds - onboarding state can change frequently
     retry: 1,

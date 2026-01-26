@@ -45,6 +45,8 @@ export const apiClient = axios.create({
   withCredentials: true, // Important: include cookies in requests
 });
 
+const shouldLogRequests = process.env.NEXT_PUBLIC_API_LOGS === "true";
+
 /**
  * Request Interceptor
  * 
@@ -63,6 +65,13 @@ apiClient.interceptors.request.use(
     // Convert backend endpoint to proxy route
     if (config.url) {
       config.url = getProxyUrl(config.url);
+    }
+
+    if (shouldLogRequests) {
+      console.debug("[API Request]", {
+        url: config.url,
+        method: config.method?.toUpperCase(),
+      });
     }
     
     return config;
