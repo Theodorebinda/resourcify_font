@@ -50,32 +50,17 @@ export async function getAuthCookie(): Promise<AuthCookie | null> {
     
     // Read access_token (httpOnly cookie set by /api/auth/session or backend)
     const token = cookieStore.get("access_token")?.value;
-    
-    // Read activated (non-httpOnly, readable by middleware)
-    const activated = cookieStore.get("activated")?.value === "true";
-    
-    // Read onboarding_step from cookie (set by backend or /api/auth/session)
-    // This is the source of truth - never infer or guess
-    const onboardingStepCookie = cookieStore.get("onboarding_step")?.value;
-    const onboardingStep: OnboardingStep | undefined = 
-      onboardingStepCookie && 
-      ["not_started", "profile", "interests", "completed"].includes(onboardingStepCookie)
-        ? (onboardingStepCookie as OnboardingStep)
-        : undefined;
 
     // Must have token to be considered authenticated
     if (!token) {
       return null;
     }
 
-    // Extract user_id from token if needed, or use a separate cookie
-    // For now, we'll use token presence as authentication indicator
-    // user_id can be extracted from token or stored in separate cookie
+    // Only tokens are stored in cookies
+    // activated and onboarding_step are retrieved via API calls in components
     return {
       token,
       userId: token, // Temporary - can be extracted from token or separate cookie
-      activated,
-      onboardingStep,
     };
   } catch (error) {
     // Silent fail - middleware treats as unauthenticated

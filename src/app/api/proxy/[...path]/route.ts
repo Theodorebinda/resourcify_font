@@ -162,8 +162,6 @@ async function handleProxyRequest(
       );
       response.cookies.delete("access_token");
       response.cookies.delete("refresh_token");
-      response.cookies.delete("activated");
-      response.cookies.delete("onboarding_step");
       return response;
     }
 

@@ -24,7 +24,7 @@ import type { LoginResponse } from "../../../../types";
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
-    const { access_token, refresh_token, user } = body as Partial<LoginResponse> & { user?: { id: string; activated?: boolean; onboarding_step?: string } };
+    const { access_token, refresh_token } = body as Partial<LoginResponse>;
 
     // If access_token is provided (from login), use it
     // Otherwise, read from existing cookie (for user state sync)
@@ -41,12 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     
-    if (!user) {
-      return NextResponse.json(
-        { error: "Missing user data" },
-        { status: 400 }
-      );
-    }
+    // User data is not required - only tokens are stored in cookies
 
     const isCrossSite = process.env.NEXT_PUBLIC_COOKIE_CROSS_SITE === "true";
     const sameSite = isCrossSite ? "none" : "lax";
@@ -78,25 +73,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // Set activated cookie (readable by middleware)
-    response.cookies.set("activated", String(user.activated ?? false), {
-      httpOnly: false, // Middleware needs to read this
-      secure,
-      sameSite,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-
-    // Set onboarding_step cookie (readable by middleware and frontend)
-    // This is the source of truth - never infer or guess
-    const onboardingStep = user.onboarding_step || "not_started";
-    response.cookies.set("onboarding_step", onboardingStep, {
-      httpOnly: false, // Middleware and frontend need to read this
-      secure,
-      sameSite,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
+    // Only tokens are stored in cookies
+    // activated and onboarding_step are retrieved via API calls
 
     return response;
   } catch (error) {

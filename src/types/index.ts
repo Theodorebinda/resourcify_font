@@ -29,15 +29,11 @@ export type OnboardingStep =
   | "completed";
 
 // Auth cookie structure (minimal payload for middleware)
+// Only tokens are stored in cookies
+// activated and onboarding_step are retrieved via API calls
 export interface AuthCookie {
   token?: string;
   userId?: string;
-  activated?: boolean;
-  /**
-   * Current onboarding step from server
-   * This is the source of truth - never infer or guess
-   */
-  onboardingStep?: OnboardingStep;
 }
 
 // API Error response structure

@@ -30,37 +30,21 @@ export type UserState =
 /**
  * Derives user state from auth cookie
  * 
+ * Simplified: Only checks for token presence
+ * activated and onboarding_step are retrieved via API calls in components
+ * 
  * Deterministic function: same input → same output
  * No side effects, no async logic
  */
 export function getUserState(authCookie: AuthCookie | null): UserState {
   // No auth cookie = VISITOR
-  if (!authCookie) {
+  if (!authCookie || !authCookie.token) {
     return "VISITOR";
   }
 
-  // Has token but not activated = AUTHENTICATED
-  if (!authCookie.activated) {
-    return "AUTHENTICATED";
-  }
-
-  // Activated - check onboarding step
-  const step = authCookie.onboardingStep || "not_started";
-
-  // Map onboarding step to state
-  switch (step) {
-    case "not_started":
-      return "ACTIVATED";
-    case "profile":
-      return "ONBOARDING.profile";
-    case "interests":
-      return "ONBOARDING.interests";
-    case "completed":
-      return "APP_READY";
-    default:
-      // Unknown step - treat as ACTIVATED (safe fallback)
-      return "ACTIVATED";
-  }
+  // Has token = AUTHENTICATED
+  // Components will handle activated/onboarding_step via API calls
+  return "AUTHENTICATED";
 }
 
 /**

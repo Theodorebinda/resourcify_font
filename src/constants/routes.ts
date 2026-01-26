@@ -23,6 +23,7 @@ export const ROUTES = {
   // Onboarding routes
   ONBOARDING: {
     ROOT: "/onboarding",
+    START: "/onboarding/start/",
     ACTIVATION_REQUIRED: "/onboarding/activation-required/",
     PROFILE: "/onboarding/profile/",
     INTERESTS: "/onboarding/interests/",

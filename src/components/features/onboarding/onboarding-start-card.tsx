@@ -21,17 +21,23 @@ export function OnboardingStartCard() {
     if (onboardingStep && onboardingStep !== "not_started") {
       setMessage("Étape expirée, redirection...");
       await refetch();
+      // Force reload to let middleware redirect to correct step
+      window.location.reload();
       return;
     }
 
     try {
       await startOnboarding.mutateAsync();
-      await refetch();
+      // Backend updates onboarding_step cookie to "profile"
+      // Force reload to let middleware redirect to /onboarding/profile/
+      window.location.reload();
     } catch (error) {
       const apiError = error as { code?: string };
       if (apiError.code === "invalid_onboarding_step") {
         setMessage("Étape expirée, redirection...");
         await refetch();
+        // Force reload to let middleware redirect to correct step
+        window.location.reload();
         return;
       }
       setMessage("Impossible de démarrer l'onboarding. Réessaie dans un instant.");

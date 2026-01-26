@@ -50,18 +50,15 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const authCookie = await getAuthCookie();
   const userState = getUserState(authCookie);
 
-  // Step 3: Special handling for post-login route
-  // Post-login always redirects based on user state
+  // Step 3: Post-login route - allow access, page will handle redirects via API
+  // No middleware redirect needed (page fetches user state and redirects client-side)
   if (pathname === ROUTES.AUTH.POST_LOGIN) {
-    const redirectRoute = getPostLoginRedirect(userState);
-    return NextResponse.redirect(new URL(redirectRoute, request.url));
+    return NextResponse.next();
   }
 
-  // Step 3b: Onboarding root redirects based on user state
-  if (pathname === ROUTES.ONBOARDING.ROOT) {
-    const redirectRoute = getRedirectRouteForState(userState);
-    return NextResponse.redirect(new URL(redirectRoute, request.url));
-  }
+  // Step 3b: Onboarding root is accessible to ACTIVATED and onboarding states
+  // It renders different screens based on onboarding_step (handled by OnboardingFlow component)
+  // No redirect needed here - let the component decide what to render
 
   // Step 4: Check if user state can access this route
   // Deterministic check: same state + route → same result

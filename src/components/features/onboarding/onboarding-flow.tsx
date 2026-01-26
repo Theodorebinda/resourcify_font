@@ -30,8 +30,10 @@ export function OnboardingFlow() {
     );
   }
 
+  // Onboarding start is handled by dedicated page /onboarding/start/
+  // This component only handles profile, interests, and completed states
   if (!onboardingStep || onboardingStep === "not_started") {
-    return <OnboardingStartCard />;
+    return null; // Should not happen - user should be on /onboarding/start/
   }
 
   if (onboardingStep === "profile") {
