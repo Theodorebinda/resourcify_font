@@ -22,10 +22,11 @@ export const ROUTES = {
 
   // Onboarding routes
   ONBOARDING: {
-    ACTIVATION_REQUIRED: "/onboarding/activation-required",
-    PROFILE: "/onboarding/profile",
-    INTERESTS: "/onboarding/interests",
-    DONE: "/onboarding/done",
+    ROOT: "/onboarding",
+    ACTIVATION_REQUIRED: "/onboarding/activation-required/",
+    PROFILE: "/onboarding/profile/",
+    INTERESTS: "/onboarding/interests/",
+    DONE: "/onboarding/done/",
   },
 
   // App routes

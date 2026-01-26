@@ -53,6 +53,8 @@ export interface User {
   email: string;
   username: string;
   name?: string;
+  bio?: string;
+  avatar_url?: string;
   activated: boolean;
   /**
    * Current onboarding step - server is the source of truth

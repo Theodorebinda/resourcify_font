@@ -57,6 +57,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL(redirectRoute, request.url));
   }
 
+  // Step 3b: Onboarding root redirects based on user state
+  if (pathname === ROUTES.ONBOARDING.ROOT) {
+    const redirectRoute = getRedirectRouteForState(userState);
+    return NextResponse.redirect(new URL(redirectRoute, request.url));
+  }
+
   // Step 4: Check if user state can access this route
   // Deterministic check: same state + route → same result
   // - VISITOR can access public routes and auth routes

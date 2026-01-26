@@ -6,10 +6,10 @@
  * The frontend NEVER infers or guesses the step.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../client";
 import { API_ENDPOINTS } from "../../../constants/api";
-import type { OnboardingStep, ApiError } from "../../../types";
+import type { OnboardingStep, ApiError, ApiResponse } from "../../../types";
 
 // Query keys
 export const onboardingKeys = {
@@ -48,5 +48,47 @@ export function useOnboardingStep() {
     },
     staleTime: 30 * 1000, // 30 seconds - onboarding state can change frequently
     retry: 1,
+  });
+}
+
+export interface OnboardingProfilePayload {
+  username: string;
+  bio?: string;
+  avatar_url?: string;
+}
+
+export interface OnboardingInterestsPayload {
+  tag_ids: string[];
+}
+
+export function useSubmitOnboardingProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, OnboardingProfilePayload>({
+    mutationFn: async (payload) => {
+      await apiClient.post<ApiResponse<{ message?: string }>>(
+        API_ENDPOINTS.ONBOARDING.PROFILE,
+        payload
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.step() });
+    },
+  });
+}
+
+export function useSubmitOnboardingInterests() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, OnboardingInterestsPayload>({
+    mutationFn: async (payload) => {
+      await apiClient.post<ApiResponse<{ message?: string }>>(
+        API_ENDPOINTS.ONBOARDING.INTERESTS,
+        payload
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.step() });
+    },
   });
 }
