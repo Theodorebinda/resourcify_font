@@ -58,10 +58,34 @@ export function useUser() {
     queryFn: async () => {
       // Backend returns: { status: "ok", data: User }
       const response = await apiClient.get<ApiResponse<User>>(API_ENDPOINTS.USER.ME);
-      return response.data.data;
+
+      console.log("response", response);
+      const userData = response.data.data;
+      
+      // Update localStorage with fresh data (client-side only)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(userData));
+      }
+      
+      return userData;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
+    // Use placeholderData from localStorage to avoid hydration mismatch
+    placeholderData: () => {
+      if (typeof window === "undefined") {
+        return undefined;
+      }
+      try {
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          return JSON.parse(stored) as User;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return undefined;
+    },
   });
 
   // Derived flags - computed from user data
@@ -118,6 +142,8 @@ export function useLogin() {
         body: JSON.stringify(credentials),
       });
 
+      console.log("login response", response);
+
       if (!response.ok) {
         const errorData = await response.json();
         const apiError: ApiError = {
@@ -144,17 +170,23 @@ export function useLogin() {
         credentials: "include", // Important: include cookies in request/response
         body: JSON.stringify(loginData), // Send full login response
       });
+
+      console.log("session response", sessionResponse);
       
       if (!sessionResponse.ok) {
         const errorText = await sessionResponse.text();
         throw new Error(`Failed to establish session: ${errorText}`);
       }
       
+      // Persist user in localStorage
+      if (loginData.user && typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(loginData.user));
+      }
+      
+      // Set user in TanStack Query cache immediately
+      queryClient.setQueryData(authKeys.user(), loginData.user);
+      
       return loginData;
-    },
-    onSuccess: () => {
-      // Invalidate user query to refetch
-      queryClient.invalidateQueries({ queryKey: authKeys.user() });
     },
   });
 }
@@ -182,6 +214,8 @@ export function useRegister() {
         credentials: "include", // For cookies
         body: JSON.stringify(data),
       });
+
+      console.log("register response", response);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -218,6 +252,8 @@ export function useActivateAccount() {
         credentials: "include", // For cookies
         body: JSON.stringify({ token }),
       });
+
+      console.log("activate account response", response);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -260,6 +296,8 @@ export function useResendActivation() {
         body: JSON.stringify({ email }),
       });
 
+      console.log("resend activation response", response);
+
       if (!response.ok) {
         const errorData = await response.json();
         const apiError: ApiError = {
@@ -278,7 +316,7 @@ export function useResendActivation() {
 
 /**
  * Logout mutation
- * Clears tokens and all queries on success
+ * Clears tokens, user data, and all queries on success
  */
 export function useLogout() {
   const queryClient = useQueryClient();
@@ -288,12 +326,14 @@ export function useLogout() {
       await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
     },
     onSuccess: () => {
-      
+      // Clear localStorage
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
       }
      
+      // Clear TanStack Query cache
       queryClient.clear();
     },
   });

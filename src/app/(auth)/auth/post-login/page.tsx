@@ -11,17 +11,15 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "../../../../services/api/queries/auth-queries";
-import { useOnboardingStep } from "../../../../services/api/queries/onboarding-queries";
 import { ROUTES } from "../../../../constants/routes";
 
 export default function PostLoginPage() {
   const router = useRouter();
-  const { user, isLoading: isLoadingUser } = useUser();
-  const { data: onboardingStep, isLoading: isLoadingOnboarding } = useOnboardingStep();
+  const { user, isLoading } = useUser();
 
   useEffect(() => {
-    // Wait for both queries to complete
-    if (isLoadingUser || isLoadingOnboarding) {
+    // Wait for query to complete
+    if (isLoading) {
       return;
     }
 
@@ -31,15 +29,15 @@ export default function PostLoginPage() {
       return;
     }
 
-    // If user is activated, check onboarding step
-    if (user && user.activated && onboardingStep) {
-      if (onboardingStep === "not_started") {
+    // If user is activated, check onboarding step from user data
+    if (user && user.activated && user.onboarding_step) {
+      if (user.onboarding_step === "not_started") {
         router.replace(ROUTES.ONBOARDING.START);
-      } else if (onboardingStep === "profile") {
+      } else if (user.onboarding_step === "profile") {
         router.replace(ROUTES.ONBOARDING.PROFILE);
-      } else if (onboardingStep === "interests") {
+      } else if (user.onboarding_step === "interests") {
         router.replace(ROUTES.ONBOARDING.INTERESTS);
-      } else if (onboardingStep === "completed") {
+      } else if (user.onboarding_step === "completed") {
         router.replace(ROUTES.APP.USER);
       }
       return;
@@ -49,7 +47,7 @@ export default function PostLoginPage() {
     if (!user) {
       router.replace(ROUTES.AUTH.LOGIN);
     }
-  }, [user, onboardingStep, isLoadingUser, isLoadingOnboarding, router]);
+  }, [user, isLoading, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
