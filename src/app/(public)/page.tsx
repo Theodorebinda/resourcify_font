@@ -1,16 +1,28 @@
 /**
- * Landing Page
- * Public route - no authentication required
+ * Landing Page - Page d'accueil
+ * 
+ * Point d'entrée principal de l'application Ressourcefy
+ * Route publique - aucune authentification requise
+ * 
+ * Sections:
+ * - Hero: Présentation de l'application et CTA principal
+ * - Features: Fonctionnalités principales
+ * - How It Works: Processus d'utilisation
+ * - CTA: Appel à l'action final
  */
+
+import { HeroSection } from "../../components/landing/hero-section";
+import { FeaturesSection } from "../../components/landing/features-section";
+import { HowItWorksSection } from "../../components/landing/how-it-works-section";
+import { CtaSection } from "../../components/landing/cta-section";
 
 export default function LandingPage() {
   return (
-    <div className="container mx-auto px-4 py-16">
-      <h1 className="text-4xl font-bold mb-4">Welcome to Ressourcefy</h1>
-      <p className="text-muted-foreground">
-        Your platform for sharing and discovering resources.
-      </p>
-      {/* TODO: Add hero section, features, CTA in Phase 2 */}
-    </div>
+    <main className="min-h-screen">
+      <HeroSection />
+      <FeaturesSection />
+      <HowItWorksSection />
+      <CtaSection />
+    </main>
   );
 }
