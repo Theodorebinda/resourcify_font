@@ -23,8 +23,9 @@ import {
 export function PublicHeader() {
   const navLinks = [
     { href: ROUTES.HOME, label: "Accueil" },
+    { href: ROUTES.FEATURES, label: "Fonctionnalités" },
+    { href: ROUTES.PRICING, label: "Tarif" },
     { href: ROUTES.BLOG, label: "Blog" },
-    { href: ROUTES.PRICING, label: "Tarifs" },
     { href: ROUTES.CONTACT, label: "Contact" },
   ];
 

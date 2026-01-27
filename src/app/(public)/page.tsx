@@ -19,7 +19,6 @@ import { PricingHero } from "../../components/pricing/pricing-hero";
 import { PricingCards } from "../../components/pricing/pricing-cards";
 import { FeaturesComparison } from "../../components/pricing/features-comparison";
 import { PricingFaq } from "../../components/pricing/pricing-faq";
-import { PricingCta } from "../../components/pricing/pricing-cta";
 import { CtaSection } from "../../components/landing/cta-section";
 
 export default function LandingPage() {
@@ -35,7 +34,6 @@ export default function LandingPage() {
         <PricingCards />
         <FeaturesComparison />
         <PricingFaq />
-        <PricingCta />
       </section>
       
       <CtaSection />

@@ -6,6 +6,7 @@
 export const ROUTES = {
   // Public routes
   HOME: "/",
+  FEATURES: "/#features", // Section features dans l'accueil
   PRICING: "/#pricing", // Section pricing dans l'accueil
   BLOG: "/blog",
   CONTACT: "/contact",
