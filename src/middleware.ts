@@ -28,7 +28,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthCookie } from "./utils/cookies";
 import { getUserState } from "./utils/user-state";
-import { canAccessRoute, getRedirectRouteForState, getPostLoginRedirect } from "./utils/route-guards";
+import { canAccessRoute, getRedirectRouteForState } from "./utils/route-guards";
 import { ROUTES } from "./constants/routes";
 
 /**

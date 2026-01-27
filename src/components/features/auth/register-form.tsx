@@ -11,7 +11,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import Link from "next/link";
 import { registerSchema, type RegisterFormData } from "../../../lib/validations/auth";
 import { Button } from "../../ui/button";

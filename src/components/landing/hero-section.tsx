@@ -47,7 +47,7 @@ export function HeroSection() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href={ROUTES.ABOUT}>En savoir plus</Link>
+              <Link href="/">En savoir plus</Link>
             </Button>
           </div>
 
@@ -67,6 +67,21 @@ export function HeroSection() {
               <Share2 className="mb-2 h-8 w-8 text-primary" />
               <div className="text-3xl font-bold">100+</div>
               <div className="text-sm text-muted-foreground">Catégories</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Video Demo Section - Indépendante du conteneur max-w-4xl */}
+        <div className="mt-20 w-full">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted shadow-lg">
+              <iframe
+                src="https://player.vimeo.com/video/1154650649"
+                className="absolute left-0 top-0 h-full w-full"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+                title="WhatsApp Video 2026-01-14 at 13.33.01"
+              />
             </div>
           </div>
         </div>

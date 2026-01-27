@@ -5,7 +5,6 @@
 
 "use client";
 
-import { OnboardingStartCard } from "./onboarding-start-card";
 import { OnboardingProfileForm } from "./profile-form";
 import { OnboardingInterestsForm } from "./interests-form";
 import { useOnboardingStep } from "../../../services/api/queries/onboarding-queries";

@@ -1,8 +1,12 @@
 /**
  * Public Layout
- * For unauthenticated users viewing public pages
- * Phase 1: Minimal structural layout
+ * 
+ * Layout pour les pages publiques (landing, pricing, about, contact)
+ * Inclut le header et le footer publics avec navigation et sélecteur de thème
  */
+
+import { PublicHeader } from "../../components/shared/public-header";
+import { PublicFooter } from "../../components/shared/public-footer";
 
 export default function PublicLayout({
   children,
@@ -10,10 +14,10 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      {/* TODO: Add public header/navigation in Phase 2 */}
-      <main>{children}</main>
-      {/* TODO: Add public footer in Phase 2 */}
+    <div className="flex min-h-screen flex-col bg-background">
+      <PublicHeader />
+      <main className="flex-1">{children}</main>
+      <PublicFooter />
     </div>
   );
 }
