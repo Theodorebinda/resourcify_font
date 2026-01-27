@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "../../libs/utils";
 
 /**
@@ -13,7 +13,12 @@ import { cn } from "../../libs/utils";
  * Avec navigation rapide et accordéon
  */
 export function PricingFaq() {
+  const [isMounted, setIsMounted] = useState(false);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const faqs = [
     {
@@ -120,19 +125,19 @@ export function PricingFaq() {
               >
                 <CardHeader
                   className="cursor-pointer"
-                  onClick={() => toggleFaq(index)}
+                  onClick={() => isMounted && toggleFaq(index)}
                 >
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg pr-8">{faq.question}</CardTitle>
                     <ChevronDown
                       className={cn(
                         "h-5 w-5 flex-shrink-0 text-muted-foreground transition-transform",
-                        openIndex === index && "rotate-180"
+                        isMounted && openIndex === index && "rotate-180"
                       )}
                     />
                   </div>
                 </CardHeader>
-                {openIndex === index && (
+                {isMounted && openIndex === index && (
                   <CardContent>
                     <CardDescription className="text-base">{faq.answer}</CardDescription>
                   </CardContent>

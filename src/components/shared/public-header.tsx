@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../ui/button";
 import { ThemeSelector } from "./theme-selector";
 import { ROUTES } from "../../constants/routes";
@@ -15,12 +17,10 @@ import {
 } from "../ui/sheet";
 
 /**
- * Public Header Component
- * 
- * Header pour les pages publiques (landing, pricing, etc.)
- * Inclut la navigation et le sélecteur de thème
+ * Composant de navigation partagé
+ * Utilisé par les deux headers (normal et overlay)
  */
-export function PublicHeader() {
+function NavigationContent() {
   const navLinks = [
     { href: ROUTES.HOME, label: "Accueil" },
     { href: ROUTES.FEATURES, label: "Fonctionnalités" },
@@ -30,7 +30,7 @@ export function PublicHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -105,6 +105,61 @@ export function PublicHeader() {
           </div>
         </div>
       </div>
-    </header>
+    </>
+  );
+}
+
+/**
+ * Public Header Component
+ * 
+ * Deux headers :
+ * 1. Header normal qui scroll avec le contenu (flux normal)
+ * 2. Header fixe (overlay) qui apparaît après 400px de scroll
+ */
+export function PublicHeader() {
+  const [showOverlayHeader, setShowOverlayHeader] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      setShowOverlayHeader(scrollY > 400);
+    };
+
+    // Écouter le scroll
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    // Vérifier la position initiale
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  return (
+    <>
+      {/* Header normal - scroll avec le contenu */}
+      <header className="relative z-40 w-full bg-background border-b">
+        <NavigationContent />
+      </header>
+
+      {/* Header overlay fixe - apparaît après 400px de scroll */}
+      <AnimatePresence>
+        {showOverlayHeader && (
+          <motion.header
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            transition={{
+              duration: 0.3,
+              ease: [0.4, 0, 0.2, 1],
+            }}
+            className="fixed top-0 left-0 right-0 z-50 w-full bg-background/95 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/60 border-b shadow-sm"
+          >
+            <NavigationContent />
+          </motion.header>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
