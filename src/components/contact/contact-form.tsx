@@ -13,7 +13,7 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
-import { useToast } from "../../hooks/use-toast";
+// import { useToast } from "../../hooks/use-toast";
 import { Send } from "lucide-react";
 
 const contactSchema = z.object({
@@ -31,7 +31,7 @@ type ContactFormData = z.infer<typeof contactSchema>;
  * Formulaire de contact avec validation
  */
 export function ContactForm() {
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
@@ -43,32 +43,34 @@ export function ContactForm() {
     },
   });
 
-  const onSubmit = async (data: ContactFormData) => {
-    try {
-      // TODO: Implémenter l'envoi du formulaire via l'API
-      // await apiClient.post("/contact/", data);
+  // const onSubmit = async (data: ContactFormData) => {
+  //   try {
+  //     // TODO: Implémenter l'envoi du formulaire via l'API
+  //     // await apiClient.post("/contact/", data);
       
-      // Simulation d'envoi réussi
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     // Simulation d'envoi réussi
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      toast({
-        title: "Message envoyé !",
-        description: "Nous vous répondrons dans les plus brefs délais.",
-      });
+  //     toast({
+  //       title: "Message envoyé !",
+  //       description: "Nous vous répondrons dans les plus brefs délais.",
+  //     });
 
-      form.reset();
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer.",
-        variant: "destructive",
-      });
-    }
-  };
+  //     form.reset();
+  //   } catch (error) {
+  //     toast({
+  //       title: "Erreur",
+  //       description: "Une erreur est survenue. Veuillez réessayer.",
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form
+        // onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6">
         <div className="grid gap-6 sm:grid-cols-2">
           <FormField
             control={form.control}
