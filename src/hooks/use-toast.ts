@@ -177,7 +177,7 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, [state]);
+  }, []); // setState is stable and doesn't need to be in dependencies
 
   return {
     ...state,
