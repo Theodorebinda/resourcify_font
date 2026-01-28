@@ -69,7 +69,7 @@ const LoginForm: React.FC = () => {
       // Afficher un toast d'erreur
       toast({
         title: "Login failed",
-        description: error.message || "An error occurred.",
+        // description: error.message || "An error occurred.",
         variant: "destructive",
       });
       console.error(error);

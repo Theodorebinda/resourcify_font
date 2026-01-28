@@ -72,7 +72,7 @@ describe("Middleware - Access Control", () => {
     const publicRoutes = [
       { path: ROUTES.HOME, name: "home" },
       { path: ROUTES.PRICING, name: "pricing" },
-      { path: ROUTES.ABOUT, name: "about" },
+      { path: ROUTES.BLOG, name: "blog" },
       { path: ROUTES.CONTACT, name: "contact" },
     ];
 

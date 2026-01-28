@@ -45,7 +45,6 @@ export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
   // Authenticated users are redirected to their appropriate destination
   [ROUTES.HOME]: ["VISITOR", "APP_READY"],
   [ROUTES.PRICING]: ["VISITOR", "APP_READY"],
-  [ROUTES.ABOUT]: ["VISITOR", "APP_READY"],
   [ROUTES.CONTACT]: ["VISITOR", "APP_READY"],
   "/error": ["VISITOR", "AUTHENTICATED", "ACTIVATED", "ONBOARDING.profile", "ONBOARDING.interests", "APP_READY"], // Error page accessible to all
 

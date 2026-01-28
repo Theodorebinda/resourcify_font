@@ -7,8 +7,6 @@
 import { cookies } from "next/headers";
 import type { AuthCookie } from "../types";
 
-import type { OnboardingStep } from "../types";
-
 /**
  * Parse auth cookie from Next.js cookies()
  * Returns minimal auth state for middleware access control

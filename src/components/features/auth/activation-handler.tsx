@@ -40,12 +40,13 @@ export function ActivationHandler() {
 
   // Extract token from URL
   useEffect(() => {
+    if (!searchParams) return;
     const token = searchParams.get("token");
     if (token) {
       setActivationToken(token);
       activateMutation.mutate({ token });
     }
-  }, [searchParams]);
+  }, [activateMutation, searchParams]);
 
   // Handle success
   useEffect(() => {

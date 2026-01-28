@@ -1,34 +1,58 @@
-import Image from "next/image";
+// import Image from "next/image";
 import { useState } from "react";
 
-import { useArticles } from "@/hooks/use-articles";
-import { useDocuments } from "@/hooks/use-documents";
-import { ResourceCategory } from "@/types/resource";
+// import { useArticles } from "../hooks/use-articles";
+// import { useDocuments } from "@/hooks/use-documents";
+// import { ResourceCategory } from "@/types/resource";
 
 import PopularArticles from "./postePopulars";
 import TutorielsList from "./tutoriels";
+// import { StaticImport } from "next/dist/shared/lib/get-img-props";
+
+// Type Article pour les articles (utilisé dans le code commenté ligne 50)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface Article {
+  id: string;
+  title: string;
+  summary: string;
+  author: string;
+  date: string;
+}
+
+// Type Article pour les articles
+interface Article {
+  id: string;
+  title: string;
+  summary: string;
+  author: string;
+  date: string;
+}
 
 const ResourceSection = () => {
   const [selectedCategory, setSelectedCategory] =
-    useState<ResourceCategory>("All categories");
-  const {
-    data: articles = [],
-    isLoading: articlesLoading,
-    isError: articlesError,
-  } = useArticles();
+      useState<string>("All categories");
+  // const {
+  //   data: articles = [],
+  //   isLoading: articlesLoading,
+  //   isError: articlesError,
+  // } = useArticles();
   const {
     data: documentsByCategory,
     isLoading: documentsLoading,
     isError: documentsError,
-  } = useDocuments();
+  } = {
+    data: [],
+    isLoading: false,
+    isError: false,
+  };
 
   const categories =
     (documentsByCategory &&
-      (Object.keys(documentsByCategory) as ResourceCategory[])) || [];
-  const documents = documentsByCategory?.[selectedCategory] ?? [];
+      (Object.keys(documentsByCategory) as string[])) || [];
+  // const documents = documentsByCategory?.[selectedCategory as keyof typeof documentsByCategory] ?? [];
 
-  const isLoading = articlesLoading || documentsLoading;
-  const hasError = articlesError || documentsError;
+  const isLoading = documentsLoading;
+  const hasError = documentsError;
 
   return (
     <div className="flex justify-between gap-6 w-full ">
@@ -40,9 +64,9 @@ const ResourceSection = () => {
             Impossible de charger les ressources pour le moment.
           </p>
         )}
-        {!isLoading &&
+        {/* {!isLoading &&
           !hasError &&
-          articles.map((article) => (
+          articles.map((article: Article) => (
             <div key={article.id} className="mb-4">
               <h3 className="font-semibold">{article.title}</h3>
               <p>{article.summary}</p>
@@ -53,7 +77,7 @@ const ResourceSection = () => {
                 - {new Date(article.date).toLocaleDateString()}
               </p>
             </div>
-          ))}
+          ))} */}
         <div className="mt-8">
           <PopularArticles />
         </div>
@@ -62,7 +86,7 @@ const ResourceSection = () => {
         <h2 className="text-2xl font-bold mb-4">Documents</h2>
         <div className="flex flex-col">
           <div className="flex gap-2 mb-4 flex-wrap ">
-            {categories.map((category) => (
+            {categories.map((category: string) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
@@ -78,7 +102,7 @@ const ResourceSection = () => {
           </div>
           <div className="flex flex-col gap-4 justify-between h-[30vh]">
             <div className="flex justify-between flex-wrap gap-2">
-              {documents.slice(0, 4).map((doc) => (
+              {/* {documents.slice(0, 4).map((doc: { thumbnail: string | StaticImport; id: Key | null | undefined; title: string; }) => (
                 <Image
                   width={90}
                   height={100}
@@ -87,7 +111,8 @@ const ResourceSection = () => {
                   className="mb-2"
                   alt={doc.title}
                 />
-              ))}
+              ))} */}
+              dhj
             </div>
             <div className="flex justify-end">
               <button className="bg-blue-500 text-white font-medium p-1 text-xs rounded hover:bg-blue-600 transition duration-200">

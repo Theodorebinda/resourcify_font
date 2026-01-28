@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { ROUTES } from "../../constants/routes";
 import { LogOut, Settings, User } from "lucide-react";
 import { SidebarTrigger } from "../ui/sidebar";
+import { ThemeSelector } from "./theme-selector";
 
 export function AppHeader() {
   const { user, isLoading } = useUser();
@@ -63,6 +64,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-4">
+          <ThemeSelector />
           {isLoading ? (
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-8 rounded-full" />
