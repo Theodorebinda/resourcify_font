@@ -17,7 +17,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActivateAccount } from "../../../services/api/queries/auth-queries";
 import { useServerError } from "../../../hooks/use-server-error";
@@ -34,19 +34,26 @@ export function ActivationHandler() {
   const searchParams = useSearchParams();
   const { toast: showToast } = useToast();
   const [activationToken, setActivationToken] = useState<string | null>(null);
+  const hasActivatedRef = useRef(false);
   
   const activateMutation = useActivateAccount();
   const serverError = useServerError(activateMutation.error, () => activateMutation.reset());
 
-  // Extract token from URL
+  // Extract token from URL once using useMemo
+  const tokenFromUrl = useMemo(() => {
+    if (!searchParams) return null;
+    return searchParams.get("token");
+  }, [searchParams]);
+
+  // Activate account - only once using ref to prevent re-execution
   useEffect(() => {
-    if (!searchParams) return;
-    const token = searchParams.get("token");
-    if (token) {
-      setActivationToken(token);
-      activateMutation.mutate({ token });
-    }
-  }, [activateMutation, searchParams]);
+    if (!tokenFromUrl || hasActivatedRef.current) return;
+    
+    hasActivatedRef.current = true; // Mark as attempted before mutation
+    setActivationToken(tokenFromUrl);
+    activateMutation.mutate({ token: tokenFromUrl });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenFromUrl]); // Only depend on the token value, not the mutation object
 
   // Handle success
   useEffect(() => {

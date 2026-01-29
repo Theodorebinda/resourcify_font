@@ -49,6 +49,7 @@ import {
   User,
   LogOut,
   ChevronUp,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -56,6 +57,7 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -74,6 +76,12 @@ const navItems: NavItem[] = [
     url: "/app/settings",
     icon: Settings,
   },
+  {
+    title: "Administration",
+    url: ROUTES.ADMIN.DASHBOARD,
+    icon: Shield,
+    adminOnly: true,
+  },
 ];
 
 function AppSidebarContent() {
@@ -83,19 +91,34 @@ function AppSidebarContent() {
   const { open, setOpen } = useSidebar();
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
+  const lastSyncedRef = React.useRef<{ zustand: boolean; provider: boolean }>({
+    zustand: sidebarOpen,
+    provider: open,
+  });
 
-  // Sync Zustand state with SidebarProvider state
+  // Sync Zustand state to SidebarProvider (Zustand is source of truth)
   React.useEffect(() => {
-    if (open !== sidebarOpen) {
-      setSidebarOpen(open);
+    if (sidebarOpen !== lastSyncedRef.current.zustand) {
+      lastSyncedRef.current.zustand = sidebarOpen;
+      if (open !== sidebarOpen) {
+        setOpen(sidebarOpen);
+        lastSyncedRef.current.provider = sidebarOpen;
+      }
     }
-  }, [open, sidebarOpen, setSidebarOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sidebarOpen]); // Only depend on sidebarOpen
 
+  // Sync SidebarProvider changes to Zustand (user interaction with sidebar)
   React.useEffect(() => {
-    if (sidebarOpen !== open) {
-      setOpen(sidebarOpen);
+    if (open !== lastSyncedRef.current.provider) {
+      lastSyncedRef.current.provider = open;
+      if (sidebarOpen !== open) {
+        setSidebarOpen(open);
+        lastSyncedRef.current.zustand = open;
+      }
     }
-  }, [sidebarOpen, open, setOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]); // Only depend on open
 
   const handleLogout = async () => {
     try {
@@ -125,16 +148,25 @@ function AppSidebarContent() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems
+                .filter((item) => {
+                  // Filtrer les items admin si l'utilisateur n'est pas admin
+                  if (item.adminOnly) {
+                    const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+                    return isAdmin;
+                  }
+                  return true;
+                })
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -36,4 +36,15 @@ export const ROUTES = {
     DASHBOARD: "/app",
     USER: "/user",
   },
+
+  // Admin routes
+  ADMIN: {
+    ROOT: "/admin",
+    DASHBOARD: "/admin/dashboard",
+    USERS: "/admin/users",
+    TAGS: "/admin/tags",
+    RESOURCES: "/admin/resources",
+    SUBSCRIPTIONS: "/admin/subscriptions",
+    PAYMENTS: "/admin/payments",
+  },
 } as const;

@@ -5,6 +5,118 @@
 
 ---
 
+## Quick Start & Configuration
+
+### Base Configuration
+
+All API requests should be made to the base URL with the following headers:
+
+```javascript
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+// Standard headers for authenticated requests
+const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${accessToken}` // Required for authenticated endpoints
+};
+```
+
+### Authentication Setup
+
+1. **Store tokens securely**:
+   ```javascript
+   // After login, store tokens
+   localStorage.setItem('authToken', accessToken);
+   localStorage.setItem('refreshToken', refreshToken);
+   ```
+
+2. **Create API client**:
+   ```javascript
+   class RessourcefyAPI {
+     constructor() {
+       this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+     }
+     
+     async request(endpoint, options = {}) {
+       const token = localStorage.getItem('authToken');
+       const url = `${this.baseURL}${endpoint}`;
+       
+       const config = {
+         ...options,
+         headers: {
+           'Content-Type': 'application/json',
+           ...(token && { 'Authorization': `Bearer ${token}` }),
+           ...options.headers
+         },
+         credentials: 'include' // Important for cookies
+       };
+       
+       const response = await fetch(url, config);
+       
+       if (!response.ok) {
+         const error = await response.json();
+         throw new Error(error.error?.message || error.detail || 'Request failed');
+       }
+       
+       return await response.json();
+     }
+   }
+   
+   export default new RessourcefyAPI();
+   ```
+
+3. **Handle token refresh** (optional):
+   ```javascript
+   // Add token refresh logic if needed
+   if (response.status === 401) {
+     // Attempt refresh
+     const refreshToken = localStorage.getItem('refreshToken');
+     // Call refresh endpoint and retry request
+   }
+   ```
+
+### Admin Endpoints Configuration
+
+Admin endpoints require elevated permissions (`IsAdmin` or `IsSuperAdmin`). Ensure the authenticated user has the appropriate role:
+
+```javascript
+// Check user role before making admin requests
+const user = JSON.parse(localStorage.getItem('user'));
+if (!user || !['ADMIN', 'SUPERADMIN'].includes(user.role)) {
+  throw new Error('Insufficient permissions');
+}
+```
+
+### Error Handling
+
+All endpoints follow a consistent error format:
+
+```javascript
+try {
+  const data = await api.request('/admin/users/');
+} catch (error) {
+  // Handle error
+  if (error.message.includes('permission')) {
+    // Redirect to unauthorized page
+  } else {
+    // Show error message to user
+  }
+}
+```
+
+### CORS Configuration
+
+For development, ensure your frontend is whitelisted in Django CORS settings. In production, configure allowed origins in `settings.py`:
+
+```python
+CORS_ALLOWED_ORIGINS = [
+    "https://yourdomain.com",
+    "https://www.yourdomain.com",
+]
+```
+
+---
+
 ## Table of Contents
 
 1. [Authentication](#authentication)
@@ -29,6 +141,43 @@
 8. [Error Handling](#error-handling)
 9. [Frontend Integration Examples](#frontend-integration-examples)
 10. [HTTP Cookies & Middleware Support](#http-cookies--middleware-support)
+11. [Admin Endpoints](#admin-endpoints)
+    - [User Management](#admin-user-management)
+      - [List Users](#list-users)
+      - [Get User Details](#get-user-details)
+      - [Update User](#update-user)
+      - [Delete User](#delete-user)
+      - [Change User Role](#change-user-role)
+      - [Get User Activity History](#get-user-activity-history)
+      - [Impersonate User](#impersonate-user)
+      - [Reset User Password](#reset-user-password)
+    - [Tag Management](#admin-tag-management)
+      - [List Tags](#list-tags)
+      - [Get Tag Details](#get-tag-details)
+      - [Create Tag](#create-tag)
+      - [Update Tag](#update-tag)
+      - [Delete Tag](#delete-tag)
+      - [Merge Tags](#merge-tags)
+    - [Resource Management](#admin-resource-management)
+      - [List Resources](#list-resources)
+      - [Get Resource Details](#get-resource-details)
+      - [Create Resource](#create-resource)
+      - [Update Resource](#update-resource)
+      - [Delete Resource](#delete-resource)
+      - [Add Resource Version](#add-resource-version)
+    - [Subscription Management](#admin-subscription-management)
+      - [List Subscriptions](#list-subscriptions)
+      - [Get Subscription Details](#get-subscription-details)
+      - [Update Subscription](#update-subscription)
+      - [Cancel Subscription](#cancel-subscription)
+    - [Payment Management](#admin-payment-management)
+      - [List Payments](#list-payments)
+      - [Get Payment Details](#get-payment-details)
+      - [Refund Payment](#refund-payment)
+    - [Dashboard](#admin-dashboard)
+      - [Get Dashboard Overview](#get-dashboard-overview)
+      - [Get Dashboard Activity](#get-dashboard-activity)
+      - [Get System Health](#get-system-health)
 
 ---
 
@@ -397,6 +546,81 @@ try {
 
 ---
 
+### Logout
+
+**Endpoint**: `POST /auth/logout/`  
+**Authentication**: Optional (works even if token expired)  
+**Description**: Logout and clear all HTTP cookies
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>  (optional)
+```
+
+**Body**: Empty (no body required)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "message": "Logged out successfully"
+  }
+}
+```
+
+**HTTP Cookies Cleared**:
+The backend automatically clears the following cookies:
+- `access_token` (expired immediately)
+- `refresh_token` (expired immediately)
+- `activated` (expired immediately)
+- `onboarding_step` (expired immediately)
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/auth/logout/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -b "access_token=YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function logout() {
+  const response = await fetch('http://localhost:8000/api/auth/logout/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    credentials: 'include' // Important: Include cookies
+  });
+  
+  if (!response.ok) {
+    throw new Error('Logout failed');
+  }
+  
+  // Clear local storage
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  
+  // Cookies are automatically cleared by backend
+  // Redirect to login
+  window.location.href = '/login';
+}
+
+// Usage
+logout();
+```
+
+---
+
 ### Request Password Reset
 
 **Endpoint**: `POST /auth/password-reset/`  
@@ -554,6 +778,87 @@ try {
   window.location.href = '/login';
 } catch (error) {
   console.error('Reset error:', error.message);
+}
+```
+
+---
+
+## User Management
+
+### Get Current User
+
+**Endpoint**: `GET /user/me/`  
+**Authentication**: Required  
+**Description**: Get current authenticated user's information including profile data
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "email": "user@example.com",
+    "username": "john_doe",
+    "bio": "Full-stack developer",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "activated": true,
+    "onboarding_step": "completed",
+    "createdAt": "2026-01-25T12:00:00Z"
+  }
+}
+```
+
+**Field Descriptions**:
+- `id`: User UUID
+- `email`: User email address
+- `username`: Username from Profile (null if Profile doesn't exist)
+- `bio`: Biography from Profile (null if Profile doesn't exist)
+- `avatar_url`: Avatar URL from Profile (null if Profile doesn't exist)
+- `activated`: Email activation status
+- `onboarding_step`: Current onboarding step (authoritative, server-driven)
+- `createdAt`: Account creation timestamp
+
+**Note**: 
+- Profile fields (`username`, `bio`, `avatar_url`) are provided for UI pre-filling
+- If Profile doesn't exist, these fields will be `null` (no error)
+- This endpoint is **READ-ONLY** - it does not modify any data
+- Profile modification is handled exclusively by onboarding endpoints
+
+**HTTP Cookies Synced**:
+The backend automatically syncs the following cookies:
+- `activated` (updated if changed)
+- `onboarding_step` (updated if changed)
+
+#### JavaScript Example
+```javascript
+async function getCurrentUser() {
+  const response = await fetch('http://localhost:8000/api/user/me/', {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    credentials: 'include'
+  });
+  
+  if (!response.ok) {
+    if (response.status === 401) {
+      // Redirect to login
+      window.location.href = '/login';
+      return;
+    }
+    throw new Error('Failed to fetch user');
+  }
+  
+  const data = await response.json();
+  return data.data;
 }
 ```
 
@@ -1849,6 +2154,1583 @@ export const config = {
 
 ---
 
+## Admin Endpoints
+
+⚠️ **Admin endpoints require elevated permissions** (`IsAdmin` or `IsSuperAdmin`). Regular users cannot access these endpoints.
+
+### List Users
+
+**Endpoint**: `GET /api/admin/users/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: List all users with pagination
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "count": 100,
+  "next": "http://localhost:8000/api/admin/users/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "email": "user@example.com",
+      "role": "USER",
+      "is_active": true,
+      "created_at": "2026-01-25T12:00:00Z"
+    }
+  ]
+}
+```
+
+**Error (403 Forbidden)** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+---
+
+### Get User Details
+
+**Endpoint**: `GET /api/admin/users/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get detailed information about a specific user
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): User UUID
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "email": "user@example.com",
+  "role": "USER",
+  "is_active": true,
+  "created_at": "2026-01-25T12:00:00Z"
+}
+```
+
+---
+
+### Update User
+
+**Endpoint**: `PATCH /api/admin/users/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Update user information (role field is protected)
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "is_active": false
+}
+```
+
+**Note**: The `role` field cannot be modified via PATCH. Use the `set_role` action instead.
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "email": "user@example.com",
+  "role": "USER",
+  "is_active": false,
+  "created_at": "2026-01-25T12:00:00Z"
+}
+```
+
+---
+
+### Delete User
+
+**Endpoint**: `DELETE /api/admin/users/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Soft delete a user
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+#### Response
+
+**Success (204 No Content)**: Empty response body
+
+---
+
+### Change User Role
+
+**Endpoint**: `POST /api/admin/users/{id}/set_role/`  
+**Authentication**: Required (IsSuperAdmin only)  
+**Description**: Change a user's role. Only SUPERADMIN can use this endpoint.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "role": "ADMIN"
+}
+```
+
+**Valid Roles**:
+- `SUPERADMIN`
+- `ADMIN`
+- `MODERATOR`
+- `CONTRIBUTOR`
+- `USER`
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "email": "user@example.com",
+    "role": "ADMIN",
+    "previous_role": "USER"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not superadmin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+**Error (400 Bad Request)** - Invalid role:
+```json
+{
+  "error": {
+    "code": "invalid_role",
+    "message": "Invalid role. Must be one of: SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Last superadmin:
+```json
+{
+  "error": {
+    "code": "last_superadmin",
+    "message": "Cannot demote the last superadmin. Create another superadmin first."
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function changeUserRole(userId, newRole) {
+  const response = await fetch(`http://localhost:8000/api/admin/users/${userId}/set_role/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({ role: newRole })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Failed to change role');
+  }
+  
+  return await response.json();
+}
+```
+
+**Security Notes**:
+- Only SUPERADMIN can assign ADMIN or SUPERADMIN roles
+- Regular admins cannot use this endpoint
+- All role changes are logged via AuditLog
+- Cannot demote the last SUPERADMIN (prevents lockout)
+
+---
+
+### Get User Activity History
+
+**Endpoint**: `GET /api/admin/users/{id}/activity/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get recent activity history for a specific user (audit logs + analytics)
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): User UUID
+
+**Query Parameters**:
+- `limit` (integer, optional, default: 50, max: 100): Maximum number of activities to return
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "activities": [
+      {
+        "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "timestamp": "2026-01-25T14:30:00Z",
+        "action": "UPDATE",
+        "entity_name": "Resource",
+        "object_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+        "description": "Updated resource title"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function getUserActivity(userId, limit = 50) {
+  const response = await fetch(
+    `http://localhost:8000/api/admin/users/${userId}/activity/?limit=${limit}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch user activity');
+  }
+  
+  return await response.json();
+}
+```
+
+---
+
+### Impersonate User
+
+**Endpoint**: `POST /api/admin/users/{id}/impersonate/`  
+**Authentication**: Required (IsSuperAdmin only)  
+**Description**: Start an impersonation session for a user. Returns JWT tokens for the target user.
+
+⚠️ **Security**: Only SUPERADMIN can use this endpoint. Cannot impersonate another SUPERADMIN.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Target user UUID
+
+**Body**: Empty (no body required)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "email": "user@example.com",
+      "username": "john_doe",
+      "activated": true,
+      "onboarding_step": "completed",
+      "role": "USER"
+    }
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not superadmin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+**Error (400 Bad Request)** - Cannot impersonate superadmin:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Cannot impersonate another SUPERADMIN"
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function impersonateUser(userId) {
+  const response = await fetch(
+    `http://localhost:8000/api/admin/users/${userId}/impersonate/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Impersonation failed');
+  }
+  
+  const data = await response.json();
+  
+  // Store impersonation tokens
+  localStorage.setItem('impersonation_token', data.data.access_token);
+  localStorage.setItem('impersonation_user', JSON.stringify(data.data.user));
+  
+  return data.data;
+}
+```
+
+---
+
+### Reset User Password
+
+**Endpoint**: `POST /api/admin/users/{id}/reset_password/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Reset a user's password. A new password will be generated and sent via email.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): User UUID
+
+**Body**: Empty (no body required)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "message": "Password reset email sent to user@example.com"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Cannot reset superadmin password (unless actor is superadmin):
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Only SUPERADMIN can reset another SUPERADMIN's password"
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function resetUserPassword(userId) {
+  const response = await fetch(
+    `http://localhost:8000/api/admin/users/${userId}/reset_password/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Password reset failed');
+  }
+  
+  return await response.json();
+}
+```
+
+---
+
+## Admin Tag Management
+
+### List Tags
+
+**Endpoint**: `GET /api/admin/tags/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: List all tags with optional search
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `search` (string, optional): Search tags by name (case-insensitive)
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "count": 50,
+  "next": "http://localhost:8000/api/admin/tags/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Python",
+      "slug": "python",
+      "created_at": "2026-01-25T12:00:00Z",
+      "updated_at": "2026-01-25T12:00:00Z"
+    }
+  ]
+}
+```
+
+#### JavaScript Example
+```javascript
+async function listTags(search = '', page = 1) {
+  const params = new URLSearchParams({ page, page_size: 20 });
+  if (search) params.append('search', search);
+  
+  const response = await fetch(
+    `http://localhost:8000/api/admin/tags/?${params}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  return await response.json();
+}
+```
+
+---
+
+### Get Tag Details
+
+**Endpoint**: `GET /api/admin/tags/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get detailed information about a specific tag
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Tag UUID
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "name": "Python",
+  "slug": "python",
+  "created_at": "2026-01-25T12:00:00Z",
+  "updated_at": "2026-01-25T12:00:00Z"
+}
+```
+
+---
+
+### Create Tag
+
+**Endpoint**: `POST /api/admin/tags/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Create a new tag. Name must be unique, slug is auto-generated.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "name": "Django"
+}
+```
+
+**Field Descriptions**:
+- `name` (string, required): Tag name (max 50 characters, will be slugified)
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "tag_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Django",
+    "slug": "django"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Tag already exists:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Tag with name 'Django' or slug 'django' already exists"
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function createTag(name) {
+  const response = await fetch('http://localhost:8000/api/admin/tags/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({ name })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Tag creation failed');
+  }
+  
+  return await response.json();
+}
+```
+
+---
+
+### Update Tag
+
+**Endpoint**: `PATCH /api/admin/tags/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Update a tag's name. Slug is automatically updated.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Tag UUID
+
+**Body**:
+```json
+{
+  "name": "Django Framework"
+}
+```
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "tag_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Django Framework",
+    "slug": "django-framework"
+  }
+}
+```
+
+---
+
+### Delete Tag
+
+**Endpoint**: `DELETE /api/admin/tags/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Soft delete a tag. If the tag is in use, it will be soft-deleted (not hard-deleted).
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Tag UUID
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "message": "Tag deleted successfully"
+  }
+}
+```
+
+---
+
+### Merge Tags
+
+**Endpoint**: `POST /api/admin/tags/merge/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Merge a source tag into a target tag. All associations (resources, user interests) are moved to the target tag, and the source tag is soft-deleted.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "source_tag_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "target_tag_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+}
+```
+
+**Field Descriptions**:
+- `source_tag_id` (string, required): UUID of tag to merge from
+- `target_tag_id` (string, required): UUID of tag to merge into
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "message": "Tags merged successfully",
+    "source_tag_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "target_tag_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Cannot merge into soft-deleted tag:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Cannot merge into a soft-deleted target tag"
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function mergeTags(sourceTagId, targetTagId) {
+  const response = await fetch('http://localhost:8000/api/admin/tags/merge/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({
+      source_tag_id: sourceTagId,
+      target_tag_id: targetTagId
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Tag merge failed');
+  }
+  
+  return await response.json();
+}
+```
+
+---
+
+## Admin Resource Management
+
+### List Resources
+
+**Endpoint**: `GET /api/admin/resources/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: List all resources with advanced filters
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `author_id` (string, optional): Filter by author UUID
+- `visibility` (string, optional): Filter by visibility (`public`, `premium`, `private`)
+- `has_price` (boolean, optional): Filter by whether resource has a price (`true`/`false`)
+- `search` (string, optional): Search by title (case-insensitive)
+- `tag_ids` (array, optional): Filter by tag IDs (can specify multiple)
+- `include_deleted` (boolean, optional, default: `false`): Include soft-deleted resources
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "count": 100,
+  "next": "http://localhost:8000/api/admin/resources/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+      "title": "Advanced Django Patterns",
+      "description": "A comprehensive guide...",
+      "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "author_email": "author@example.com",
+      "visibility": "public",
+      "price_cents": null,
+      "tags": [
+        {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "name": "Python",
+          "slug": "python"
+        }
+      ],
+      "versions": [
+        {
+          "id": "9b8c6d4e-2345-6789-01bc-def123456789",
+          "version_number": 2,
+          "file_url": "https://cdn.ressourcefy.com/files/resource-v2.pdf",
+          "created_at": "2026-01-20T10:30:00Z"
+        }
+      ],
+      "created_at": "2026-01-15T09:00:00Z",
+      "updated_at": "2026-01-20T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### JavaScript Example
+```javascript
+async function listResources(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.author_id) params.append('author_id', filters.author_id);
+  if (filters.visibility) params.append('visibility', filters.visibility);
+  if (filters.has_price !== undefined) params.append('has_price', filters.has_price);
+  if (filters.search) params.append('search', filters.search);
+  if (filters.tag_ids) {
+    filters.tag_ids.forEach(id => params.append('tag_ids', id));
+  }
+  if (filters.include_deleted) params.append('include_deleted', 'true');
+  params.append('page', filters.page || 1);
+  params.append('page_size', filters.page_size || 20);
+  
+  const response = await fetch(
+    `http://localhost:8000/api/admin/resources/?${params}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  return await response.json();
+}
+```
+
+---
+
+### Get Resource Details
+
+**Endpoint**: `GET /api/admin/resources/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get detailed information about a specific resource, including all versions
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Resource UUID
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  "title": "Advanced Django Patterns",
+  "description": "A comprehensive guide...",
+  "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "author_email": "author@example.com",
+  "visibility": "public",
+  "price_cents": null,
+  "tags": [...],
+  "versions": [...],
+  "created_at": "2026-01-15T09:00:00Z",
+  "updated_at": "2026-01-20T10:30:00Z"
+}
+```
+
+---
+
+### Create Resource
+
+**Endpoint**: `POST /api/admin/resources/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Create a new resource for a specified user
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "title": "New Resource Title",
+  "description": "Resource description",
+  "visibility": "public",
+  "price_cents": 999,
+  "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"]
+}
+```
+
+**Field Descriptions**:
+- `author_id` (string, required): UUID of the user who will own this resource
+- `title` (string, required): Resource title (max 200 characters)
+- `description` (string, required): Resource description
+- `visibility` (string, required): One of `public`, `premium`, `private`
+- `price_cents` (integer, optional): Price in cents (null for free resources)
+- `tag_ids` (array, optional): Array of tag UUIDs
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "New Resource Title",
+    "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+  }
+}
+```
+
+---
+
+### Update Resource
+
+**Endpoint**: `PATCH /api/admin/resources/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Update resource properties (title, description, price, visibility, tags)
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Resource UUID
+
+**Body** (all fields optional):
+```json
+{
+  "title": "Updated Title",
+  "description": "Updated description",
+  "visibility": "premium",
+  "price_cents": 1999,
+  "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"]
+}
+```
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "Updated Title",
+    "updated_fields": ["title", "description", "visibility"]
+  }
+}
+```
+
+---
+
+### Delete Resource
+
+**Endpoint**: `DELETE /api/admin/resources/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Soft delete a resource
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Resource UUID
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "message": "Resource deleted successfully"
+  }
+}
+```
+
+---
+
+### Add Resource Version
+
+**Endpoint**: `POST /api/admin/resources/{id}/versions/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Add a new version to a resource (bypasses author permission check)
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Resource UUID
+
+**Body**:
+```json
+{
+  "file_url": "https://cdn.ressourcefy.com/files/resource-v3.pdf"
+}
+```
+
+**Field Descriptions**:
+- `file_url` (string, required): Valid URL to the file
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "version_number": 3,
+    "file_url": "https://cdn.ressourcefy.com/files/resource-v3.pdf"
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function addResourceVersion(resourceId, fileUrl) {
+  const response = await fetch(
+    `http://localhost:8000/api/admin/resources/${resourceId}/versions/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify({ file_url: fileUrl })
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to add version');
+  }
+  
+  return await response.json();
+}
+```
+
+---
+
+## Admin Subscription Management
+
+### List Subscriptions
+
+**Endpoint**: `GET /api/admin/subscriptions/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: List all subscriptions with optional filters
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `user_id` (string, optional): Filter by user UUID
+- `status` (string, optional): Filter by status (`active`, `canceled`, `past_due`, etc.)
+- `plan` (string, optional): Filter by plan (`free`, `premium`, etc.)
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "count": 50,
+  "next": "http://localhost:8000/api/admin/subscriptions/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "user": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "user_email": "user@example.com",
+      "plan": "premium",
+      "status": "active",
+      "started_at": "2026-01-01T00:00:00Z",
+      "ends_at": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Get Subscription Details
+
+**Endpoint**: `GET /api/admin/subscriptions/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get detailed information about a specific subscription
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Subscription UUID
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "user": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "user_email": "user@example.com",
+  "plan": "premium",
+  "status": "active",
+  "started_at": "2026-01-01T00:00:00Z",
+  "ends_at": null,
+  "created_at": "2026-01-01T00:00:00Z",
+  "updated_at": "2026-01-01T00:00:00Z"
+}
+```
+
+---
+
+### Update Subscription
+
+**Endpoint**: `PATCH /api/admin/subscriptions/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Update subscription properties (plan, status, ends_at)
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Subscription UUID
+
+**Body** (all fields optional):
+```json
+{
+  "plan": "premium",
+  "status": "active",
+  "ends_at": "2026-12-31T23:59:59Z"
+}
+```
+
+**Field Descriptions**:
+- `plan` (string, optional): Subscription plan (`free`, `premium`, etc.)
+- `status` (string, optional): Subscription status (`active`, `canceled`, `past_due`, etc.)
+- `ends_at` (string, optional): ISO 8601 datetime string for subscription end date (null for no end date)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "subscription_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "status": "active",
+    "plan": "premium"
+  }
+}
+```
+
+---
+
+### Cancel Subscription
+
+**Endpoint**: `POST /api/admin/subscriptions/{id}/cancel/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Cancel a subscription. Sets status to `canceled` and updates `ends_at`.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Subscription UUID
+
+**Body**: Empty (no body required)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "message": "Subscription canceled successfully"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Already canceled:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Subscription is already canceled"
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function cancelSubscription(subscriptionId) {
+  const response = await fetch(
+    `http://localhost:8000/api/admin/subscriptions/${subscriptionId}/cancel/`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to cancel subscription');
+  }
+  
+  return await response.json();
+}
+```
+
+---
+
+## Admin Payment Management
+
+### List Payments
+
+**Endpoint**: `GET /api/admin/payments/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: List all payments with optional filters
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `user_id` (string, optional): Filter by user UUID
+- `status` (string, optional): Filter by status (`completed`, `pending`, `failed`, `refunded`)
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "count": 100,
+  "next": "http://localhost:8000/api/admin/payments/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "user_email": "user@example.com",
+      "amount_cents": 999,
+      "currency": "usd",
+      "status": "completed",
+      "provider_reference": "pi_1234567890",
+      "created_at": "2026-01-25T12:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Get Payment Details
+
+**Endpoint**: `GET /api/admin/payments/{id}/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get detailed information about a specific payment
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Payment UUID
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "user_email": "user@example.com",
+    "amount_cents": 999,
+    "currency": "usd",
+    "status": "completed",
+    "provider_reference": "pi_1234567890",
+    "created_at": "2026-01-25T12:00:00Z",
+    "updated_at": "2026-01-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+### Refund Payment
+
+**Endpoint**: `POST /api/admin/payments/{id}/refund/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Refund a payment (full or partial). Processes refund via Stripe.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `id` (string, required): Payment UUID
+
+**Body** (optional):
+```json
+{
+  "amount_cents": 500
+}
+```
+
+**Field Descriptions**:
+- `amount_cents` (integer, optional): Partial refund amount in cents. If omitted, full refund is processed.
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "message": "Payment refunded successfully",
+    "refund_amount_cents": 500
+  }
+}
+```
+
+**Error (400 Bad Request)** - Payment already refunded:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Payment is already refunded"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Payment not completed:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Payment is not in a 'completed' state and cannot be refunded"
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function refundPayment(paymentId, amountCents = null) {
+  const body = amountCents ? { amount_cents: amountCents } : {};
+  
+  const response = await fetch(
+    `http://localhost:8000/api/admin/payments/${paymentId}/refund/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify(body)
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Refund failed');
+  }
+  
+  return await response.json();
+}
+```
+
+---
+
+## Admin Dashboard
+
+### Get Dashboard Overview
+
+**Endpoint**: `GET /api/admin/dashboard/overview/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get overview statistics for the admin dashboard (read-only)
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "total_users": 1000,
+    "active_users": 850,
+    "total_resources": 500,
+    "public_resources": 400,
+    "premium_resources": 100,
+    "total_subscriptions": 200,
+    "active_premium_subscriptions": 180,
+    "total_revenue_usd": 50000.00
+  }
+}
+```
+
+#### JavaScript Example
+```javascript
+async function getDashboardOverview() {
+  const response = await fetch(
+    'http://localhost:8000/api/admin/dashboard/overview/',
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  return await response.json();
+}
+```
+
+---
+
+### Get Dashboard Activity
+
+**Endpoint**: `GET /api/admin/dashboard/activity/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get recent activity feed (audit logs)
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `limit` (integer, optional, default: 50, max: 100): Maximum number of activities to return
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "activities": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "timestamp": "2026-01-25T14:30:00Z",
+        "actor_email": "admin@example.com",
+        "action": "UPDATE",
+        "entity_name": "Resource",
+        "object_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+        "description": "admin@example.com UPDATE Resource 8a7b5c3d-1234-5678-90ab-cdef12345678"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+---
+
+### Get System Health
+
+**Endpoint**: `GET /api/admin/dashboard/system-health/`  
+**Authentication**: Required (IsAdmin)  
+**Description**: Get system health metrics (database, outbox, etc.)
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "db_status": "ok",
+    "outbox_pending_events": 5,
+    "outbox_failed_events": 0,
+    "last_outbox_processed_at": "2026-01-25T14:30:00Z"
+  }
+}
+```
+
+---
+
 **Last Updated**: 2026-01-25  
-**API Version**: 1.1  
+**API Version**: 1.2  
 **Support**: For questions, contact the backend team or refer to `docs/all_features.md`
