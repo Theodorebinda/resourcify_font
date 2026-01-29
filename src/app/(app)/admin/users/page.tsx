@@ -41,7 +41,7 @@ export default function AdminUsersPage() {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<string>("");
   
-  const { data: usersData, isLoading } = useAdminUsers(page, 20);
+  const { data: usersData, isLoading, error: usersError } = useAdminUsers(page, 20);
   const deleteUserMutation = useDeleteAdminUser();
   const setRoleMutation = useSetUserRole();
   const resetPasswordMutation = useResetUserPassword();
@@ -158,7 +158,14 @@ export default function AdminUsersPage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : usersData && usersData.results.length > 0 ? (
+          ) : usersError ? (
+            <div className="text-center py-8 text-destructive">
+              <p className="font-medium">Erreur lors du chargement</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {usersError.message || "Impossible de charger les utilisateurs"}
+              </p>
+            </div>
+          ) : usersData && Array.isArray(usersData.results) && usersData.results.length > 0 ? (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">

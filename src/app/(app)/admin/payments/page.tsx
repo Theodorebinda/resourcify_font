@@ -31,7 +31,7 @@ export default function AdminPaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [refundAmount, setRefundAmount] = useState("");
 
-  const { data: paymentsData, isLoading } = useAdminPayments({}, page, 20);
+  const { data: paymentsData, isLoading, error: paymentsError } = useAdminPayments({}, page, 20);
   const refundPaymentMutation = useRefundPayment();
   const { toast } = useToast();
 
@@ -101,7 +101,14 @@ export default function AdminPaymentsPage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : paymentsData && paymentsData.results.length > 0 ? (
+          ) : paymentsError ? (
+            <div className="text-center py-8 text-destructive">
+              <p className="font-medium">Erreur lors du chargement</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {paymentsError.message || "Impossible de charger les paiements"}
+              </p>
+            </div>
+          ) : paymentsData && Array.isArray(paymentsData.results) && paymentsData.results.length > 0 ? (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">

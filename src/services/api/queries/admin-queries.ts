@@ -315,7 +315,19 @@ export function useAdminUsers(page: number = 1, pageSize: number = 20) {
       const response = await apiClient.get<AdminUserListResponse>(
         `${API_ENDPOINTS.ADMIN.USERS.LIST}?${params}`
       );
-      return response.data;
+      // Django REST Framework retourne directement la structure paginée
+      // { count, next, previous, results }
+      const data = response.data;
+      // Vérification de sécurité: s'assurer que results existe
+      if (!data || !Array.isArray(data.results)) {
+        return {
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        };
+      }
+      return data;
     },
   });
 }
@@ -434,7 +446,17 @@ export function useAdminTags(search?: string, page: number = 1, pageSize: number
       const response = await apiClient.get<AdminTagListResponse>(
         `${API_ENDPOINTS.ADMIN.TAGS.LIST}?${params}`
       );
-      return response.data;
+      const data = response.data;
+      // Vérification de sécurité
+      if (!data || !Array.isArray(data.results)) {
+        return {
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        };
+      }
+      return data;
     },
   });
 }
@@ -544,7 +566,17 @@ export function useAdminResources(filters?: AdminResourceFilters, page: number =
       const response = await apiClient.get<AdminResourceListResponse>(
         `${API_ENDPOINTS.ADMIN.RESOURCES.LIST}?${params}`
       );
-      return response.data;
+      const data = response.data;
+      // Vérification de sécurité
+      if (!data || !Array.isArray(data.results)) {
+        return {
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        };
+      }
+      return data;
     },
   });
 }
@@ -649,7 +681,17 @@ export function useAdminSubscriptions(filters?: AdminSubscriptionFilters, page: 
       const response = await apiClient.get<AdminSubscriptionListResponse>(
         `${API_ENDPOINTS.ADMIN.SUBSCRIPTIONS.LIST}?${params}`
       );
-      return response.data;
+      const data = response.data;
+      // Vérification de sécurité
+      if (!data || !Array.isArray(data.results)) {
+        return {
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        };
+      }
+      return data;
     },
   });
 }
@@ -719,7 +761,17 @@ export function useAdminPayments(filters?: AdminPaymentFilters, page: number = 1
       const response = await apiClient.get<AdminPaymentListResponse>(
         `${API_ENDPOINTS.ADMIN.PAYMENTS.LIST}?${params}`
       );
-      return response.data;
+      const data = response.data;
+      // Vérification de sécurité
+      if (!data || !Array.isArray(data.results)) {
+        return {
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        };
+      }
+      return data;
     },
   });
 }

@@ -25,7 +25,7 @@ export default function AdminResourcesPage() {
     has_price?: boolean;
   }>({});
 
-  const { data: resourcesData, isLoading } = useAdminResources(filters, page, 20);
+  const { data: resourcesData, isLoading, error: resourcesError } = useAdminResources(filters, page, 20);
   const deleteResourceMutation = useDeleteAdminResource();
   const { toast } = useToast();
 
@@ -88,7 +88,14 @@ export default function AdminResourcesPage() {
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : resourcesData && resourcesData.results.length > 0 ? (
+          ) : resourcesError ? (
+            <div className="text-center py-8 text-destructive">
+              <p className="font-medium">Erreur lors du chargement</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {resourcesError.message || "Impossible de charger les ressources"}
+              </p>
+            </div>
+          ) : resourcesData && Array.isArray(resourcesData.results) && resourcesData.results.length > 0 ? (
             <>
               <div className="space-y-4">
                 {resourcesData.results.map((resource) => (

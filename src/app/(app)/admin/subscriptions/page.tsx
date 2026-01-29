@@ -22,7 +22,7 @@ export default function AdminSubscriptionsPage() {
     plan?: string;
   }>({});
 
-  const { data: subscriptionsData, isLoading } = useAdminSubscriptions(filters, page, 20);
+  const { data: subscriptionsData, isLoading, error: subscriptionsError } = useAdminSubscriptions(filters, page, 20);
   const cancelSubscriptionMutation = useCancelAdminSubscription();
   const { toast } = useToast();
 
@@ -80,7 +80,14 @@ export default function AdminSubscriptionsPage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : subscriptionsData && subscriptionsData.results.length > 0 ? (
+          ) : subscriptionsError ? (
+            <div className="text-center py-8 text-destructive">
+              <p className="font-medium">Erreur lors du chargement</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {subscriptionsError.message || "Impossible de charger les abonnements"}
+              </p>
+            </div>
+          ) : subscriptionsData && Array.isArray(subscriptionsData.results) && subscriptionsData.results.length > 0 ? (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
