@@ -24,9 +24,10 @@ const PUBLIC_ENDPOINTS = [
   "auth/login",
   "auth/register",
   "auth/activate",
-  "auth/forgot-password",
-  "auth/reset-password",
+  "auth/password-reset",
   "auth/resend-activation",
+  "health/live",
+  "health/ready",
 ];
 
 const STRIPE_WEBHOOK_PATHS = [

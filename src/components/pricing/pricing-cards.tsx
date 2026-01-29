@@ -37,7 +37,7 @@ export function PricingCards() {
     },
     {
       name: "Premium",
-      price: "2",
+      price: "2.99",
       period: "mois",
       description: "Pour les utilisateurs actifs qui veulent plus",
       badge: "Populaire",
@@ -57,7 +57,7 @@ export function PricingCards() {
     },
     {
       name: "Pro",
-      price: "12",
+      price: "4.99",
       period: "mois",
       description: "Pour les professionnels et équipes",
       badge: null,
