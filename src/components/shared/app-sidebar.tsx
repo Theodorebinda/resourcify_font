@@ -49,6 +49,7 @@ import {
   User,
   LogOut,
   ChevronUp,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -56,6 +57,7 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -73,6 +75,12 @@ const navItems: NavItem[] = [
     title: "Settings",
     url: "/app/settings",
     icon: Settings,
+  },
+  {
+    title: "Administration",
+    url: ROUTES.ADMIN.DASHBOARD,
+    icon: Shield,
+    adminOnly: true,
   },
 ];
 
@@ -140,16 +148,25 @@ function AppSidebarContent() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems
+                .filter((item) => {
+                  // Filtrer les items admin si l'utilisateur n'est pas admin
+                  if (item.adminOnly) {
+                    const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+                    return isAdmin;
+                  }
+                  return true;
+                })
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

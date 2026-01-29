@@ -104,10 +104,19 @@ Methods: delete(), restore()
 Manager: SoftDeleteManager with .active(), .deleted()
 ```
 
-**Tag**
+**Tag** (extends SoftDeleteModel)
 ```python
 - name: CharField(50)
 - slug: SlugField(unique)
+- deleted_at: DateTime (nullable) - from SoftDeleteModel
+
+Managers:
+  - objects: SoftDeleteManager (filters out soft-deleted by default)
+  - all_objects: Manager (includes soft-deleted)
+
+Methods:
+  - delete() - Soft delete (sets deleted_at)
+  - restore() - Restore soft-deleted tag
 ```
 
 **OutboxEvent** (Critical for Reliability)
@@ -133,9 +142,12 @@ Manager: SoftDeleteManager with .active(), .deleted()
 - is_active: Boolean
 - is_activated: Boolean (email verification flag)
 - onboarding_step: TextChoices (NOT_STARTED, PROFILE, INTERESTS, COMPLETED)
+- role: TextChoices (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER)
 
 Methods:
   get_onboarding_step() → Calculates current onboarding step based on profile/interests progress
+  is_admin_role → Boolean property (ADMIN or SUPERADMIN)
+  is_superadmin_role → Boolean property (SUPERADMIN only)
 ```
 
 **Profile** (OneToOne with User)
@@ -294,29 +306,128 @@ def create_resource_version(resource: Resource, file_url: str) -> ResourceVersio
     return version
 ```
 
+**Admin Domain Services**:
+
+**Tag Management** (`core/services/admin_tags.py`):
+```python
+@transaction.atomic
+def create_tag_admin(actor, name: str) -> Tag:
+    """Creates a new tag with unique name validation and auto-slug generation."""
+    # Validates uniqueness, creates tag, audits, emits event
+    pass
+
+@transaction.atomic
+def update_tag_admin(actor, tag_id: str, name: str) -> Tag:
+    """Updates tag name and slug, validates uniqueness."""
+    pass
+
+@transaction.atomic
+def delete_tag_admin(actor, tag_id: str):
+    """Soft deletes tag if in use, hard deletes if unused."""
+    pass
+
+@transaction.atomic
+def merge_tags_admin(actor, source_tag_id: str, target_tag_id: str):
+    """Merges source tag into target, moves all associations, soft deletes source."""
+    pass
+```
+
+**Resource Management** (`resources/services/admin_resources.py`):
+```python
+@transaction.atomic
+def create_resource_admin(actor, author_id: str, title: str, ...) -> Resource:
+    """Admin creates resource for specified author."""
+    pass
+
+@transaction.atomic
+def update_resource_admin(actor, resource_id: str, ...) -> Resource:
+    """Admin updates resource properties."""
+    pass
+
+@transaction.atomic
+def delete_resource_admin(actor, resource_id: str):
+    """Admin soft deletes resource."""
+    pass
+
+@transaction.atomic
+def add_resource_version_admin(actor, resource_id: str, file_url: str) -> ResourceVersion:
+    """Admin adds version, bypasses author permission check."""
+    pass
+```
+
+**User Management** (`users/services/admin_users.py`):
+```python
+@transaction.atomic
+def impersonate_user_admin(actor, target_user_id: str) -> dict:
+    """SUPERADMIN impersonates user, returns JWT tokens."""
+    # Generates tokens, audits, emits event
+    pass
+
+@transaction.atomic
+def reset_user_password_admin(actor, user_id: str):
+    """Admin resets user password, sends email with new password."""
+    pass
+
+def get_user_activity(user_id: str, limit: int = 50) -> List[dict]:
+    """Returns user activity history (audit logs + analytics)."""
+    pass
+```
+
+**Subscription Management** (`monetization/services/admin_subscriptions.py`):
+```python
+@transaction.atomic
+def update_subscription_admin(actor, subscription_id: str, ...) -> Subscription:
+    """Admin updates subscription properties."""
+    pass
+
+@transaction.atomic
+def cancel_subscription_admin(actor, subscription_id: str):
+    """Admin cancels subscription, updates Stripe if needed."""
+    pass
+
+@transaction.atomic
+def refund_payment_admin(actor, payment_id: str, amount_cents: Optional[int] = None):
+    """Admin refunds payment (full or partial), processes via Stripe."""
+    pass
+```
+
+**All admin services**:
+- Wrapped in `@transaction.atomic` for data consistency
+- Use `audit_change()` for audit logging
+- Emit OutboxEvents for critical actions
+- Validate business invariants
+- Raise domain exceptions (NotFoundError, InvalidAction, etc.)
+
 ### 5.2 Application Layer (`application/`)
 
 **Structure**:
 ```
 application/
 ├── dto/
-│   └── commands.py      # Immutable command DTOs
+│   ├── commands.py           # Immutable command DTOs
+│   └── admin_commands.py     # Admin-specific command DTOs
 ├── policies/
 │   ├── resource_policy.py
-│   └── comment_policy.py
+│   ├── comment_policy.py
+│   └── admin_policy.py       # Admin access policies
 ├── use_cases/
 │   ├── vote_on_comment.py
 │   ├── create_resource_version.py
 │   ├── access_resource.py
 │   ├── create_checkout_session.py
 │   ├── handle_stripe_webhook.py
-│   └── auth/
-│       ├── register_user.py
-│       ├── activate_user.py
-│       ├── authenticate_user.py
-│       ├── resend_activation.py
-│       ├── request_password_reset.py
-│       └── confirm_password_reset.py
+│   ├── auth/
+│   │   ├── register_user.py
+│   │   ├── activate_user.py
+│   │   ├── authenticate_user.py
+│   │   ├── resend_activation.py
+│   │   ├── request_password_reset.py
+│   │   └── confirm_password_reset.py
+│   └── admin/
+│       ├── manage_tags.py
+│       ├── manage_resources.py
+│       ├── manage_users_extended.py
+│       └── manage_pricing.py
 ├── services/
 │   └── stripe_service.py
 └── exceptions.py
@@ -491,17 +602,28 @@ Response: {"status": "received"}
 POST /api/auth/register/        # Register new user
 POST /api/auth/activate/        # Verify email (token from URL or body)
 POST /api/auth/resend-activation/  # Resend activation email
-POST /api/auth/login/            # Get JWT tokens (includes onboarding_step)
+POST /api/auth/login/            # Get JWT tokens (includes onboarding_step + HTTP cookies)
+POST /api/auth/logout/           # Logout and clear HTTP cookies
 POST /api/auth/password-reset/   # Request reset link
 POST /api/auth/password-reset/confirm/  # Confirm reset
 ```
 
 **Onboarding Endpoints**
 ```
-GET  /api/onboarding/status/     # Get current onboarding state (read-only)
+GET  /api/onboarding/status/     # Get current onboarding state (read-only, no mutation)
 POST /api/onboarding/start/      # Start onboarding (not_started → profile)
 POST /api/onboarding/profile/    # Submit profile (profile → interests)
 POST /api/onboarding/interests/  # Submit interests (interests → completed)
+```
+
+**Admin Endpoints** (Role-based access control)
+```
+GET    /api/admin/users/              # List all users (IsAdmin required)
+GET    /api/admin/users/{id}/         # Get user details (IsAdmin required)
+POST   /api/admin/users/              # Create user (IsAdmin required)
+PATCH  /api/admin/users/{id}/        # Update user (IsAdmin required, role field protected)
+DELETE /api/admin/users/{id}/        # Delete user (soft delete, IsAdmin required)
+POST   /api/admin/users/{id}/set_role/  # Change user role (IsSuperAdmin only)
 ```
 
 **Onboarding Flow** (strict step order, server-enforced):
@@ -612,15 +734,126 @@ Note:
   - This endpoint is READ-ONLY - it does not modify any data
 ```
 
-### 6.3 Health Endpoints
+### 6.3 Admin Endpoints
 
-**Liveness**
+**User Management** (`/api/admin/users/`)
+```
+GET    /api/admin/users/                    # List all users (paginated, with filters)
+GET    /api/admin/users/{id}/               # Get user details
+POST   /api/admin/users/                    # Create new user
+PATCH  /api/admin/users/{id}/               # Update user (role field protected)
+DELETE /api/admin/users/{id}/               # Soft delete user
+POST   /api/admin/users/{id}/set_role/      # Change user role (SUPERADMIN only)
+GET    /api/admin/users/{id}/activity/       # Get user activity history
+POST   /api/admin/users/{id}/impersonate/    # Impersonate user (SUPERADMIN only)
+POST   /api/admin/users/{id}/reset_password/ # Reset user password (sends email)
+```
+
+**Query Parameters for List**:
+- `role`: Filter by role (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER)
+- `activated`: Filter by activation status (`true`/`false`)
+- `is_active`: Filter by active status (`true`/`false`)
+- `search`: Search by email (case-insensitive)
+- `page`: Page number
+- `page_size`: Items per page
+
+**Tag Management** (`/api/admin/tags/`)
+```
+GET    /api/admin/tags/              # List all tags (with search, includes soft-deleted)
+GET    /api/admin/tags/{id}/         # Get tag details
+POST   /api/admin/tags/              # Create tag (unique name, auto-slug)
+PATCH  /api/admin/tags/{id}/         # Update tag (rename, slug auto-updated)
+DELETE /api/admin/tags/{id}/        # Soft delete tag (if in use)
+POST   /api/admin/tags/merge/        # Merge two tags (source → target)
+```
+
+**Resource Management** (`/api/admin/resources/`)
+```
+GET    /api/admin/resources/                # List all resources (advanced filters)
+GET    /api/admin/resources/{id}/           # Get resource details (with versions)
+POST   /api/admin/resources/                # Create resource for a user
+PATCH  /api/admin/resources/{id}/          # Update resource (title, description, price, visibility, tags)
+DELETE /api/admin/resources/{id}/          # Soft delete resource
+POST   /api/admin/resources/{id}/versions/  # Add version (bypasses author check)
+```
+
+**Query Parameters for Resource List**:
+- `author_id`: Filter by author UUID
+- `visibility`: Filter by visibility (`public`, `premium`, `private`)
+- `has_price`: Filter by price (`true`/`false`)
+- `search`: Search by title (case-insensitive)
+- `tag_ids`: Filter by tag IDs (multiple allowed)
+- `include_deleted`: Include soft-deleted resources (`true`/`false`)
+
+**Subscription Management** (`/api/admin/subscriptions/`)
+```
+GET    /api/admin/subscriptions/            # List all subscriptions (with filters)
+GET    /api/admin/subscriptions/{id}/       # Get subscription details
+PATCH  /api/admin/subscriptions/{id}/       # Update subscription (plan, status, ends_at)
+POST   /api/admin/subscriptions/{id}/cancel/ # Cancel subscription
+```
+
+**Query Parameters for Subscription List**:
+- `user_id`: Filter by user UUID
+- `status`: Filter by status (`active`, `canceled`, `past_due`, etc.)
+- `plan`: Filter by plan (`free`, `premium`, etc.)
+
+**Payment Management** (`/api/admin/payments/`)
+```
+GET    /api/admin/payments/            # List all payments (with filters)
+GET    /api/admin/payments/{id}/       # Get payment details
+POST   /api/admin/payments/{id}/refund/ # Refund payment (full or partial)
+```
+
+**Query Parameters for Payment List**:
+- `user_id`: Filter by user UUID
+- `status`: Filter by status (`completed`, `pending`, `failed`, `refunded`)
+
+**Dashboard** (`/api/admin/dashboard/`)
+```
+GET    /api/admin/dashboard/overview/      # Overview statistics (read-only)
+GET    /api/admin/dashboard/activity/      # Recent activity feed (audit logs)
+GET    /api/admin/dashboard/system-health/ # System health metrics (DB, Outbox)
+```
+
+**Permissions**:
+- All operations require `IsAdmin` permission
+- `set_role` and `impersonate` actions require `IsSuperAdmin` permission
+- Role field cannot be modified via PATCH (use `set_role` action)
+- All admin mutations are audited via AuditLog
+- All critical actions emit OutboxEvents
+
+**Response Format** (Standard):
+```json
+{
+  "status": "ok",
+  "data": {
+    // Response data
+  }
+}
+```
+
+**Error Format**:
+```json
+{
+  "error": {
+    "code": "error_code",
+    "message": "Human-readable error message"
+  }
+}
+```
+
+### 6.4 Health Endpoints
+
+**Note**: Health endpoints are mentioned in the architecture but may not be implemented in the current version. They should be added for production deployment.
+
+**Liveness** (Recommended)
 ```
 GET /health/live/
 Response: 200 OK (basic ping)
 ```
 
-**Readiness**
+**Readiness** (Recommended)
 ```
 GET /health/ready/
 Response: 200 OK (checks DB + Outbox)
@@ -1200,17 +1433,22 @@ back_ressourcefy/
 │   │   ├── tokens.py (activation & password reset tokens)
 │   │   ├── services/
 │   │   │   ├── audit.py (audit_change helper)
-│   │   │   └── email_service.py (Resend/Django email abstraction)
+│   │   │   ├── email_service.py (Resend/Django email abstraction)
+│   │   │   └── admin_tags.py (admin tag domain services)
 │   │   ├── management/commands/process_events.py
 │   │   └── tests/
 │   │
 │   ├── users/
 │   │   ├── models.py (User, Profile, UserInterest)
+│   │   ├── services/
+│   │   │   └── admin_users.py (admin user domain services)
 │   │   └── tests/
 │   │
 │   ├── resources/
 │   │   ├── models.py (Resource, ResourceVersion)
-│   │   ├── services/create_resource_version.py
+│   │   ├── services/
+│   │   │   ├── create_resource_version.py
+│   │   │   └── admin_resources.py (admin resource domain services)
 │   │   └── tests/
 │   │
 │   ├── interactions/
@@ -1220,6 +1458,8 @@ back_ressourcefy/
 │   │
 │   ├── monetization/
 │   │   ├── models.py (Subscription, Payment, PaymentIntentRecord, WebhookEvent)
+│   │   ├── services/
+│   │   │   └── admin_subscriptions.py (admin subscription/payment domain services)
 │   │   └── tests/
 │   │
 │   ├── analytics/
@@ -1230,22 +1470,35 @@ back_ressourcefy/
 │   │   ├── models.py (AuditLog)
 │   │   └── services/
 │   │
+│   ├── admin_dashboard/
+│   │   ├── apps.py
+│   │   └── services/
+│   │       └── dashboard_service.py (read-only aggregation)
+│   │
 │   ├── application/
-│   │   ├── dto/commands.py
+│   │   ├── dto/
+│   │   │   ├── commands.py
+│   │   │   └── admin_commands.py (admin-specific command DTOs)
 │   │   ├── policies/
 │   │   │   ├── resource_policy.py
-│   │   │   └── comment_policy.py
+│   │   │   ├── comment_policy.py
+│   │   │   └── admin_policy.py (admin access policies)
 │   │   ├── use_cases/
 │   │   │   ├── vote_on_comment.py
 │   │   │   ├── create_checkout_session.py
 │   │   │   ├── handle_stripe_webhook.py
-│   │   │   └── auth/
-│   │   │       ├── register_user.py
-│   │   │       ├── activate_user.py
-│   │   │       ├── authenticate_user.py
-│   │   │       ├── resend_activation.py
-│   │   │       ├── request_password_reset.py
-│   │   │       └── confirm_password_reset.py
+│   │   │   ├── auth/
+│   │   │   │   ├── register_user.py
+│   │   │   │   ├── activate_user.py
+│   │   │   │   ├── authenticate_user.py
+│   │   │   │   ├── resend_activation.py
+│   │   │   │   ├── request_password_reset.py
+│   │   │   │   └── confirm_password_reset.py
+│   │   │   └── admin/
+│   │   │       ├── manage_tags.py
+│   │   │       ├── manage_resources.py
+│   │   │       ├── manage_users_extended.py
+│   │   │       └── manage_pricing.py
 │   │   ├── services/stripe_service.py
 │   │   ├── exceptions.py
 │   │   └── tests/
@@ -1264,11 +1517,21 @@ back_ressourcefy/
 │       │   ├── user.py (CurrentUserView - /user/me/)
 │       │   ├── auth.py (Register, Activate, Login, etc.)
 │       │   ├── read/__init__.py
-│       │   └── health.py
+│       │   ├── health.py
+│       │   ├── admin_views.py (AdminUserViewSet)
+│       │   └── admin/
+│       │       ├── tags.py (AdminTagViewSet)
+│       │       ├── resources.py (AdminResourceViewSet)
+│       │       ├── pricing.py (AdminSubscriptionViewSet, AdminPaymentViewSet)
+│       │       └── dashboard.py (Dashboard views)
 │       ├── serializers/
 │       │   ├── commands.py
 │       │   ├── billing.py
-│       │   └── read.py
+│       │   ├── read.py
+│       │   └── admin/
+│       │       ├── tags.py
+│       │       ├── resources.py
+│       │       └── pricing.py
 │       ├── urls.py
 │       ├── exception_handlers.py
 │       └── tests/
@@ -1322,15 +1585,171 @@ back_ressourcefy/
 
 ---
 
-## 17. Recent Updates (2026-01-25)
+## 17. Roles & Permissions System
+
+### 17.1 Role Hierarchy
+
+The application implements a 5-tier role system:
+
+```
+SUPERADMIN (Highest)
+    ↓
+ADMIN
+    ↓
+MODERATOR
+    ↓
+CONTRIBUTOR
+    ↓
+USER (Default)
+```
+
+**Role Definitions**:
+- **SUPERADMIN**: Full system access, can assign any role, manage all users
+- **ADMIN**: Can manage users (except role assignment), access admin endpoints
+- **MODERATOR**: Can moderate content, manage resources
+- **CONTRIBUTOR**: Can create premium content, access contributor features
+- **USER**: Standard user, can create resources, comment, vote
+
+### 17.2 Permission Classes
+
+**DRF Permissions** (`users/permissions.py`):
+- `IsSuperAdmin`: SUPERADMIN role or Django superuser
+- `IsAdmin`: ADMIN/SUPERADMIN roles or Django staff/superuser
+- `IsModerator`: MODERATOR, ADMIN, or SUPERADMIN roles
+- `IsContributor`: CONTRIBUTOR, MODERATOR, ADMIN, or SUPERADMIN roles
+- `IsAuthenticatedAndRole`: Generic permission for custom role sets
+
+### 17.3 Security Rules
+
+**Role Modification Protection**:
+1. **Never via public endpoints**: Role field cannot be modified via regular user endpoints
+2. **Only via admin endpoints**: Role changes must go through `/api/admin/users/{id}/set_role/`
+3. **SUPERADMIN only**: Only SUPERADMIN can assign ADMIN or SUPERADMIN roles
+4. **Last superadmin protection**: Cannot demote the last SUPERADMIN (prevents lockout)
+5. **Audit logging**: All role changes are logged via AuditLog
+
+**API Protection**:
+- `UserSerializer` automatically strips `role` from data if user is not admin
+- Admin endpoints require `IsAdmin` permission
+- `set_role` action requires `IsSuperAdmin` permission
+
+**Django Admin Protection**:
+- Role field visible in Django Admin
+- Only SUPERADMIN can modify role field in Django Admin
+- Role changes logged via audit system
+
+### 17.4 Admin Endpoints
+
+**User Management** (`/api/admin/users/`):
+```python
+# List users
+GET /api/admin/users/
+Response: {
+  "count": 10,
+  "results": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "role": "USER",
+      "is_active": true,
+      ...
+    }
+  ]
+}
+
+# Get user details
+GET /api/admin/users/{id}/
+
+# Update user
+PATCH /api/admin/users/{id}/
+Body: {
+  "is_active": false,
+  # "role" field is protected - only visible to admins, cannot be set via PATCH
+}
+
+# Change user role (SUPERADMIN only)
+POST /api/admin/users/{id}/set_role/
+Body: {
+  "role": "ADMIN" | "MODERATOR" | "CONTRIBUTOR" | "USER" | "SUPERADMIN"
+}
+Response: {
+  "status": "ok",
+  "data": {
+    "user_id": "uuid",
+    "email": "user@example.com",
+    "role": "ADMIN",
+    "previous_role": "USER"
+  }
+}
+```
+
+### 17.5 Management Commands
+
+**Create Superadmin**:
+```bash
+# Using environment variables
+export SUPERADMIN_USERNAME=admin
+export SUPERADMIN_EMAIL=admin@example.com
+export SUPERADMIN_PASSWORD=secure-password
+python manage.py create_superadmin
+
+# Or with defaults
+python manage.py create_superadmin
+# Creates: username=superadmin, email=admin@example.com, password=change-me-now
+```
+
+### 17.6 Testing
+
+**Test Suite** (`users/tests/test_roles.py`):
+- ✅ User cannot modify own role via API
+- ✅ User cannot access admin endpoints
+- ✅ Admin can access admin endpoints but cannot use set_role
+- ✅ Superadmin can change user roles
+- ✅ Last superadmin cannot be demoted
+- ✅ Admin cannot assign SUPERADMIN role
+- ✅ Role properties work correctly
+- ✅ UserSerializer protects role field
+
+**Run Tests**:
+```bash
+python manage.py test users.tests.test_roles
+```
+
+### 17.7 Migration & Setup
+
+**Initial Setup**:
+```bash
+# 1. Create migration
+python manage.py makemigrations users
+
+# 2. Apply migration
+python manage.py migrate
+
+# 3. Create initial superadmin
+python manage.py create_superadmin
+
+# 4. Run tests
+python manage.py test users.tests.test_roles
+```
+
+**Backward Compatibility**:
+- Existing users default to `role=USER`
+- Django `is_staff` and `is_superuser` still work for backward compatibility
+- `create_superuser` automatically sets `role=SUPERADMIN`
+
+---
+
+## 18. Recent Updates (2026-01-25)
 
 ### Authentication & User Management
 - ✅ Added `onboarding_step` field to User model with automatic calculation
 - ✅ Created `/api/user/me/` endpoint for authenticated user details
 - ✅ Extended `/api/user/me/` to include profile fields (username, bio, avatar_url) for UI pre-filling
 - ✅ Added `/api/auth/resend-activation/` endpoint
+- ✅ Added `/api/auth/logout/` endpoint to clear HTTP cookies
 - ✅ JWT authentication configured in REST_FRAMEWORK settings
 - ✅ Login response now includes `onboarding_step` in user data
+- ✅ HTTP cookies automatically set on login (access_token, refresh_token, activated, onboarding_step)
 
 ### Email Service
 - ✅ Created email service abstraction (`core/services/email_service.py`)
@@ -1352,10 +1771,73 @@ back_ressourcefy/
 - ✅ Added django-cors-headers for cross-origin requests
 - ✅ Configured allowed origins and credentials
 
+### Roles & Permissions System
+- ✅ Added `role` field to User model (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER)
+- ✅ Created DRF permission classes (IsSuperAdmin, IsAdmin, IsModerator, IsContributor)
+- ✅ Implemented admin endpoints (`/api/admin/users/`) with role management
+- ✅ Added `set_role` action (SUPERADMIN only) for secure role assignment
+- ✅ Protected role field in UserSerializer (non-admins cannot modify)
+- ✅ Enhanced Django Admin with role field and protection
+- ✅ Created management command `create_superadmin` for initial setup
+- ✅ Added comprehensive test suite for anti-privilege escalation
+- ✅ All role changes logged via AuditLog system
+
+### Extended Admin Capabilities (2026-01-25)
+- ✅ **Tag Management**: Full CRUD operations with merge functionality
+  - Create, update, delete tags (soft delete if in use)
+  - Merge tags (moves all associations automatically)
+  - Search and filter capabilities
+  - All operations audited and emit outbox events
+
+- ✅ **Resource Management**: Complete admin control over resources
+  - Create resources for any user
+  - Update title, description, price, visibility, tags
+  - Soft delete and restore resources
+  - Add versions (bypasses author permission check)
+  - Advanced filtering (author, tags, visibility, price, search)
+  - All operations audited and emit outbox events
+
+- ✅ **Extended User Management**:
+  - Get user activity history (audit logs + analytics)
+  - Impersonate users (SUPERADMIN only, generates JWT tokens)
+  - Reset user passwords (sends email with new password)
+  - Enhanced filtering (role, activation status, search)
+  - All operations audited and emit outbox events
+
+- ✅ **Subscription & Payment Management**:
+  - List and filter subscriptions (user, status, plan)
+  - Update subscription properties (plan, status, ends_at)
+  - Cancel subscriptions (updates Stripe if needed)
+  - List and filter payments (user, status)
+  - Refund payments (full or partial, processes via Stripe)
+  - All operations audited and emit outbox events
+
+- ✅ **Admin Dashboard** (read-only aggregation):
+  - Overview statistics (users, resources, subscriptions, revenue)
+  - Activity feed (recent audit logs)
+  - System health metrics (DB status, Outbox backlog)
+  - Optimized queries for performance
+
+- ✅ **Architecture Compliance**:
+  - All admin mutations pass through domain services
+  - Strict DDD layered architecture maintained
+  - Immutable DTOs for all admin commands
+  - Transaction safety with `@transaction.atomic`
+  - Comprehensive audit logging via `audit_change()`
+  - Outbox events for all critical actions
+  - Idempotent operations where applicable
+
+- ✅ **Security Enhancements**:
+  - SUPERADMIN cannot impersonate another SUPERADMIN
+  - Last SUPERADMIN protected from demotion
+  - All sensitive actions require appropriate permissions
+  - Soft-deleted tags cannot be assigned or merged into
+  - Admin password reset requires SUPERADMIN for SUPERADMIN targets
+
 ---
 
 **End of Documentation**
 
 *Last Updated: 2026-01-25*
-*Version: 1.1*
+*Version: 1.2*
 *Maintainer: Development Team*

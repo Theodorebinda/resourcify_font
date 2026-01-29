@@ -57,6 +57,10 @@ export interface User {
    * Frontend reads this value and never infers it
    */
   onboarding_step: OnboardingStep;
+  /**
+   * User role - for admin access control
+   */
+  role?: "SUPERADMIN" | "ADMIN" | "MODERATOR" | "CONTRIBUTOR" | "USER";
   createdAt?: string;
 }
 
