@@ -1,13 +1,17 @@
 /**
- * App Sidebar Component
+ * App Sidebar Component - Style X/Twitter
  * 
- * Sidebar for authenticated application shell.
+ * Sidebar gauche fixe avec navigation principale.
+ * Design inspiré de X (Twitter) :
+ * - Icônes grandes avec labels
+ * - Espacement généreux
+ * - Logo en haut
+ * - Profil utilisateur en bas
  * 
  * Rules:
  * - Uses Zustand for UI state (sidebarOpen)
  * - NO auth logic (middleware handles access)
  * - NO redirects
- * - NO conditional rendering based on guessed state
  * - Uses useUser() for user data (TanStack Query)
  * - Pure UI component
  */
@@ -15,7 +19,6 @@
 "use client";
 
 import * as React from "react";
-import { useUIStore } from "../../stores/use-ui-store";
 import { useUser } from "../../services/api/queries/auth-queries";
 import {
   Sidebar,
@@ -23,13 +26,12 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "../ui/sidebar";
+} from "../ui/sidebar-custom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +41,8 @@ import {
 } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Skeleton } from "../ui/skeleton";
-import { useRouter } from "next/navigation";
+import { Button } from "../ui/button";
+import { useRouter, usePathname } from "next/navigation";
 import { useLogout } from "../../services/api/queries/auth-queries";
 import { ROUTES } from "../../constants/routes";
 import {
@@ -48,10 +51,13 @@ import {
   Settings,
   User,
   LogOut,
-  ChevronUp,
   Shield,
+  Search,
+  Bookmark,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "../../libs/utils";
 
 interface NavItem {
   title: string;
@@ -62,17 +68,32 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    title: "Dashboard",
+    title: "Accueil",
     url: ROUTES.APP.DASHBOARD,
     icon: Home,
   },
   {
-    title: "Resources",
+    title: "Explorer",
+    url: "/app/explore",
+    icon: Search,
+  },
+  {
+    title: "Notifications",
+    url: "/app/notifications",
+    icon: Bell,
+  },
+  {
+    title: "Ressources",
     url: "/app/resources",
     icon: Inbox,
   },
   {
-    title: "Settings",
+    title: "Favoris",
+    url: "/app/bookmarks",
+    icon: Bookmark,
+  },
+  {
+    title: "Paramètres",
     url: "/app/settings",
     icon: Settings,
   },
@@ -88,37 +109,10 @@ function AppSidebarContent() {
   const { user, isLoading } = useUser();
   const logoutMutation = useLogout();
   const router = useRouter();
-  const { open, setOpen } = useSidebar();
-  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
-  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
-  const lastSyncedRef = React.useRef<{ zustand: boolean; provider: boolean }>({
-    zustand: sidebarOpen,
-    provider: open,
-  });
-
-  // Sync Zustand state to SidebarProvider (Zustand is source of truth)
-  React.useEffect(() => {
-    if (sidebarOpen !== lastSyncedRef.current.zustand) {
-      lastSyncedRef.current.zustand = sidebarOpen;
-      if (open !== sidebarOpen) {
-        setOpen(sidebarOpen);
-        lastSyncedRef.current.provider = sidebarOpen;
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sidebarOpen]); // Only depend on sidebarOpen
-
-  // Sync SidebarProvider changes to Zustand (user interaction with sidebar)
-  React.useEffect(() => {
-    if (open !== lastSyncedRef.current.provider) {
-      lastSyncedRef.current.provider = open;
-      if (sidebarOpen !== open) {
-        setSidebarOpen(open);
-        lastSyncedRef.current.zustand = open;
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]); // Only depend on open
+  const pathname = usePathname();
+  // Le nouveau sidebar personnalisé n'a plus besoin de la synchronisation complexe
+  // On garde juste useSidebar pour la compatibilité mais on ne l'utilise pas
+  useSidebar();
 
   const handleLogout = async () => {
     try {
@@ -139,79 +133,102 @@ function AppSidebarContent() {
     return "U";
   };
 
+  const filteredNavItems = navItems.filter((item) => {
+    // Filtrer les items admin si l'utilisateur n'est pas admin
+    if (item.adminOnly) {
+      const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+      return isAdmin;
+    }
+    return true;
+  });
+
   return (
     <Sidebar>
-      <SidebarHeader>
-        <SidebarGroupLabel>Ressourcefy</SidebarGroupLabel>
+      <SidebarHeader className="px-4 py-6">
+        <Link href={ROUTES.APP.DASHBOARD} className="flex items-center">
+          <h1 className="text-2xl font-bold">Ressourcefy</h1>
+        </Link>
       </SidebarHeader>
-      <SidebarContent>
+      
+      <SidebarContent className="px-3">
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems
-                .filter((item) => {
-                  // Filtrer les items admin si l'utilisateur n'est pas admin
-                  if (item.adminOnly) {
-                    const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
-                    return isAdmin;
-                  }
-                  return true;
-                })
-                .map((item) => (
+            <SidebarMenu className="space-y-1 justify-end">
+              {filteredNavItems.map((item) => {
+                const isActive = pathname === item.url || pathname?.startsWith(item.url + "/");
+                return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
+                    <SidebarMenuButton
+                      asChild
+                      className={cn(
+                        "w-full justify-start rounded-full px-4 py-3 text-lg font-normal hover:bg-muted",
+                        isActive && "font-semibold"
+                      )}
+                    >
+                      <Link href={item.url} className="flex items-center gap-4">
+                        <item.icon className="h-6 w-6" />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                ))}
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        
+        {/* Bouton principal (style X) */}
+        <div className="mt-4 px-3">
+          <Button className="w-full rounded-full px-4 py-6 text-lg font-semibold">
+            Publier
+          </Button>
+        </div>
       </SidebarContent>
-      <SidebarFooter>
+      
+      <SidebarFooter className="p-4">
         {isLoading ? (
-          <div className="flex items-center gap-2 p-2">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-24" />
+          <div className="flex items-center gap-3 rounded-full p-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
           </div>
         ) : user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <SidebarMenuButton>
-                <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-xs">
+              <button className="flex w-full items-center gap-3 rounded-full p-3 hover:bg-muted transition-colors">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback>
                     {getUserInitials(user.username, user.email)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col items-start">
+                <div className="flex flex-1 flex-col items-start text-left">
                   {user.username && (
-                    <span className="text-sm font-medium">{user.username}</span>
+                    <span className="text-sm font-semibold">{user.username}</span>
                   )}
                   {user.email && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground truncate max-w-[150px]">
                       {user.email}
                     </span>
                   )}
                 </div>
-                <ChevronUp className="ml-auto h-4 w-4" />
-              </SidebarMenuButton>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               side="top"
-              className="w-[--radix-popper-anchor-width]"
+              align="start"
+              className="w-56"
             >
               <DropdownMenuItem
                 onClick={() => router.push(ROUTES.APP.DASHBOARD)}
               >
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>Profil</span>
               </DropdownMenuItem>
               <DropdownMenuItem disabled>
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                <span>Paramètres</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -220,7 +237,7 @@ function AppSidebarContent() {
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>
-                  {logoutMutation.isPending ? "Logging out..." : "Log out"}
+                  {logoutMutation.isPending ? "Déconnexion..." : "Se déconnecter"}
                 </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
