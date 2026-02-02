@@ -20,7 +20,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   //   useSidebar,
-} from "@/src/components/ui/sidebar";
+} from "@/src/components/ui/sidebar-custom";
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -98,7 +98,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background max-w-4xl mx-auto">
       {/* Sidebar */}
       <aside className="w-64 border-r bg-muted/40">
         <div className="flex h-full flex-col">

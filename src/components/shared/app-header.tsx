@@ -28,7 +28,7 @@ import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 import { ROUTES } from "../../constants/routes";
 import { LogOut, Settings, User } from "lucide-react";
-import { SidebarTrigger } from "../ui/sidebar";
+import { SidebarTrigger } from "../ui/sidebar-custom";
 import { ThemeSelector } from "./theme-selector";
 
 export function AppHeader() {
