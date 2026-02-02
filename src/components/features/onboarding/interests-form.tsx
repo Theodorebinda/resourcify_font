@@ -17,33 +17,27 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
 import { Label } from "../../ui/label";
+import { Skeleton } from "../../ui/skeleton";
 import { useUser } from "../../../services/api/queries/auth-queries";
 import { useSubmitOnboardingInterests } from "../../../services/api/queries/onboarding-queries";
+import { useTags } from "../../../services/api/queries/tags-queries";
 import { useOnboardingGuard } from "../../../hooks/use-onboarding-guard";
 import { getRouteForStep } from "../../../utils/onboarding-routes";
 import { authKeys } from "../../../services/api/queries/auth-queries";
 import type { User } from "../../../types";
-
-const TAGS = [
-  { id: "frontend", label: "Frontend" },
-  { id: "backend", label: "Backend" },
-  { id: "design", label: "Design" },
-  { id: "devops", label: "DevOps" },
-  { id: "data", label: "Data" },
-  { id: "product", label: "Product" },
-];
 
 export function OnboardingInterestsForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingUser } = useUser();
   const { isValid, isLoading: isLoadingGuard } = useOnboardingGuard("interests");
+  const { data: tags, isLoading: isLoadingTags } = useTags();
   const submitInterests = useSubmitOnboardingInterests();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSubmitting = submitInterests.isPending;
-  const isLoading = isLoadingUser || isLoadingGuard;
+  const isLoading = isLoadingUser || isLoadingGuard || isLoadingTags;
 
   const canSubmit = useMemo(() => selectedTags.length > 0, [selectedTags]);
 
@@ -103,8 +97,10 @@ export function OnboardingInterestsForm() {
   // Affichage: spinner si loading, redirection silencieuse si étape incohérente
   if (isLoading) {
     return (
-      <div className="rounded-md border border-input bg-muted/30 p-6 text-sm text-muted-foreground">
-        Chargement des intérêts...
+      <div className="space-y-3">
+        {[...Array(6)].map((_, i) => (
+          <Skeleton key={i} className="h-14 w-full" />
+        ))}
       </div>
     );
   }
@@ -113,10 +109,19 @@ export function OnboardingInterestsForm() {
     return null; // Redirection en cours (silencieuse)
   }
 
+  // Si aucun tag n'est disponible
+  if (!tags || tags.length === 0) {
+    return (
+      <div className="rounded-md border border-input bg-muted/30 p-6 text-sm text-muted-foreground">
+        Aucun tag disponible pour le moment.
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-3">
-        {TAGS.map((tag) => {
+        {tags.map((tag) => {
           const checked = selectedTags.includes(tag.id);
           return (
             <div key={tag.id} className="flex items-center gap-3 rounded-md border border-input px-4 py-3">
@@ -126,7 +131,7 @@ export function OnboardingInterestsForm() {
                 onCheckedChange={() => toggleTag(tag.id)}
               />
               <Label htmlFor={`tag-${tag.id}`} className="text-sm font-medium">
-                {tag.label}
+                {tag.name}
               </Label>
             </div>
           );

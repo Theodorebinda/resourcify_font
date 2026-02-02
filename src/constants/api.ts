@@ -56,6 +56,11 @@ export const API_ENDPOINTS = {
     PROFILE: (userId: string) => `/authors/${userId}/`,
   },
 
+  // Tags endpoints (public)
+  TAGS: {
+    LIST: "/tags/",
+  },
+
   // Billing endpoints
   BILLING: {
     CHECKOUT: "/billing/checkout/",

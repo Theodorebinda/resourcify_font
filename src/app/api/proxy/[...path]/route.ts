@@ -28,6 +28,7 @@ const PUBLIC_ENDPOINTS = [
   "auth/resend-activation",
   "health/live",
   "health/ready",
+  "tags", // Public tags endpoint for onboarding
 ];
 
 const STRIPE_WEBHOOK_PATHS = [
