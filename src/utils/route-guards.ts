@@ -99,6 +99,12 @@ export function canAccessRoute(userState: UserState, route: string): boolean {
     return userState === "VISITOR";
   }
 
+  // Admin routes - accessible ONLY to authenticated users (ADMIN/SUPERADMIN check done in layout)
+  // Components will handle access control based on API calls
+  if (route.startsWith("/admin/")) {
+    return userState === "AUTHENTICATED";
+  }
+
   // Onboarding and app routes - accessible to authenticated users
   // Components will handle access control based on API calls
   if (route.startsWith("/onboarding/") || route.startsWith("/app") || route.startsWith("/user")) {
