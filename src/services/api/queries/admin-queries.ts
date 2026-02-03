@@ -23,7 +23,7 @@ export const adminKeys = {
   all: adminKeysBase.all,
   users: {
     all: [...adminKeysBase.all, "users"] as const,
-    list: (page?: number, pageSize?: number) => [...adminKeysBase.all, "users", "list", page, pageSize] as const,
+    list: (search?: string, page?: number, pageSize?: number) => [...adminKeysBase.all, "users", "list", search, page, pageSize] as const,
     detail: (id: string) => [...adminKeysBase.all, "users", "detail", id] as const,
     activity: (id: string, limit?: number) => [...adminKeysBase.all, "users", "activity", id, limit] as const,
   },
@@ -304,14 +304,17 @@ export interface SystemHealth {
 // User Management Hooks
 // ============================================================================
 
-export function useAdminUsers(page: number = 1, pageSize: number = 20) {
+export function useAdminUsers(search?: string, page: number = 1, pageSize: number = 20) {
   return useQuery<AdminUserListResponse, ApiError>({
-    queryKey: adminKeys.users.list(page, pageSize),
+    queryKey: adminKeys.users.list(search, page, pageSize),
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
         page_size: pageSize.toString(),
       });
+      if (search && search.trim()) {
+        params.append("search", search.trim());
+      }
       const response = await apiClient.get<AdminUserListResponse>(
         `${API_ENDPOINTS.ADMIN.USERS.LIST}?${params}`
       );

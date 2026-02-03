@@ -7,6 +7,7 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import { useAdminUsers, useDeleteAdminUser, useSetUserRole, useResetUserPassword } from "../../../../services/api/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Button } from "../../../../components/ui/button";
@@ -37,11 +38,21 @@ const ROLES = ["SUPERADMIN", "ADMIN", "MODERATOR", "CONTRIBUTOR", "USER"] as con
 export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<string>("");
   
-  const { data: usersData, isLoading, error: usersError } = useAdminUsers(page, 20);
+  // Debounce de la recherche pour éviter trop de requêtes
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset à la page 1 lors d'une nouvelle recherche
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+  
+  const { data: usersData, isLoading, error: usersError } = useAdminUsers(debouncedSearch, page, 20);
   const deleteUserMutation = useDeleteAdminUser();
   const setRoleMutation = useSetUserRole();
   const resetPasswordMutation = useResetUserPassword();
