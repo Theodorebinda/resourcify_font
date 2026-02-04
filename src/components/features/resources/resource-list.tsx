@@ -5,7 +5,9 @@
 
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useResourceFeed } from "../../../services/api/queries/resources-queries";
+import { ROUTES } from "../../../constants/routes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Skeleton } from "../../ui/skeleton";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
@@ -27,6 +29,7 @@ function formatDate(date: Date): string {
 }
 
 export function ResourceList() {
+  const router = useRouter();
   const { data: resources, isLoading, error } = useResourceFeed(1, 20);
 
   if (isLoading) {
@@ -80,7 +83,11 @@ export function ResourceList() {
   return (
     <div className="space-y-4">
       {resources.map((resource) => (
-        <Card key={resource.id} className="hover:bg-muted/50 transition-colors">
+        <Card 
+          key={resource.id} 
+          className="hover:bg-muted/50 transition-colors cursor-pointer"
+          onClick={() => router.push(ROUTES.APP.RESOURCE_DETAIL(resource.id))}
+        >
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">

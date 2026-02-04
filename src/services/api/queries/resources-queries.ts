@@ -44,6 +44,16 @@ export interface ResourceDetail {
     file_url: string;
     created_at: string;
   }>;
+  // Comments may be included in the response (if backend supports it)
+  comments?: Array<{
+    id: string;
+    author_name: string;
+    author_avatar: string | null;
+    content: string;
+    created_at: string;
+    vote_count: number;
+    user_vote: 1 | -1 | null;
+  }>;
 }
 
 export interface ResourceAccessResponse {

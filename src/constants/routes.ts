@@ -36,6 +36,7 @@ export const ROUTES = {
     DASHBOARD: "/app",
     PROFILE: "/app/profile",
     SETTINGS: "/app/settings",
+    RESOURCE_DETAIL: (id: string) => `/app/resources/${id}`,
   },
 
   // Admin routes

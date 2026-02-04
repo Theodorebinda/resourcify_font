@@ -76,6 +76,7 @@ export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
   [ROUTES.APP.DASHBOARD]: ["AUTHENTICATED"],
   [ROUTES.APP.PROFILE]: ["AUTHENTICATED"],
   [ROUTES.APP.SETTINGS]: ["AUTHENTICATED"],
+  "/app/resources/*": ["AUTHENTICATED"], // Dynamic route pattern
 };
 
 /**
