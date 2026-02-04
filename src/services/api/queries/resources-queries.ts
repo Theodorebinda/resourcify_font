@@ -44,6 +44,14 @@ export interface ResourceDetail {
     file_url: string;
     created_at: string;
   }>;
+  // Vote stats (if available from backend)
+  stats?: {
+    upvotes: number;
+    downvotes: number;
+    total_votes: number;
+  };
+  // User's vote (if available from backend)
+  user_vote?: 1 | -1 | null;
   // Comments may be included in the response (if backend supports it)
   comments?: Array<{
     id: string;
@@ -89,6 +97,17 @@ export interface CreateResourceFormResponse {
   resource_id: string;
   title: string;
   author_id: string;
+}
+
+export interface VoteOnResourcePayload {
+  resource_id: string;
+  vote_value: 1 | -1;
+}
+
+export interface VoteOnResourceResponse {
+  vote_id: string;
+  resource_id: string;
+  value: number;
 }
 
 /**
@@ -220,6 +239,30 @@ export function useCreateResource() {
     },
     onSuccess: () => {
       // Invalidate feed to show new resource
+      queryClient.invalidateQueries({ queryKey: resourceKeys.all });
+    },
+  });
+}
+
+/**
+ * Vote on a resource (upvote or downvote)
+ * Similar pattern to useVoteOnComment
+ */
+export function useVoteOnResource() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VoteOnResourceResponse, ApiError, VoteOnResourcePayload>({
+    mutationFn: async (payload) => {
+      const response = await apiClient.post<ApiResponse<VoteOnResourceResponse>>(
+        API_ENDPOINTS.RESOURCES.VOTE,
+        payload
+      );
+      return response.data.data;
+    },
+    onSuccess: (data) => {
+      // Invalidate resource detail to refresh vote counts
+      queryClient.invalidateQueries({ queryKey: resourceKeys.detail(data.resource_id) });
+      // Also invalidate feed to update vote counts
       queryClient.invalidateQueries({ queryKey: resourceKeys.all });
     },
   });

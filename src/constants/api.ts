@@ -46,6 +46,8 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/resources/${id}/detail/`,
     ACCESS: (id: string) => `/resources/${id}/`,
     VERSIONS: "/resources/versions/",
+    COMMENTS: (id: string) => `/resources/${id}/comments/`,
+    VOTE: "/resources/vote/",
   },
 
   // Comment endpoints

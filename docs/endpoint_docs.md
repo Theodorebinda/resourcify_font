@@ -132,6 +132,7 @@ CORS_ALLOWED_ORIGINS = [
    - [Create Resource](#create-resource)
    - [Create Comment](#create-comment)
    - [Vote on Comment](#vote-on-comment)
+   - [Vote on Resource](#vote-on-resource)
    - [Create Resource Version](#create-resource-version)
    - [Access Resource](#access-resource)
    - [Create Checkout Session](#create-checkout-session)
@@ -1552,6 +1553,225 @@ async function voteOnComment(commentId, value) {
   }
 }
 ```
+
+---
+
+### Vote on Resource
+
+**Endpoint**: `POST /api/resources/vote/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Upvote or downvote a resource. All authenticated users with completed onboarding can vote on resources they have access to.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  "vote_value": 1
+}
+```
+
+**Field Descriptions**:
+- `resource_id` (string, required): UUID of the resource to vote on
+- `vote_value` (integer, required): `1` for upvote, `-1` for downvote
+
+**Permissions**:
+- ✅ All authenticated users with completed onboarding can vote
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot vote on resources without access (premium without subscription, private, etc.)
+- ❌ Cannot vote on deleted resources
+
+**Vote Behavior**:
+- **Idempotent**: Voting with the same value multiple times has no effect
+- **Toggle**: If you already voted, changing the vote value updates your vote
+- **One vote per user**: Each user can only have one vote per resource
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "vote_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "value": 1
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource doesn't exist:
+```json
+{
+  "error": "Resource {resource_id} not found."
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": "You do not have permission to vote on this resource."
+}
+```
+
+**Error (400 Bad Request)** - Invalid vote value:
+```json
+{
+  "vote_value": ["Vote value must be +1 or -1."]
+}
+```
+
+**Error (400 Bad Request)** - Resource deleted:
+```json
+{
+  "error": "Cannot vote on a deleted resource."
+}
+```
+
+**Error (401 Unauthorized)** - Not authenticated:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/resources/vote/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "vote_value": 1
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function voteOnResource(resourceId, value) {
+  const response = await fetch('http://localhost:8000/api/resources/vote/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({
+      resource_id: resourceId,
+      vote_value: value  // 1 for upvote, -1 for downvote
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.detail || 'Failed to vote');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await voteOnResource(
+    '8a7b5c3d-1234-5678-90ab-cdef12345678',
+    1  // Upvote
+  );
+  console.log('Vote successful:', result.data);
+} catch (error) {
+  console.error('Vote failed:', error.message);
+}
+```
+
+#### React Hook Example
+```jsx
+import { useState } from 'react';
+
+function useResourceVote(resourceId) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  const vote = async (value) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/resources/vote/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          resource_id: resourceId,
+          vote_value: value
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.detail || 'Failed to vote');
+      }
+      
+      return await response.json();
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return { vote, loading, error };
+}
+
+// Usage in component
+function ResourceVoteButtons({ resourceId }) {
+  const { vote, loading, error } = useResourceVote(resourceId);
+  
+  const handleUpvote = async () => {
+    try {
+      await vote(1);
+      // Update UI to reflect new vote
+    } catch (err) {
+      // Error already set in hook
+    }
+  };
+  
+  const handleDownvote = async () => {
+    try {
+      await vote(-1);
+      // Update UI to reflect new vote
+    } catch (err) {
+      // Error already set in hook
+    }
+  };
+  
+  return (
+    <div>
+      <button onClick={handleUpvote} disabled={loading}>
+        👍 Upvote
+      </button>
+      <button onClick={handleDownvote} disabled={loading}>
+        👎 Downvote
+      </button>
+      {error && <div className="error">{error}</div>}
+    </div>
+  );
+}
+```
+
+**Note**: 
+- Votes are idempotent: voting with the same value multiple times has no effect
+- If you change your vote (e.g., from upvote to downvote), your previous vote is updated
+- All votes are logged via audit system
+- User must have completed onboarding to vote
+- Resource access is checked before allowing vote
 
 ---
 

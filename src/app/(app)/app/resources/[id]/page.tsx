@@ -8,8 +8,17 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { useResourceDetail } from "../../../../../services/api/queries/resources-queries";
-import { useVoteOnComment, useCreateComment } from "../../../../../services/api/queries/comments-queries";
+import Image from "next/image";
+import {
+  useResourceDetail,
+  useVoteOnResource,
+} from "../../../../../services/api/queries/resources-queries";
+import {
+  useVoteOnComment,
+  useCreateComment,
+  useResourceComments,
+  type Comment,
+} from "../../../../../services/api/queries/comments-queries";
 import { useUser } from "../../../../../services/api/queries/auth-queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../../components/ui/card";
 import { Skeleton } from "../../../../../components/ui/skeleton";
@@ -38,37 +47,35 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString("fr-FR");
 }
 
-// Mock comment interface (à remplacer quand l'endpoint sera disponible)
-interface Comment {
-  id: string;
-  author_name: string;
-  author_avatar: string | null;
-  content: string;
-  created_at: string;
-  vote_count: number;
-  user_vote: 1 | -1 | null;
-}
-
 export default function ResourceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const resourceId = params?.id as string;
   const { user } = useUser();
   const { toast } = useToast();
-  const voteMutation = useVoteOnComment();
+  const voteCommentMutation = useVoteOnComment();
+  const voteResourceMutation = useVoteOnResource();
   const createCommentMutation = useCreateComment();
   const [commentContent, setCommentContent] = useState("");
 
   const { data: resource, isLoading, error } = useResourceDetail(resourceId);
+  const [commentsPage, setCommentsPage] = useState(1);
+  const {
+    data: commentsData,
+    isLoading: isLoadingComments,
+    error: commentsError,
+  } = useResourceComments(resourceId, commentsPage, 20);
+
   const serverErrorResult = useServerError(error, () => {});
   const isServerError = serverErrorResult?.isServerError ?? false;
 
-  // Use comments from resource detail if available, otherwise empty array
-  const comments: Comment[] = resource?.comments || [];
+  // Use comments from the dedicated endpoint
+  const comments: Comment[] = commentsData?.data || [];
+  const pagination = commentsData?.pagination;
 
-  const handleVote = async (commentId: string, voteValue: 1 | -1) => {
+  const handleVoteOnComment = async (commentId: string, voteValue: 1 | -1) => {
     try {
-      await voteMutation.mutateAsync({
+      await voteCommentMutation.mutateAsync({
         comment_id: commentId,
         vote_value: voteValue,
       });
@@ -81,6 +88,38 @@ export default function ResourceDetailPage() {
       toast({
         title: "Erreur",
         description: apiError.message || "Impossible d'enregistrer le vote",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleVoteOnResource = async (voteValue: 1 | -1) => {
+    if (!resourceId) {
+      toast({
+        title: "Erreur",
+        description: "Ressource introuvable",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await voteResourceMutation.mutateAsync({
+        resource_id: resourceId,
+        vote_value: voteValue,
+      });
+      toast({
+        title: "Vote enregistré",
+        description: "Votre vote a été enregistré avec succès.",
+      });
+    } catch (error) {
+      const apiError = error as { message?: string; detail?: string };
+      toast({
+        title: "Erreur",
+        description:
+          apiError.message ||
+          apiError.detail ||
+          "Impossible d'enregistrer le vote",
         variant: "destructive",
       });
     }
@@ -238,7 +277,7 @@ export default function ResourceDetailPage() {
                 </div>
               </div>
               <CardTitle className="text-2xl mb-2">{resource.title}</CardTitle>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {resource.visibility === "premium" && (
                   <Badge variant="secondary" className="gap-1">
                     <Crown className="h-3 w-3" />
@@ -255,6 +294,45 @@ export default function ResourceDetailPage() {
                   <Badge variant="secondary">
                     {(resource.price_cents / 100).toFixed(2)} €
                   </Badge>
+                )}
+                {/* Vote buttons for resource */}
+                {user && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => handleVoteOnResource(1)}
+                      disabled={voteResourceMutation.isPending}
+                    >
+                      <ThumbsUp
+                        className={`h-4 w-4 mr-1 ${
+                          resource.user_vote === 1 ? "text-primary" : ""
+                        }`}
+                      />
+                      {resource.stats?.upvotes || 0}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => handleVoteOnResource(-1)}
+                      disabled={voteResourceMutation.isPending}
+                    >
+                      <ThumbsDown
+                        className={`h-4 w-4 mr-1 ${
+                          resource.user_vote === -1 ? "text-primary" : ""
+                        }`}
+                      />
+                      {resource.stats?.downvotes || 0}
+                    </Button>
+                    {resource.stats && resource.stats.total_votes > 0 && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        {resource.stats.total_votes} vote
+                        {resource.stats.total_votes > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -340,7 +418,29 @@ export default function ResourceDetailPage() {
           )}
 
           {/* Comments List */}
-          {comments.length > 0 ? (
+          {isLoadingComments ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 p-4 rounded-lg border border-border bg-muted/30"
+                >
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : commentsError ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-destructive">
+                Erreur lors du chargement des commentaires
+              </p>
+            </div>
+          ) : comments.length > 0 ? (
             <div className="space-y-4">
               {comments.map((comment) => (
                 <div
@@ -348,52 +448,96 @@ export default function ResourceDetailPage() {
                   className="flex gap-3 p-4 rounded-lg border border-border bg-muted/30"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      {comment.author_name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
+                    {comment.author.avatar_url ? (
+                      <Image
+                        src={comment.author.avatar_url}
+                        alt={comment.author.username}
+                        width={32}
+                        height={32}
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback>
+                        {comment.author.username.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-semibold text-sm">
-                        {comment.author_name}
+                        {comment.author.username}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(new Date(comment.created_at))}
                       </p>
                     </div>
-                    <p className="text-sm mb-2">{comment.content}</p>
+                    <p className="text-sm mb-2 whitespace-pre-wrap">
+                      {comment.content}
+                    </p>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2"
-                        onClick={() => handleVote(comment.id, 1)}
-                        disabled={voteMutation.isPending}
+                        onClick={() => handleVoteOnComment(comment.id, 1)}
+                        disabled={voteCommentMutation.isPending}
                       >
-                        <ThumbsUp
-                          className={`h-3 w-3 mr-1 ${
-                            comment.user_vote === 1 ? "text-primary" : ""
-                          }`}
-                        />
-                        {comment.vote_count > 0 && comment.vote_count}
+                        <ThumbsUp className="h-3 w-3 mr-1" />
+                        {comment.stats.upvotes > 0 && comment.stats.upvotes}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2"
-                        onClick={() => handleVote(comment.id, -1)}
-                        disabled={voteMutation.isPending}
+                        onClick={() => handleVoteOnComment(comment.id, -1)}
+                        disabled={voteCommentMutation.isPending}
                       >
-                        <ThumbsDown
-                          className={`h-3 w-3 mr-1 ${
-                            comment.user_vote === -1 ? "text-primary" : ""
-                          }`}
-                        />
+                        <ThumbsDown className="h-3 w-3 mr-1" />
+                        {comment.stats.downvotes > 0 && comment.stats.downvotes}
                       </Button>
+                      {comment.stats.total_votes > 0 && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {comment.stats.total_votes} vote
+                          {comment.stats.total_votes > 1 ? "s" : ""}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
+
+              {/* Pagination */}
+              {pagination && pagination.total_pages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground">
+                    Page {pagination.page} sur {pagination.total_pages} (
+                    {pagination.total_count} commentaire
+                    {pagination.total_count > 1 ? "s" : ""})
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCommentsPage((p) => Math.max(1, p - 1))}
+                      disabled={!pagination.has_previous || isLoadingComments}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCommentsPage((p) =>
+                          Math.min(pagination.total_pages, p + 1)
+                        )
+                      }
+                      disabled={!pagination.has_next || isLoadingComments}
+                    >
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
