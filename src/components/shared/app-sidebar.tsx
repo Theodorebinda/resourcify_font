@@ -139,11 +139,11 @@ const navItems: NavItem[] = [
     url: "/app/bookmarks",
     icon: Bookmark,
   },
-  {
-    title: "Paramètres",
-    url: "/app/settings",
-    icon: Settings,
-  },
+  // {
+  //   title: "Paramètres",
+  //   url: "/app/settings",
+  //   icon: Settings,
+  // },
 ];
 
 function AppSidebarContent() {
@@ -313,12 +313,14 @@ function AppSidebarContent() {
               className="w-56"
             >
               <DropdownMenuItem
-                onClick={() => router.push(ROUTES.APP.DASHBOARD)}
+                onClick={() => router.push(ROUTES.APP.PROFILE)}
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>Profil</span>
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem
+                onClick={() => router.push(ROUTES.APP.SETTINGS)}
+              >
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Paramètres</span>
               </DropdownMenuItem>

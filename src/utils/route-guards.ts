@@ -74,6 +74,8 @@ export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
   // App routes - accessible to authenticated users
   // Components will handle access control based on API calls
   [ROUTES.APP.DASHBOARD]: ["AUTHENTICATED"],
+  [ROUTES.APP.PROFILE]: ["AUTHENTICATED"],
+  [ROUTES.APP.SETTINGS]: ["AUTHENTICATED"],
 };
 
 /**

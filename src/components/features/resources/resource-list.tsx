@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Skeleton } from "../../ui/skeleton";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Badge } from "../../ui/badge";
-import { MessageCircle, Eye, Lock, Crown } from "lucide-react";
+import { MessageCircle, Lock, Crown } from "lucide-react";
 // Format date helper
 function formatDate(date: Date): string {
   const now = new Date();

@@ -22,6 +22,7 @@ import { SomethingWentWrong } from "../../../components/error/something-went-wro
 import { useServerError } from "../../../hooks/use-server-error";
 import { CreateResourceForm } from "../../../components/features/resources/create-resource-form";
 import { ResourceList } from "../../../components/features/resources/resource-list";
+import { ThemeSelector } from "@/src/components/shared/theme-selector";
 
 export default function AppDashboardPage() {
   const { user, isLoading, error } = useUser();
@@ -92,9 +93,12 @@ export default function AppDashboardPage() {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">
+        <div className="flex justify-between items-center w-full gap-2">
+        <h1 className="text-xl font-bold mb-2">
           Welcome back{user.username ? `, ${user.username}` : ""}!
-        </h1>
+          </h1>
+          <ThemeSelector/>
+        </div>
         <p className="text-muted-foreground">
           Here&apos;s what&apos;s happening with your account.
         </p>

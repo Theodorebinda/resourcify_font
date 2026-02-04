@@ -34,6 +34,8 @@ export const ROUTES = {
   // App routes
   APP: {
     DASHBOARD: "/app",
+    PROFILE: "/app/profile",
+    SETTINGS: "/app/settings",
   },
 
   // Admin routes

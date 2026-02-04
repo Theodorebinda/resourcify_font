@@ -14,7 +14,7 @@ import { Button } from "../../ui/button";
 import { Textarea } from "../../ui/textarea";
 import { Input } from "../../ui/input";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
-import { Image, Link2, FileText, X } from "lucide-react";
+import { Image, Link2, FileText } from "lucide-react";
 import {
   Select,
   SelectContent,
