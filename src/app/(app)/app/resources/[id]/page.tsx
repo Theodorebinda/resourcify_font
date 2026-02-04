@@ -7,12 +7,14 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   useResourceDetail,
   useVoteOnResource,
+  useAccessResource,
 } from "../../../../../services/api/queries/resources-queries";
+import { useResourceProgress } from "../../../../../services/api/queries/progress-queries";
 import {
   useVoteOnComment,
   useCreateComment,
@@ -65,6 +67,28 @@ export default function ResourceDetailPage() {
     isLoading: isLoadingComments,
     error: commentsError,
   } = useResourceComments(resourceId, commentsPage, 20);
+  
+  // Récupérer le suivi de progression de l'utilisateur pour cette ressource
+  const { data: userProgress } = useResourceProgress(resourceId);
+  const accessResourceMutation = useAccessResource();
+  
+  // Créer automatiquement le suivi lors de l'affichage de la ressource
+  // Le backend crée automatiquement le suivi (status: IN_PROGRESS) lors de l'accès via /access/
+  // On appelle cet endpoint une seule fois lors du chargement de la page pour initialiser le suivi
+  useEffect(() => {
+    if (resourceId && resource && user && !userProgress?.progress_id) {
+      // Si l'utilisateur n'a pas encore de suivi pour cette ressource,
+      // on appelle l'endpoint /access/ qui créera automatiquement le suivi
+      // Note: Cet appel est silencieux et non-bloquant
+      accessResourceMutation.mutate(resourceId, {
+        onError: () => {
+          // Ignorer les erreurs silencieusement (accès refusé, etc.)
+          // Le suivi sera créé lors d'un accès ultérieur réussi
+        },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resourceId, resource, user, userProgress?.progress_id]);
 
   const serverErrorResult = useServerError(error, () => {});
   const isServerError = serverErrorResult?.isServerError ?? false;
