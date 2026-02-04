@@ -12,20 +12,21 @@
 2. [Stack technique et dépendances](#stack-technique-et-dépendances)
 3. [Structure des dossiers](#structure-des-dossiers)
 4. [Architecture et patterns](#architecture-et-patterns)
-5. [Gestion d'état](#gestion-détat)
-6. [Routing (Next.js App Router)](#routing-nextjs-app-router)
-7. [API et services](#api-et-services)
-8. [Composants UI](#composants-ui)
-9. [Hooks personnalisés](#hooks-personnalisés)
-10. [Types TypeScript](#types-typescript)
-11. [Constantes et configuration](#constantes-et-configuration)
-12. [Utilitaires](#utilitaires)
-13. [Conventions de nommage](#conventions-de-nommage)
-14. [Règles et principes](#règles-et-principes)
-15. [Flux de données](#flux-de-données)
-16. [Gestion des erreurs](#gestion-des-erreurs)
-17. [Performance et optimisation](#performance-et-optimisation)
-18. [Tests](#tests)
+5. [Fonctionnalités complètes](#fonctionnalités-complètes)
+6. [Gestion d'état](#gestion-détat)
+7. [Routing (Next.js App Router)](#routing-nextjs-app-router)
+8. [API et services](#api-et-services)
+9. [Composants UI](#composants-ui)
+10. [Hooks personnalisés](#hooks-personnalisés)
+11. [Types TypeScript](#types-typescript)
+12. [Constantes et configuration](#constantes-et-configuration)
+13. [Utilitaires](#utilitaires)
+14. [Conventions de nommage](#conventions-de-nommage)
+15. [Règles et principes](#règles-et-principes)
+16. [Flux de données](#flux-de-données)
+17. [Gestion des erreurs](#gestion-des-erreurs)
+18. [Performance et optimisation](#performance-et-optimisation)
+19. [Tests](#tests)
 
 ---
 
@@ -515,6 +516,790 @@ adminKeys = {
 - Invalidation ciblée: `queryClient.invalidateQueries({ queryKey: adminKeys.users.all })`
 - Organisation claire par domaine
 - Évite les collisions de clés
+
+---
+
+## Fonctionnalités complètes
+
+Cette section détaille toutes les fonctionnalités implémentées dans l'application frontend Ressourcefy, organisées par domaine fonctionnel.
+
+### 1. Authentification et gestion de compte
+
+#### 1.1 Connexion (`/auth/login`)
+- **Composant**: `components/features/auth/login-form.tsx`
+- **Hook**: `useLogin()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Formulaire de connexion avec email et mot de passe
+  - Validation côté client avec Zod
+  - Gestion des erreurs spécifiques (compte non activé, identifiants invalides)
+  - Redirection automatique après connexion selon l'état d'onboarding
+  - Support du bouton "Renvoyer l'email d'activation" si le compte n'est pas activé
+- **Flux**:
+  1. L'utilisateur saisit ses identifiants
+  2. Appel à `POST /auth/login/` via le proxy
+  3. Le backend définit les cookies HTTP-only (access_token, refresh_token, activated, onboarding_step)
+  4. Appel à `/api/auth/session` pour établir la session
+  5. Redirection vers `/auth/post-login` qui redirige selon `onboarding_step`
+
+#### 1.2 Inscription (`/auth/register`)
+- **Composant**: `components/features/auth/register-form.tsx`
+- **Hook**: `useRegister()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Formulaire d'inscription avec email et mot de passe
+  - Validation des mots de passe (confirmation, force)
+  - Envoi automatique d'email d'activation après inscription
+  - Redirection vers la page d'activation requise
+- **Flux**:
+  1. L'utilisateur remplit le formulaire
+  2. Appel à `POST /auth/register/`
+  3. Redirection vers `/onboarding/activation-required/`
+
+#### 1.3 Activation de compte (`/auth/activate`)
+- **Composant**: `components/features/auth/activation-handler.tsx`
+- **Hook**: `useActivateAccount()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Activation automatique via token dans l'URL (`?token=...`)
+  - Gestion des tokens expirés ou invalides
+  - Redirection automatique après activation réussie
+  - Protection contre les appels multiples (useRef)
+- **Flux**:
+  1. L'utilisateur clique sur le lien dans l'email
+  2. Le token est extrait de l'URL
+  3. Appel à `POST /auth/activate/` avec le token
+  4. Redirection vers l'onboarding approprié
+
+#### 1.4 Renvoi d'email d'activation
+- **Composant**: `components/features/auth/resend-activation.tsx`
+- **Hook**: `useResendActivation()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Bouton pour renvoyer l'email d'activation
+  - Affichage conditionnel si le compte n'est pas activé
+  - Feedback utilisateur (toast) après envoi
+
+#### 1.5 Mot de passe oublié (`/auth/forgot-password`)
+- **Composant**: Page dédiée avec formulaire
+- **Hook**: `useRequestPasswordReset()` dans `services/api/queries/password-reset-queries.ts`
+- **Fonctionnalités**:
+  - Demande de réinitialisation par email
+  - Envoi d'email avec lien de réinitialisation
+
+#### 1.6 Réinitialisation de mot de passe (`/auth/reset-password`)
+- **Composant**: Page dédiée avec formulaire
+- **Hook**: `useConfirmPasswordReset()` dans `services/api/queries/password-reset-queries.ts`
+- **Fonctionnalités**:
+  - Réinitialisation avec token depuis l'email
+  - Validation des nouveaux mots de passe
+  - Confirmation de réinitialisation réussie
+
+#### 1.7 Déconnexion
+- **Hook**: `useLogout()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Déconnexion avec suppression des cookies
+  - Redirection vers la page d'accueil
+  - Invalidation du cache TanStack Query
+
+### 2. Onboarding
+
+Le processus d'onboarding est **server-driven** : le backend expose `onboarding_step` qui détermine l'étape actuelle.
+
+#### 2.1 Démarrage de l'onboarding (`/onboarding/start`)
+- **Composant**: `components/features/onboarding/onboarding-start-card.tsx`
+- **Hook**: `useStartOnboarding()` dans `services/api/queries/onboarding-queries.ts`
+- **Fonctionnalités**:
+  - Carte de bienvenue pour démarrer l'onboarding
+  - Appel à `POST /onboarding/start/` pour initialiser le processus
+  - Redirection automatique vers l'étape suivante
+
+#### 2.2 Étape profil (`/onboarding/profile`)
+- **Composant**: `components/features/onboarding/profile-form.tsx`
+- **Hook**: `useSubmitOnboardingProfile()` dans `services/api/queries/onboarding-queries.ts`
+- **Fonctionnalités**:
+  - Formulaire pour compléter le profil (username, bio, avatar_url)
+  - Validation avec Zod
+  - Upload d'avatar (URL)
+  - Redirection automatique vers l'étape des intérêts après soumission
+- **Guard**: `useOnboardingGuard("profile")` redirige si l'utilisateur n'est pas à cette étape
+
+#### 2.3 Étape intérêts (`/onboarding/interests`)
+- **Composant**: `components/features/onboarding/interests-form.tsx`
+- **Hook**: `useSubmitOnboardingInterests()` dans `services/api/queries/onboarding-queries.ts`
+- **Hook Tags**: `useTags()` dans `services/api/queries/tags-queries.ts`
+- **Fonctionnalités**:
+  - Sélection multiple de tags d'intérêts
+  - Récupération dynamique des tags depuis `GET /tags/`
+  - Affichage avec loading skeletons
+  - Validation (minimum 1 tag sélectionné)
+  - Redirection vers `/onboarding/done` après soumission
+- **Guard**: `useOnboardingGuard("interests")` redirige si l'utilisateur n'est pas à cette étape
+
+#### 2.4 Activation requise (`/onboarding/activation-required`)
+- **Composant**: Page dédiée
+- **Fonctionnalités**:
+  - Message informatif expliquant qu'un email d'activation a été envoyé
+  - Bouton pour renvoyer l'email d'activation
+  - Redirection automatique si le compte est déjà activé
+
+#### 2.5 Onboarding terminé (`/onboarding/done`)
+- **Composant**: `components/features/onboarding/onboarding-flow.tsx`
+- **Fonctionnalités**:
+  - Message de félicitations
+  - Redirection automatique vers `/app` (dashboard)
+
+#### 2.6 Gestion du flux d'onboarding
+- **Composant**: `components/features/onboarding/onboarding-flow.tsx`
+- **Hook**: `useOnboardingStep()` dans `services/api/queries/onboarding-queries.ts`
+- **Fonctionnalités**:
+  - Indicateur de progression visuel
+  - Navigation automatique selon `user.onboarding_step`
+  - Protection des routes avec `useOnboardingGuard()`
+
+### 3. Application principale (Dashboard)
+
+#### 3.1 Dashboard utilisateur (`/app`)
+- **Composant**: `app/(app)/app/page.tsx`
+- **Fonctionnalités**:
+  - Message de bienvenue personnalisé avec le nom d'utilisateur
+  - Sélecteur de thème dans le header
+  - Formulaire de création de ressource (si rôle autorisé)
+  - Liste des ressources publiques avec pagination
+  - Affichage des statistiques (commentaires, votes) pour chaque ressource
+- **Accès**: Tous les utilisateurs authentifiés et complètement onboardés
+
+#### 3.2 Création de ressource
+- **Composant**: `components/features/resources/create-resource-form.tsx`
+- **Hook**: `useCreateResource()` dans `services/api/queries/resources-queries.ts`
+- **Fonctionnalités**:
+  - Formulaire style X/Twitter pour créer une ressource
+  - Champs: titre, description, visibilité (public/premium/private), prix, URL de fichier, tags
+  - Sélection multiple de tags depuis la liste publique
+  - Validation avec gestion d'erreurs
+  - Création automatique de la première version de la ressource
+  - Accessible uniquement aux rôles: SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR
+- **Endpoint**: `POST /resources/` (l'utilisateur authentifié devient automatiquement l'auteur)
+
+#### 3.3 Liste des ressources
+- **Composant**: `components/features/resources/resource-list.tsx`
+- **Hook**: `useResourceFeed()` dans `services/api/queries/resources-queries.ts`
+- **Fonctionnalités**:
+  - Affichage paginé des ressources publiques
+  - Cartes de ressources avec:
+    - Informations auteur (nom, avatar)
+    - Titre et description
+    - Tags associés
+    - Statistiques (commentaires, upvotes, downvotes, total votes)
+    - Badges de visibilité (premium, private)
+    - Prix si applicable
+  - Navigation vers la page de détail au clic
+  - États de chargement (skeletons) et d'erreur
+
+### 4. Gestion des ressources
+
+#### 4.1 Page de ressources utilisateur (`/app/resources`)
+- **Composant**: `app/(app)/app/resources/page.tsx`
+- **Fonctionnalités**:
+  - **Deux onglets**:
+    - **"Mes ressources"**: Affiche uniquement les ressources créées par l'utilisateur connecté
+    - **"Ressources suivies"**: Affiche les ressources que l'utilisateur suit (avec progression)
+  - Persistance de la sélection d'onglet dans localStorage
+  - **Accès différencié**:
+    - **USER**: Voit uniquement l'onglet "Ressources suivies" (pas d'onglets visibles)
+    - **Autres rôles**: Voient les deux onglets et peuvent basculer
+- **Hooks utilisés**:
+  - `useUserResources()` pour les ressources de l'utilisateur
+  - `useUserProgress()` pour les ressources suivies avec progression
+- **Affichage**:
+  - Cartes de ressources avec toutes les métadonnées
+  - Pour les ressources suivies: statut de progression (NOT_STARTED, IN_PROGRESS, COMPLETED)
+  - Statistiques de progression (total, complétés, en cours, non démarrés)
+
+#### 4.2 Détail d'une ressource (`/app/resources/[id]`)
+- **Composant**: `app/(app)/app/resources/[id]/page.tsx`
+- **Hooks utilisés**:
+  - `useResourceDetail()` pour les détails de la ressource
+  - `useResourceComments()` pour les commentaires paginés
+  - `useCreateComment()` pour créer un commentaire
+  - `useVoteOnComment()` pour voter sur un commentaire
+  - `useVoteOnResource()` pour voter sur la ressource
+  - `useAccessResource()` pour initialiser le suivi de progression
+  - `useResourceProgress()` pour afficher la progression de l'utilisateur
+- **Fonctionnalités**:
+  - **Affichage de la ressource**:
+    - Titre, description, auteur, tags
+    - Visibilité et prix
+    - Versions disponibles avec liens de téléchargement
+    - Statistiques de votes (upvotes, downvotes, total)
+    - Boutons de vote interactifs (upvote/downvote)
+  - **Commentaires**:
+    - Liste paginée des commentaires
+    - Formulaire de création de commentaire
+    - Affichage de chaque commentaire avec:
+      - Auteur (nom, avatar)
+      - Contenu
+      - Date de création (formatée)
+      - Statistiques de votes
+      - Boutons de vote interactifs
+    - Pagination avec navigation
+  - **Suivi de progression**:
+    - Appel automatique à `/resources/{id}/access/` lors du chargement
+    - Affichage du statut de progression (IN_PROGRESS, COMPLETED)
+    - Bouton pour marquer comme complété
+  - **États**:
+    - Loading avec skeletons
+    - Erreur avec message explicite
+    - Not found si la ressource n'existe pas
+
+#### 4.3 Vote sur ressource
+- **Hook**: `useVoteOnResource()` dans `services/api/queries/resources-queries.ts`
+- **Fonctionnalités**:
+  - Vote positif (upvote) ou négatif (downvote)
+  - Mise à jour optimiste de l'UI
+  - Invalidation du cache pour rafraîchir les données
+  - Gestion des erreurs avec toast
+- **Endpoint**: `POST /resources/vote/`
+
+#### 4.4 Vote sur commentaire
+- **Hook**: `useVoteOnComment()` dans `services/api/queries/comments-queries.ts`
+- **Fonctionnalités**:
+  - Vote positif ou négatif sur un commentaire
+  - Mise à jour immédiate des statistiques
+  - Invalidation du cache des commentaires
+- **Endpoint**: `POST /comments/vote/`
+
+#### 4.5 Création de commentaire
+- **Hook**: `useCreateComment()` dans `services/api/queries/comments-queries.ts`
+- **Fonctionnalités**:
+  - Formulaire de création avec validation
+  - Soumission avec gestion d'erreurs
+  - Rafraîchissement automatique de la liste des commentaires
+  - Réinitialisation du formulaire après succès
+- **Endpoint**: `POST /comments/`
+
+### 5. Suivi de progression (Progress Tracking)
+
+#### 5.1 Progression utilisateur
+- **Hook**: `useUserProgress()` dans `services/api/queries/progress-queries.ts`
+- **Fonctionnalités**:
+  - Liste paginée de toutes les ressources suivies par l'utilisateur
+  - Statistiques globales (total, complétés, en cours, non démarrés)
+  - Informations par ressource:
+    - Titre et auteur
+    - Statut (NOT_STARTED, IN_PROGRESS, COMPLETED)
+    - Dates (début, dernier accès, complétion)
+- **Endpoint**: `GET /user/progress/`
+
+#### 5.2 Progression d'une ressource spécifique
+- **Hook**: `useResourceProgress()` dans `services/api/queries/progress-queries.ts`
+- **Fonctionnalités**:
+  - Récupération du statut de progression pour une ressource donnée
+  - Affichage dans la page de détail de la ressource
+- **Endpoint**: `GET /resources/{id}/progress/`
+
+#### 5.3 Marquer une ressource comme complétée
+- **Hook**: `useCompleteResourceProgress()` dans `services/api/queries/progress-queries.ts`
+- **Fonctionnalités**:
+  - Marquer une ressource comme complétée
+  - Mise à jour automatique du statut à COMPLETED
+  - Invalidation du cache pour rafraîchir l'UI
+- **Endpoint**: `POST /resources/{id}/complete/`
+
+#### 5.4 Accès à une ressource (initialisation du suivi)
+- **Hook**: `useAccessResource()` dans `services/api/queries/resources-queries.ts`
+- **Fonctionnalités**:
+  - Appel automatique lors de l'affichage d'une ressource
+  - Création automatique d'un suivi avec statut IN_PROGRESS
+  - Non-bloquant (erreurs ignorées silencieusement)
+- **Endpoint**: `GET /resources/{id}/access/`
+
+#### 5.5 Progression de tous les utilisateurs sur une ressource (pour auteurs/admins)
+- **Hook**: `useResourceUsersProgress()` dans `services/api/queries/progress-queries.ts`
+- **Fonctionnalités**:
+  - Liste paginée de tous les utilisateurs qui suivent une ressource
+  - Statistiques par utilisateur:
+    - Email, username, avatar
+    - Statut de progression
+    - Dates (début, dernier accès, complétion)
+  - Statistiques globales (total, complétés, en cours, non démarrés)
+  - Accessible aux auteurs de la ressource et aux admins
+- **Endpoint**: `GET /resources/{id}/users-progress/`
+
+### 6. Profil et paramètres utilisateur
+
+#### 6.1 Page de profil (`/app/profile`)
+- **Composant**: `app/(app)/app/profile/page.tsx`
+- **Hook**: `useUser()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Affichage des informations utilisateur:
+    - Email, username, bio, avatar
+    - Rôle
+    - Statut d'activation
+    - Étape d'onboarding
+    - Dates de création et mise à jour
+  - États de chargement et d'erreur
+  - Navigation depuis le menu utilisateur dans la sidebar
+
+#### 6.2 Page de paramètres (`/app/settings`)
+- **Composant**: `app/(app)/app/settings/page.tsx`
+- **Hooks**:
+  - `useUser()` pour les données utilisateur
+  - `useUpdateProfile()` pour mettre à jour le profil
+  - `useRequestRole()` pour demander un changement de rôle
+- **Fonctionnalités**:
+  - **Section Apparence**:
+    - Sélecteur de thème (light/dark/system)
+  - **Section Notifications**:
+    - Paramètres de notifications (à venir)
+  - **Section Sécurité**:
+    - Changement de mot de passe (à venir)
+  - **Section Compte**:
+    - Mise à jour du profil (username, bio, avatar)
+    - Demande de changement de rôle (MODERATOR, CONTRIBUTOR)
+  - Navigation depuis le menu utilisateur dans la sidebar
+
+#### 6.3 Mise à jour du profil
+- **Hook**: `useUpdateProfile()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Mise à jour du username, bio, avatar_url
+  - Validation avec gestion d'erreurs
+  - Rafraîchissement automatique des données utilisateur
+- **Endpoint**: `PATCH /user/profile/`
+
+#### 6.4 Demande de changement de rôle
+- **Hook**: `useRequestRole()` dans `services/api/queries/auth-queries.ts`
+- **Fonctionnalités**:
+  - Demande de changement vers MODERATOR ou CONTRIBUTOR
+  - Validation et feedback utilisateur
+- **Endpoint**: `POST /user/request-role/`
+
+### 7. Administration
+
+L'interface d'administration est accessible uniquement aux rôles **ADMIN** et **SUPERADMIN**. Le menu d'administration est intégré dans la sidebar principale comme sous-menu.
+
+#### 7.1 Dashboard admin (`/admin/dashboard`)
+- **Composant**: `app/(app)/admin/dashboard/page.tsx`
+- **Hooks**:
+  - `useDashboardOverview()` pour les statistiques globales
+  - `useDashboardActivity()` pour l'activité récente
+  - `useSystemHealth()` pour l'état du système
+- **Fonctionnalités**:
+  - Vue d'ensemble des statistiques (utilisateurs, ressources, abonnements, paiements)
+  - Activité récente du système
+  - État de santé du système
+- **Endpoint**: `GET /admin/dashboard/overview/`
+
+#### 7.2 Gestion des utilisateurs (`/admin/users`)
+- **Composant**: `app/(app)/admin/users/page.tsx`
+- **Hooks**:
+  - `useAdminUsers()` pour la liste paginée avec recherche
+  - `useSetUserRole()` pour modifier le rôle d'un utilisateur
+  - `useDeleteAdminUser()` pour supprimer un utilisateur
+  - `useResetUserPassword()` pour réinitialiser le mot de passe
+- **Fonctionnalités**:
+  - **Liste des utilisateurs**:
+    - Affichage paginé (20 par page)
+    - Recherche en temps réel avec debounce (500ms)
+    - Colonnes: email, username, rôle, statut d'activation, dates
+  - **Actions sur un utilisateur**:
+    - Modification du rôle (SUPERADMIN uniquement)
+    - Suppression (avec confirmation)
+    - Réinitialisation du mot de passe
+  - **Dialogue de modification de rôle**:
+    - Sélection du nouveau rôle via Select
+    - Confirmation avant modification
+  - États de chargement (skeletons) et d'erreur
+- **Endpoints**:
+  - `GET /admin/users/` (avec recherche et pagination)
+  - `POST /admin/users/{id}/set_role/`
+  - `DELETE /admin/users/{id}/`
+  - `POST /admin/users/{id}/reset_password/`
+
+#### 7.3 Gestion des tags (`/admin/tags`)
+- **Composant**: `app/(app)/admin/tags/page.tsx`
+- **Hooks**:
+  - `useAdminTags()` pour la liste avec recherche
+  - `useCreateTag()` pour créer un tag
+  - `useUpdateTag()` pour modifier un tag
+  - `useDeleteTag()` pour supprimer un tag
+  - `useMergeTags()` pour fusionner deux tags
+- **Fonctionnalités**:
+  - **Liste des tags**:
+    - Affichage paginé avec recherche
+    - Colonnes: nom, slug, dates de création/modification
+  - **CRUD complet**:
+    - Création via dialogue
+    - Modification via dialogue
+    - Suppression avec confirmation
+  - **Fusion de tags**:
+    - Sélection du tag source et du tag cible via Select
+    - Validation (tags différents)
+    - Résumé de la fusion avant confirmation
+    - Fusion de toutes les ressources associées
+  - États de chargement et d'erreur
+- **Endpoints**:
+  - `GET /admin/tags/`
+  - `POST /admin/tags/`
+  - `PATCH /admin/tags/{id}/`
+  - `DELETE /admin/tags/{id}/`
+  - `POST /admin/tags/merge/`
+
+#### 7.4 Gestion des ressources (`/admin/resources`)
+- **Composant**: `app/(app)/admin/resources/page.tsx`
+- **Hooks**:
+  - `useResourceFeed()` pour la liste des ressources publiques
+  - `useResourceUsersProgress()` pour les suivis d'une ressource
+  - `useDeleteAdminResource()` pour supprimer une ressource
+- **Fonctionnalités**:
+  - **Liste des ressources**:
+    - Affichage de toutes les ressources publiques
+    - Informations: titre, auteur, visibilité, prix, tags, statistiques
+    - Lien vers la page de détail
+  - **Suivi des utilisateurs par ressource**:
+    - Bouton "Suivis" pour chaque ressource
+    - Section expandable avec:
+      - Statistiques (total utilisateurs, complétés, en cours, non démarrés)
+      - Liste paginée des utilisateurs avec leur progression
+      - Informations par utilisateur (email, username, avatar, statut, dates)
+    - Pagination des utilisateurs (10 par page)
+  - **Actions**:
+    - Suppression de ressource (avec confirmation)
+    - Navigation vers le détail
+  - États de chargement et d'erreur
+- **Endpoints**:
+  - `GET /feed/` (liste publique)
+  - `GET /resources/{id}/users-progress/` (suivis)
+  - `DELETE /admin/resources/{id}/`
+
+#### 7.5 Gestion des abonnements (`/admin/subscriptions`)
+- **Composant**: `app/(app)/admin/subscriptions/page.tsx`
+- **Hooks**:
+  - `useAdminSubscriptions()` pour la liste avec filtres
+  - `useUpdateAdminSubscription()` pour modifier un abonnement
+  - `useCancelAdminSubscription()` pour annuler un abonnement
+- **Fonctionnalités**:
+  - Liste paginée des abonnements
+  - Filtres par statut, plan, etc.
+  - Modification et annulation d'abonnements
+- **Endpoints**:
+  - `GET /admin/subscriptions/`
+  - `PATCH /admin/subscriptions/{id}/`
+  - `POST /admin/subscriptions/{id}/cancel/`
+
+#### 7.6 Gestion des paiements (`/admin/payments`)
+- **Composant**: `app/(app)/admin/payments/page.tsx`
+- **Hooks**:
+  - `useAdminPayments()` pour la liste avec filtres
+  - `useRefundPayment()` pour rembourser un paiement
+- **Fonctionnalités**:
+  - Liste paginée des paiements
+  - Filtres par statut, méthode, etc.
+  - Remboursement de paiements
+- **Endpoints**:
+  - `GET /admin/payments/`
+  - `POST /admin/payments/{id}/refund/`
+
+### 8. Pages publiques
+
+#### 8.1 Page d'accueil (`/`)
+- **Composant**: `app/(public)/page.tsx`
+- **Sections**:
+  - **Hero Section**: Présentation de l'application avec CTA principal
+  - **Features Section**: Fonctionnalités principales avec navigation
+  - **How It Works Section**: Processus d'utilisation
+  - **Pricing Section**: Section tarification intégrée (id="pricing")
+  - **CTA Section**: Appel à l'action final
+- **Navigation**:
+  - Header fixe qui apparaît au scroll (>400px) avec animation Framer Motion
+  - Navigation vers les sections (accueil, fonctionnalités, tarif, blog, contact)
+  - Sélecteur de thème
+
+#### 8.2 Page blog (`/blog`)
+- **Composant**: `app/(public)/blog/page.tsx`
+- **Fonctionnalités**:
+  - Page blog (contenu à venir)
+
+#### 8.3 Page contact (`/contact`)
+- **Composant**: `app/(public)/contact/page.tsx`
+- **Composants**:
+  - `components/contact/contact-form.tsx`: Formulaire de contact
+  - `components/contact/contact-info.tsx`: Informations de contact
+- **Fonctionnalités**:
+  - Formulaire de contact avec validation
+  - Informations de contact (email, adresse, etc.)
+
+#### 8.4 Page pricing (`/pricing`)
+- **Composant**: `app/(public)/pricing/page.tsx`
+- **Fonctionnalités**:
+  - Redirection vers `/#pricing` (section pricing dans l'accueil)
+  - Les composants pricing sont intégrés dans la page d'accueil:
+    - `PricingHero`: En-tête de la section
+    - `PricingCards`: Cartes des plans tarifaires
+    - `FeaturesComparison`: Comparaison des fonctionnalités
+    - `PricingFaq`: FAQ sur les tarifs
+
+### 9. Navigation et layout
+
+#### 9.1 Sidebar application (`AppSidebar`)
+- **Composant**: `components/shared/app-sidebar.tsx`
+- **Fonctionnalités**:
+  - **Navigation principale**:
+    - Accueil (`/app`)
+    - Ressources (`/app/resources`)
+    - Profil (`/app/profile`)
+    - Paramètres (`/app/settings`)
+  - **Menu Administration** (visible uniquement pour ADMIN/SUPERADMIN):
+    - Sous-menu expandable avec:
+      - Dashboard admin
+      - Utilisateurs
+      - Tags
+      - Ressources
+      - Abonnements
+      - Paiements
+  - **Menu utilisateur** (dropdown):
+    - Profil
+    - Paramètres
+    - Déconnexion
+  - **Style X/Twitter**:
+    - Icônes grandes et visibles
+    - Labels visibles
+    - Items arrondis
+    - Bouton "Publier" pour créer une ressource
+  - **Responsive**: Masquée sur mobile, visible sur desktop
+
+#### 9.2 Layout application (`(app)/layout.tsx`)
+- **Composant**: `app/(app)/layout.tsx`
+- **Fonctionnalités**:
+  - **Layout 3 colonnes** (style X/Twitter):
+    - **Colonne gauche**: Sidebar fixe
+    - **Colonne centrale**: Contenu principal avec scroll
+    - **Colonne droite**: Suggestions (masquée sur mobile)
+  - **Contraintes**:
+    - `max-w-7xl mx-auto` pour toute la largeur
+    - Fond uniforme (`bg-background`) pour toutes les colonnes
+    - Scrollbars cachées (`scrollbar-hide`)
+  - **Provider**: `SidebarProvider` pour la gestion de l'état de la sidebar
+
+#### 9.3 Header public (`PublicHeader`)
+- **Composant**: `components/shared/public-header.tsx`
+- **Fonctionnalités**:
+  - **Deux headers**:
+    - Header normal (visible en flux normal)
+    - Header fixe (overlay) qui apparaît au scroll (>400px)
+  - **Animation**: Framer Motion pour l'apparition du header fixe
+  - **Navigation**: Liens vers accueil, fonctionnalités, tarif, blog, contact
+  - **Sélecteur de thème**: Intégré dans le header
+
+#### 9.4 Footer public (`PublicFooter`)
+- **Composant**: `components/shared/public-footer.tsx`
+- **Fonctionnalités**:
+  - Liens vers les pages importantes
+  - Informations légales
+  - Liens sociaux
+
+### 10. Thème et personnalisation
+
+#### 10.1 Système de thème
+- **Provider**: `providers/theme-provider.tsx` (next-themes)
+- **Hook**: `useTheme()` dans `hooks/use-theme.ts`
+- **Fonctionnalités**:
+  - Support de 3 modes: `light`, `dark`, `system`
+  - Persistance dans localStorage
+  - Application automatique au chargement
+  - Sélecteur de thème dans le header et la sidebar
+
+#### 10.2 Sélecteur de thème
+- **Composant**: `components/shared/theme-selector.tsx`
+- **Fonctionnalités**:
+  - Dropdown avec 3 options (light, dark, system)
+  - Icônes pour chaque mode
+  - Mise à jour immédiate du thème
+
+### 11. Gestion des erreurs
+
+#### 11.1 Error Boundary
+- **Composant**: `components/error/error-boundary.tsx`
+- **Fonctionnalités**:
+  - Capture des erreurs React non gérées
+  - Affichage d'une page d'erreur avec possibilité de réessayer
+
+#### 11.2 Page d'erreur générique
+- **Composant**: `components/error/something-went-wrong.tsx`
+- **Fonctionnalités**:
+  - Message d'erreur générique
+  - Bouton pour réessayer ou retourner à l'accueil
+
+#### 11.3 Gestion des erreurs API
+- **Hook**: `useServerError()` dans `hooks/use-server-error.ts`
+- **Fonctionnalités**:
+  - Détection des erreurs serveur (500, 502, etc.)
+  - Affichage conditionnel de messages d'erreur
+  - Gestion des erreurs spécifiques (compte non activé, etc.)
+
+### 12. Notifications (Toast)
+
+#### 12.1 Système de toast
+- **Hook**: `useToast()` dans `hooks/use-toast.ts`
+- **Composant**: `components/ui/toaster.tsx`
+- **Fonctionnalités**:
+  - Notifications toast pour les actions utilisateur
+  - Variantes: default, destructive, success
+  - Auto-dismiss configurable
+  - Position configurable
+
+### 13. Middleware et routing
+
+#### 13.1 Middleware Next.js (`middleware.ts`)
+- **Fichier**: `src/middleware.ts`
+- **Fonctionnalités**:
+  - **Contrôle d'accès basé sur les cookies**:
+    - Vérification de `access_token` (authentification)
+    - Vérification de `activated` (activation de compte)
+    - Vérification de `onboarding_step` (onboarding)
+  - **Redirections automatiques**:
+    - Non authentifié → `/auth/login`
+    - Non activé → `/onboarding/activation-required`
+    - Onboarding incomplet → étape appropriée
+    - Complètement onboardé → `/app`
+  - **Protection des routes**:
+    - Routes admin → vérification du rôle
+    - Routes publiques → accessibles sans authentification
+  - **Règles**:
+    - Pas d'appels API dans le middleware
+    - Lecture des cookies uniquement
+    - Redirections uniquement
+
+#### 13.2 Guards de routes
+- **Fichier**: `utils/route-guards.ts`
+- **Fonction**: `canAccessRoute(userState, route)`
+- **Fonctionnalités**:
+  - Vérification si un état utilisateur peut accéder à une route
+  - Utilisé par le middleware et les composants
+
+### 14. API Proxy (BFF)
+
+#### 14.1 Proxy API (`/api/proxy/[...path]`)
+- **Fichier**: `app/api/proxy/[...path]/route.ts`
+- **Fonctionnalités**:
+  - **Backend For Frontend (BFF)**:
+    - Toutes les requêtes passent par ce proxy
+    - Lecture de `access_token` depuis HTTP-only cookie
+    - Ajout automatique du header `Authorization: Bearer ${token}`
+  - **Gestion des erreurs**:
+    - 401 → Déconnexion automatique
+    - Transmission des erreurs au frontend
+  - **Endpoints publics**:
+    - `/auth/login`, `/auth/register`, `/auth/activate`, etc.
+    - `/tags/` (liste publique)
+    - `/health/live`, `/health/ready`
+  - **Support des méthodes**: GET, POST, PATCH, DELETE
+  - **Transmission des cookies**: Backend → Frontend
+
+### 15. Hooks TanStack Query disponibles
+
+#### 15.1 Authentification (`auth-queries.ts`)
+- `useUser()`: Récupérer l'utilisateur actuel
+- `useLogin()`: Connexion
+- `useRegister()`: Inscription
+- `useLogout()`: Déconnexion
+- `useActivateAccount()`: Activation de compte
+- `useResendActivation()`: Renvoyer l'email d'activation
+- `useUpdateProfile()`: Mettre à jour le profil
+- `useRequestRole()`: Demander un changement de rôle
+
+#### 15.2 Onboarding (`onboarding-queries.ts`)
+- `useOnboardingStep()`: Récupérer l'étape d'onboarding
+- `useStartOnboarding()`: Démarrer l'onboarding
+- `useSubmitOnboardingProfile()`: Soumettre le profil
+- `useSubmitOnboardingInterests()`: Soumettre les intérêts
+
+#### 15.3 Ressources (`resources-queries.ts`)
+- `useResourceFeed()`: Liste paginée des ressources publiques
+- `useUserResources()`: Ressources créées par l'utilisateur
+- `useResourceDetail()`: Détails d'une ressource
+- `useCreateResource()`: Créer une ressource
+- `useUpdateResource()`: Mettre à jour une ressource
+- `useDeleteResource()`: Supprimer une ressource
+- `useAccessResource()`: Accéder à une ressource (initialise le suivi)
+- `useVoteOnResource()`: Voter sur une ressource
+- `useCreateResourceVersion()`: Créer une version de ressource
+
+#### 15.4 Commentaires (`comments-queries.ts`)
+- `useResourceComments()`: Liste paginée des commentaires d'une ressource
+- `useCreateComment()`: Créer un commentaire
+- `useVoteOnComment()`: Voter sur un commentaire
+
+#### 15.5 Progression (`progress-queries.ts`)
+- `useUserProgress()`: Liste de progression de l'utilisateur
+- `useResourceProgress()`: Progression pour une ressource spécifique
+- `useCompleteResourceProgress()`: Marquer une ressource comme complétée
+- `useResourceUsersProgress()`: Tous les utilisateurs qui suivent une ressource
+- `useAdminProgress()`: Toutes les progressions (admin uniquement)
+
+#### 15.6 Tags (`tags-queries.ts`)
+- `useTags()`: Liste publique des tags
+
+#### 15.7 Administration (`admin-queries.ts`)
+- **Utilisateurs**:
+  - `useAdminUsers()`: Liste avec recherche
+  - `useAdminUserDetail()`: Détails d'un utilisateur
+  - `useSetUserRole()`: Modifier le rôle
+  - `useDeleteAdminUser()`: Supprimer un utilisateur
+  - `useResetUserPassword()`: Réinitialiser le mot de passe
+- **Tags**:
+  - `useAdminTags()`: Liste avec recherche
+  - `useCreateTag()`: Créer un tag
+  - `useUpdateTag()`: Modifier un tag
+  - `useDeleteTag()`: Supprimer un tag
+  - `useMergeTags()`: Fusionner deux tags
+- **Ressources**:
+  - `useAdminResources()`: Liste avec filtres
+  - `useCreateAdminResource()`: Créer une ressource
+  - `useUpdateAdminResource()`: Modifier une ressource
+  - `useDeleteAdminResource()`: Supprimer une ressource
+- **Abonnements**:
+  - `useAdminSubscriptions()`: Liste avec filtres
+  - `useUpdateAdminSubscription()`: Modifier un abonnement
+  - `useCancelAdminSubscription()`: Annuler un abonnement
+- **Paiements**:
+  - `useAdminPayments()`: Liste avec filtres
+  - `useRefundPayment()`: Rembourser un paiement
+- **Dashboard**:
+  - `useDashboardOverview()`: Statistiques globales
+  - `useDashboardActivity()`: Activité récente
+  - `useSystemHealth()`: État du système
+
+#### 15.8 Autres
+- `useRequestPasswordReset()`: Demander une réinitialisation de mot de passe
+- `useConfirmPasswordReset()`: Confirmer la réinitialisation
+- `useCreateCheckoutSession()`: Créer une session Stripe
+- `useAuthorProfile()`: Profil d'un auteur
+
+### 16. Rôles et permissions
+
+#### 16.1 Rôles disponibles
+- **USER**: Utilisateur standard
+  - Peut voir et suivre des ressources
+  - Ne peut pas créer de ressources
+  - Accès limité à `/app/resources` (onglet "Ressources suivies" uniquement)
+- **CONTRIBUTOR**: Contributeur
+  - Peut créer des ressources
+  - Peut voir ses propres ressources et celles qu'il suit
+  - Accès complet à `/app/resources`
+- **MODERATOR**: Modérateur
+  - Tous les droits de CONTRIBUTOR
+  - Peut modérer les ressources
+- **ADMIN**: Administrateur
+  - Tous les droits de MODERATOR
+  - Accès à l'interface d'administration
+  - Peut gérer les utilisateurs, tags, ressources, abonnements, paiements
+- **SUPERADMIN**: Super administrateur
+  - Tous les droits d'ADMIN
+  - Peut modifier les rôles des utilisateurs
+  - Accès complet à toutes les fonctionnalités
+
+#### 16.2 Contrôle d'accès
+- **Middleware**: Vérification des rôles pour les routes admin
+- **Layouts**: Vérification dans `AdminLayout` pour rediriger les non-admins
+- **Composants**: Vérification conditionnelle pour afficher/masquer des fonctionnalités
+- **API**: Le backend valide également les permissions
 
 ---
 
@@ -1481,6 +2266,89 @@ Certains composants existent à la fois dans `components/` et `src/components/`:
 
 ---
 
-**Dernière mise à jour**: 2026-01-28  
-**Version du document**: 1.0  
+**Dernière mise à jour**: 2026-02-02  
+**Version du document**: 2.0  
 **Mainteneur**: Équipe de développement Ressourcefy
+
+---
+
+## Résumé des fonctionnalités par catégorie
+
+### ✅ Fonctionnalités implémentées
+
+#### Authentification
+- ✅ Connexion avec gestion d'erreurs
+- ✅ Inscription avec validation
+- ✅ Activation de compte via email
+- ✅ Renvoi d'email d'activation
+- ✅ Mot de passe oublié
+- ✅ Réinitialisation de mot de passe
+- ✅ Déconnexion
+
+#### Onboarding
+- ✅ Démarrage de l'onboarding
+- ✅ Étape profil (username, bio, avatar)
+- ✅ Étape intérêts (sélection de tags)
+- ✅ Activation requise
+- ✅ Onboarding terminé
+- ✅ Navigation automatique selon l'étape
+
+#### Ressources
+- ✅ Création de ressources (rôles autorisés)
+- ✅ Liste des ressources publiques
+- ✅ Détail d'une ressource
+- ✅ Commentaires sur les ressources
+- ✅ Vote sur les ressources et commentaires
+- ✅ Liste des ressources de l'utilisateur
+- ✅ Liste des ressources suivies
+- ✅ Versions de ressources
+
+#### Progression
+- ✅ Suivi automatique lors de l'accès à une ressource
+- ✅ Affichage de la progression utilisateur
+- ✅ Marquer une ressource comme complétée
+- ✅ Statistiques de progression
+- ✅ Suivi de tous les utilisateurs (auteurs/admins)
+
+#### Administration
+- ✅ Dashboard admin avec statistiques
+- ✅ Gestion des utilisateurs (CRUD, changement de rôle)
+- ✅ Gestion des tags (CRUD, fusion)
+- ✅ Gestion des ressources (liste, suivis, suppression)
+- ✅ Gestion des abonnements
+- ✅ Gestion des paiements
+
+#### Profil et paramètres
+- ✅ Page de profil utilisateur
+- ✅ Page de paramètres
+- ✅ Mise à jour du profil
+- ✅ Demande de changement de rôle
+- ✅ Sélecteur de thème
+
+#### Pages publiques
+- ✅ Page d'accueil avec sections (hero, features, pricing, CTA)
+- ✅ Page blog
+- ✅ Page contact avec formulaire
+- ✅ Navigation avec header fixe au scroll
+
+#### UI/UX
+- ✅ Layout 3 colonnes style X/Twitter
+- ✅ Sidebar avec navigation et menu admin
+- ✅ Header public avec animation au scroll
+- ✅ Footer public
+- ✅ Système de thème (light/dark/system)
+- ✅ Notifications toast
+- ✅ Gestion des erreurs avec Error Boundary
+- ✅ États de chargement (skeletons)
+- ✅ Scrollbars cachées
+
+### 🔄 Fonctionnalités en cours / À venir
+
+- ⏳ Upload de fichiers pour les ressources
+- ⏳ Notifications en temps réel
+- ⏳ Recherche avancée de ressources
+- ⏳ Filtres et tri des ressources
+- ⏳ Système de favoris
+- ⏳ Partage de ressources
+- ⏳ Export de données
+- ⏳ Analytics avancés pour les admins
