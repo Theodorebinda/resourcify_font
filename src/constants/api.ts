@@ -29,6 +29,7 @@ export const API_ENDPOINTS = {
     UPDATE_PROFILE: "/user/profile/",
     REQUEST_ROLE: "/user/request-role/",
     PROGRESS: "/user/progress/",
+    RESOURCES: "/user/resources/",
   },
 
   // Onboarding endpoints

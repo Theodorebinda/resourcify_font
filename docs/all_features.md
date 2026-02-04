@@ -817,6 +817,49 @@ Note:
   - This endpoint is READ-ONLY - it does not modify any data
 ```
 
+**User Resources**
+```
+GET /api/user/resources/  # Requires JWT authentication, IsOnboardingComplete
+Query Parameters:
+  - page (integer, optional, default: 1)
+  - page_size (integer, optional, default: 20, max: 100)
+Response: {
+  "status": "ok",
+  "data": [
+    {
+      "id": "uuid",
+      "title": "...",
+      "description": "...",
+      "visibility": "public" | "premium" | "private",
+      "price_cents": 2999 | null,
+      "tags": ["tag1", "tag2"],
+      "stats": {
+        "comment_count": 15,
+        "upvotes": 42,
+        "downvotes": 2,
+        "total_votes": 44
+      },
+      "created_at": "2026-01-25T10:00:00Z",
+      "updated_at": "2026-01-25T15:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 45,
+    "total_pages": 3,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+
+Note:
+  - Returns only resources created by the authenticated user
+  - Includes all visibility types (public, premium, private)
+  - Ordered by creation date (most recent first)
+  - Includes statistics (comments, votes) for each resource
+```
+
 ### 6.3 Admin Endpoints
 
 **User Management** (`/api/admin/users/`)

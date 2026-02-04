@@ -13,7 +13,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "../../../../services/api/queries/auth-queries";
-import { useResourceFeed, type ResourceFeedItem } from "../../../../services/api/queries/resources-queries";
+import { useUserResources, type UserResourceItem } from "../../../../services/api/queries/resources-queries";
 import { useUserProgress } from "../../../../services/api/queries/progress-queries";
 import { ROUTES } from "../../../../constants/routes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/ui/card";
@@ -44,7 +44,7 @@ function formatDate(date: Date): string {
 }
 
 // Resource Card Component
-function ResourceCard({ resource }: { resource: ResourceFeedItem }) {
+function ResourceCard({ resource }: { resource: UserResourceItem }) {
   const router = useRouter();
 
   return (
@@ -56,14 +56,12 @@ function ResourceCard({ resource }: { resource: ResourceFeedItem }) {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarFallback>
-                {resource.author_name?.slice(0, 2).toUpperCase() || "??"}
-              </AvatarFallback>
+              <AvatarFallback>MR</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold">{resource.author_name || "Auteur inconnu"}</p>
+              <p className="font-semibold">Mes ressources</p>
               <p className="text-sm text-muted-foreground">
-                {formatDate(new Date())}
+                {resource.created_at ? formatDate(new Date(resource.created_at)) : "Date inconnue"}
               </p>
             </div>
           </div>
@@ -84,6 +82,11 @@ function ResourceCard({ resource }: { resource: ResourceFeedItem }) {
       </CardHeader>
       <CardContent>
         <CardTitle className="mb-2">{resource.title}</CardTitle>
+        {resource.description && (
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+            {resource.description}
+          </p>
+        )}
         {resource.tags && resource.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
             {resource.tags.map((tag: string, index: number) => (
@@ -126,7 +129,10 @@ function ResourceCard({ resource }: { resource: ResourceFeedItem }) {
 
 // All Resources Tab Content
 function AllResourcesTab() {
-  const { data: resources, isLoading, error } = useResourceFeed(1, 20);
+  const { data: resourcesData, isLoading, error } = useUserResources(1, 20);
+  const resources: UserResourceItem[] = resourcesData?.data || [];
+
+  console.log({resourcesData});
 
   if (isLoading) {
     return (
@@ -166,12 +172,17 @@ function AllResourcesTab() {
     );
   }
 
+  console.log({resources});
+
   if (!resources || resources.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
           <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>Aucune ressource disponible</p>
+          <p>Vous n&apos;avez créé aucune ressource</p>
+          <p className="text-sm mt-2">
+            Créez votre première ressource pour commencer
+          </p>
         </CardContent>
       </Card>
     );
@@ -244,7 +255,11 @@ function FollowedResourcesTab() {
   }
 
   // Convert progress items to resource-like format for display
-  interface FollowedResource extends ResourceFeedItem {
+  interface FollowedResource {
+    id: string;
+    title: string;
+    author_name: string;
+    author_avatar: string | null;
     status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
     last_accessed_at: string | null;
     completed_at: string | null;
@@ -255,15 +270,6 @@ function FollowedResourcesTab() {
     title: progress.resource_title,
     author_name: progress.author_name,
     author_avatar: progress.author_avatar,
-    visibility: "public" as const, // Progress items don't include visibility
-    price_cents: null,
-    tags: [], // Progress items don't include tags
-    stats: {
-      comment_count: 0,
-      upvotes: 0,
-      downvotes: 0,
-      total_votes: 0,
-    },
     status: progress.status,
     last_accessed_at: progress.last_accessed_at,
     completed_at: progress.completed_at,
@@ -369,34 +375,46 @@ function FollowedResourcesTab() {
 
 export default function ResourcesPage() {
   const { user, isLoading: isLoadingUser } = useUser();
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>("all");
+  
+  // Déterminer si l'utilisateur peut voir l'onglet "Toutes les ressources"
+  const canViewAllResources = user?.role && 
+    ["SUPERADMIN", "ADMIN", "MODERATOR", "CONTRIBUTOR"].includes(user.role);
+  
+  // Pour les USER, forcer l'onglet "followed"
+  // Pour les autres, charger depuis localStorage
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (canViewAllResources) {
+      return "all";
+    }
+    return "followed";
+  });
 
-  // Load tab selection from localStorage on mount
+  // Load tab selection from localStorage on mount (seulement pour les non-USER)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && canViewAllResources) {
       const savedTab = localStorage.getItem(STORAGE_KEY) as TabType | null;
       if (savedTab === "all" || savedTab === "followed") {
         setActiveTab(savedTab);
       }
+    } else if (!canViewAllResources) {
+      // Forcer l'onglet "followed" pour les USER
+      setActiveTab("followed");
     }
-  }, []);
+  }, [canViewAllResources]);
 
-  // Save tab selection to localStorage when it changes
+  // Save tab selection to localStorage when it changes (seulement pour les non-USER)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && canViewAllResources) {
       localStorage.setItem(STORAGE_KEY, activeTab);
     }
-  }, [activeTab]);
-
-  // Check user role and redirect USER role
+  }, [activeTab, canViewAllResources]);
+  
+  // Empêcher les USER de changer d'onglet vers "all"
   useEffect(() => {
-    if (!isLoadingUser && user) {
-      if (user.role === "USER") {
-        router.replace(ROUTES.APP.DASHBOARD);
-      }
+    if (!canViewAllResources && activeTab === "all") {
+      setActiveTab("followed");
     }
-  }, [user, isLoadingUser, router]);
+  }, [canViewAllResources, activeTab]);
 
   if (isLoadingUser) {
     return (
@@ -409,7 +427,7 @@ export default function ResourcesPage() {
     );
   }
 
-  if (!user || user.role === "USER") {
+  if (!user) {
     return null; // Redirection en cours
   }
 
@@ -418,33 +436,37 @@ export default function ResourcesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Ressources</h1>
         <p className="text-muted-foreground">
-          Parcourez toutes les ressources ou consultez celles que vous suivez
+          {canViewAllResources
+            ? "Parcourez toutes les ressources ou consultez celles que vous suivez"
+            : "Consultez les ressources que vous suivez"}
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b">
-        <div className="flex gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => setActiveTab("all")}
-            className={activeTab === "all" ? "border-b-2 border-primary rounded-none" : ""}
-          >
-            Toutes les ressources
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setActiveTab("followed")}
-            className={activeTab === "followed" ? "border-b-2 border-primary rounded-none" : ""}
-          >
-            Ressources suivies
-          </Button>
+      {/* Tabs - Afficher seulement si l'utilisateur peut voir les deux onglets */}
+      {canViewAllResources && (
+        <div className="border-b">
+          <div className="flex gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveTab("all")}
+              className={activeTab === "all" ? "border-b-2 border-primary rounded-none" : ""}
+            >
+              Toutes les ressources
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setActiveTab("followed")}
+              className={activeTab === "followed" ? "border-b-2 border-primary rounded-none" : ""}
+            >
+              Ressources suivies
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tab Content */}
       <div className="mt-6">
-        {activeTab === "all" && <AllResourcesTab />}
+        {canViewAllResources && activeTab === "all" && <AllResourcesTab />}
         {activeTab === "followed" && <FollowedResourcesTab />}
       </div>
     </div>

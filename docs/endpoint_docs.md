@@ -148,6 +148,7 @@ CORS_ALLOWED_ORIGINS = [
    - [Get Resource Progress](#get-resource-progress)
    - [Get Resource Users Progress](#get-resource-users-progress)
    - [Get All Progress (Admin)](#get-all-progress-admin)
+   - [Get User Resources](#get-user-resources)
 6. [Webhook Endpoints](#webhook-endpoints)
    - [Stripe Webhook](#stripe-webhook)
 7. [Health Endpoints](#health-endpoints)
@@ -3609,6 +3610,134 @@ try {
 - Returns all progress entries across all resources
 - Ordered by `last_accessed_at` (most recent first)
 - Useful for admin dashboards and analytics
+
+---
+
+### Get User Resources
+
+**Endpoint**: `GET /api/user/resources/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Get paginated list of current user's own resources.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20, max: 100): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": [
+    {
+      "id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+      "title": "Advanced Django Patterns",
+      "description": "A comprehensive guide to Django best practices",
+      "visibility": "public",
+      "price_cents": null,
+      "tags": ["django", "python", "web-development"],
+      "stats": {
+        "comment_count": 15,
+        "upvotes": 42,
+        "downvotes": 2,
+        "total_votes": 44
+      },
+      "created_at": "2026-01-25T10:00:00Z",
+      "updated_at": "2026-01-25T15:30:00Z"
+    },
+    {
+      "id": "9b8c7d6e-2345-6789-01ab-cdef23456789",
+      "title": "Premium React Course",
+      "description": "Learn React from scratch",
+      "visibility": "premium",
+      "price_cents": 2999,
+      "tags": ["react", "javascript", "frontend"],
+      "stats": {
+        "comment_count": 8,
+        "upvotes": 25,
+        "downvotes": 1,
+        "total_votes": 26
+      },
+      "created_at": "2026-01-24T14:20:00Z",
+      "updated_at": "2026-01-24T14:20:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 45,
+    "total_pages": 3,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** (Invalid pagination parameters):
+```json
+{
+  "error": "Invalid pagination parameters. 'page' and 'page_size' must be integers."
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "https://api.ressourcefy.com/api/user/resources/?page=1&page_size=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### JavaScript Example
+
+```javascript
+async function getUserResources(page = 1, pageSize = 20) {
+  const response = await fetch(
+    `https://api.ressourcefy.com/api/user/resources/?page=${page}&page_size=${pageSize}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to fetch user resources');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getUserResources(1, 20);
+  console.log(`Total resources: ${result.pagination.total_count}`);
+  result.data.forEach(resource => {
+    console.log(`${resource.title} (${resource.visibility})`);
+  });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Returns only resources created by the authenticated user
+- Includes all visibility types (public, premium, private)
+- Ordered by creation date (most recent first)
+- Includes statistics (comments, votes) for each resource
+- Useful for user dashboard to manage their own content
 
 ---
 

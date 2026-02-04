@@ -135,6 +135,89 @@ export function useResourceFeed(page: number = 1, pageSize: number = 20) {
 }
 
 /**
+ * Get user's own resources (paginated)
+ * Returns only resources created by the authenticated user
+ */
+export interface UserResourceItem {
+  id: string;
+  title: string;
+  description: string;
+  visibility: "public" | "premium" | "private";
+  price_cents: number | null;
+  tags: string[];
+  stats: {
+    comment_count: number;
+    upvotes: number;
+    downvotes: number;
+    total_votes: number;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserResourcesResponse {
+  data: UserResourceItem[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_count: number;
+    total_pages: number;
+    has_next: boolean;
+    has_previous: boolean;
+  };
+}
+
+export function useUserResources(page: number = 1, pageSize: number = 20) {
+  return useQuery<UserResourcesResponse, ApiError>({
+    queryKey: [...resourceKeys.all, "user", page, pageSize],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        page_size: pageSize.toString(),
+      });
+      
+      // La réponse de l'API est: { status: "ok", data: [...], pagination: {...} }
+      // Donc data et pagination sont au même niveau que status
+      const response = await apiClient.get<{
+        status: string;
+        data: UserResourceItem[];
+        pagination: {
+          page: number;
+          page_size: number;
+          total_count: number;
+          total_pages: number;
+          has_next: boolean;
+          has_previous: boolean;
+        };
+      }>(`${API_ENDPOINTS.USER.RESOURCES}?${params}`);
+      
+      // Debug: log la réponse complète
+      console.log("[useUserResources] Raw response:", response);
+      console.log("[useUserResources] Response data:", response.data);
+      
+      // response.data contient { status, data, pagination }
+      // On retourne directement { data, pagination }
+      const result = {
+        data: response.data.data || [],
+        pagination: response.data.pagination || {
+          page: page,
+          page_size: pageSize,
+          total_count: 0,
+          total_pages: 0,
+          has_next: false,
+          has_previous: false,
+        },
+      };
+      
+      console.log("[useUserResources] Parsed result:", result);
+      
+      return result;
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+/**
  * Get resource detail
  */
 export function useResourceDetail(resourceId: string) {
