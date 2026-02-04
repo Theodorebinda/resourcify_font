@@ -146,6 +146,8 @@ CORS_ALLOWED_ORIGINS = [
    - [Get Author Profile](#get-author-profile)
    - [Get User Progress](#get-user-progress)
    - [Get Resource Progress](#get-resource-progress)
+   - [Get Resource Users Progress](#get-resource-users-progress)
+   - [Get All Progress (Admin)](#get-all-progress-admin)
 6. [Webhook Endpoints](#webhook-endpoints)
    - [Stripe Webhook](#stripe-webhook)
 7. [Health Endpoints](#health-endpoints)
@@ -3318,6 +3320,295 @@ try {
 - Progress is automatically created when user accesses a resource via `/api/resources/{id}/access/`
 - User must have access to the resource to view progress
 - All progress changes are logged via audit system
+
+---
+
+### Get Resource Users Progress
+
+**Endpoint**: `GET /api/resources/{resource_id}/users-progress/`  
+**Authentication**: Required (IsAuthenticated, IsContributor)  
+**Description**: Get paginated list of all users' progress on a specific resource. Only resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) or admins can view this.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20, max: 100): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "resource_title": "Advanced Django Patterns",
+    "progress_entries": [
+      {
+        "id": "1a2b3c4d-5678-90ab-cdef-1234567890ab",
+        "user_id": "2b3c4d5e-6789-01ab-cdef-2345678901bc",
+        "user_email": "user@example.com",
+        "username": "john_doe",
+        "avatar_url": "https://cdn.ressourcefy.com/avatars/john.jpg",
+        "status": "COMPLETED",
+        "started_at": "2026-01-25T10:00:00Z",
+        "last_accessed_at": "2026-01-25T15:30:00Z",
+        "completed_at": "2026-01-25T15:30:00Z"
+      },
+      {
+        "id": "3c4d5e6f-7890-12ab-cdef-3456789012cd",
+        "user_id": "4d5e6f7a-8901-23ab-cdef-4567890123de",
+        "user_email": "another@example.com",
+        "username": "jane_smith",
+        "avatar_url": null,
+        "status": "IN_PROGRESS",
+        "started_at": "2026-01-25T11:00:00Z",
+        "last_accessed_at": "2026-01-25T14:00:00Z",
+        "completed_at": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_count": 45,
+      "total_pages": 3,
+      "has_next": true,
+      "has_previous": false
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+- **403 Forbidden** (Not author or admin):
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to view progress for this resource. Only the resource author or admins can view this."
+  }
+}
+```
+
+- **404 Not Found** (Resource not found):
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "https://api.ressourcefy.com/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/users-progress/?page=1&page_size=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### JavaScript Example
+
+```javascript
+async function getResourceUsersProgress(resourceId, page = 1, pageSize = 20) {
+  const response = await fetch(
+    `https://api.ressourcefy.com/api/resources/${resourceId}/users-progress/?page=${page}&page_size=${pageSize}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error.message);
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getResourceUsersProgress('8a7b5c3d-1234-5678-90ab-cdef12345678', 1, 20);
+  console.log(`Total users: ${result.data.pagination.total_count}`);
+  result.data.progress_entries.forEach(entry => {
+    console.log(`${entry.user_email}: ${entry.status}`);
+  });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) can view progress on their resources
+- ADMIN and SUPERADMIN can view progress on any resource
+- Returns paginated list of all users who have progress on the resource
+- Ordered by `last_accessed_at` (most recent first)
+
+---
+
+### Get All Progress (Admin)
+
+**Endpoint**: `GET /api/admin/progress/`  
+**Authentication**: Required (IsAuthenticated, IsAdmin)  
+**Description**: Get paginated list of all progress entries across all resources. Only ADMIN and SUPERADMIN can access this endpoint.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `resource_id` (UUID, optional): Filter by resource ID
+- `user_id` (UUID, optional): Filter by user ID
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20, max: 100): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_entries": [
+      {
+        "id": "1a2b3c4d-5678-90ab-cdef-1234567890ab",
+        "user_id": "2b3c4d5e-6789-01ab-cdef-2345678901bc",
+        "user_email": "user@example.com",
+        "username": "john_doe",
+        "avatar_url": "https://cdn.ressourcefy.com/avatars/john.jpg",
+        "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+        "resource_title": "Advanced Django Patterns",
+        "author_id": "5e6f7a8b-9012-34ab-cdef-5678901234ef",
+        "author_email": "author@example.com",
+        "status": "COMPLETED",
+        "started_at": "2026-01-25T10:00:00Z",
+        "last_accessed_at": "2026-01-25T15:30:00Z",
+        "completed_at": "2026-01-25T15:30:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_count": 150,
+      "total_pages": 8,
+      "has_next": true,
+      "has_previous": false
+    },
+    "filters": {
+      "resource_id": null,
+      "user_id": null
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+- **403 Forbidden** (Not admin):
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only administrators can view all progress entries"
+  }
+}
+```
+
+- **404 Not Found** (Resource or user not found when filtering):
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+# Get all progress entries
+curl -X GET "https://api.ressourcefy.com/api/admin/progress/?page=1&page_size=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Filter by resource
+curl -X GET "https://api.ressourcefy.com/api/admin/progress/?resource_id=8a7b5c3d-1234-5678-90ab-cdef12345678" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Filter by user
+curl -X GET "https://api.ressourcefy.com/api/admin/progress/?user_id=2b3c4d5e-6789-01ab-cdef-2345678901bc" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### JavaScript Example
+
+```javascript
+async function getAllProgress(filters = {}, page = 1, pageSize = 20) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+    ...(filters.resource_id && { resource_id: filters.resource_id }),
+    ...(filters.user_id && { user_id: filters.user_id })
+  });
+  
+  const response = await fetch(
+    `https://api.ressourcefy.com/api/admin/progress/?${params}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error.message);
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  // Get all progress
+  const allProgress = await getAllProgress({}, 1, 20);
+  console.log(`Total entries: ${allProgress.data.pagination.total_count}`);
+  
+  // Filter by resource
+  const resourceProgress = await getAllProgress({ resource_id: '8a7b5c3d-1234-5678-90ab-cdef12345678' });
+  
+  // Filter by user
+  const userProgress = await getAllProgress({ user_id: '2b3c4d5e-6789-01ab-cdef-2345678901bc' });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only ADMIN and SUPERADMIN can access this endpoint
+- Supports optional filtering by `resource_id` and `user_id`
+- Returns all progress entries across all resources
+- Ordered by `last_accessed_at` (most recent first)
+- Useful for admin dashboards and analytics
 
 ---
 

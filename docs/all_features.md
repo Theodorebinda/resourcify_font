@@ -685,11 +685,17 @@ POST /api/onboarding/interests/  # Submit interests (interests → completed)
 
 **User Resource Progress Endpoints**
 ```
-POST /api/progress/{resource_id}/start/      # Start/update progress (IsAuthenticated, IsOnboardingComplete)
-POST /api/progress/{resource_id}/complete/   # Mark as completed (IsAuthenticated, IsOnboardingComplete)
-GET  /api/progress/user/                     # Get user's progress list with summary (IsAuthenticated, IsOnboardingComplete)
-GET  /api/progress/resource/{resource_id}/   # Get progress for resource (user-specific or aggregated for admins)
+POST /api/resources/{resource_id}/complete/              # Mark as completed (IsAuthenticated, IsOnboardingComplete)
+GET  /api/user/progress/                                # Get user's progress list with summary (IsAuthenticated, IsOnboardingComplete)
+GET  /api/resources/{resource_id}/progress/             # Get current user's progress on a resource (IsAuthenticated)
+GET  /api/resources/{resource_id}/users-progress/        # Get all users' progress on a resource (for authors/admins) (IsAuthenticated, IsContributor)
+GET  /api/admin/progress/                               # Get all progress entries (ADMIN/SUPERADMIN only) (IsAuthenticated, IsAdmin)
 ```
+
+**Permissions**:
+- Regular users can only view their own progress
+- Resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) can view all users' progress on their resources via `/api/resources/{resource_id}/users-progress/`
+- ADMIN and SUPERADMIN can view all progress entries across all resources via `/api/admin/progress/`
 
 **Note**: Progress is automatically started when a user accesses a resource via `GET /api/resources/{resource_id}/access/`.
 
@@ -1937,11 +1943,17 @@ python manage.py test users.tests.test_roles
   - Comprehensive error handling
 
 - ✅ **API Endpoints**:
-  - `POST /api/progress/{resource_id}/start/`: Start/update progress
-  - `POST /api/progress/{resource_id}/complete/`: Mark as completed
-  - `GET /api/progress/user/`: Get user's progress list with summary
-  - `GET /api/progress/resource/{resource_id}/`: Get progress (user-specific or aggregated for admins)
+  - `POST /api/resources/{resource_id}/complete/`: Mark as completed
+  - `GET /api/user/progress/`: Get user's progress list with summary
+  - `GET /api/resources/{resource_id}/progress/`: Get current user's progress on a resource
+  - `GET /api/resources/{resource_id}/users-progress/`: Get all users' progress on a resource (for authors/admins)
+  - `GET /api/admin/progress/`: Get all progress entries across all resources (ADMIN/SUPERADMIN only)
   - Automatic progress start on resource access (`GET /api/resources/{id}/access/`)
+  
+- ✅ **Author & Admin Progress Visibility**:
+  - Resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) can view all users' progress on their resources
+  - ADMIN and SUPERADMIN can view all progress entries across all resources with optional filters (resource_id, user_id)
+  - All endpoints support pagination
 
 - ✅ **Read Models**:
   - `read_models/progress/user_progress_summary.py`: Computes aggregated statistics

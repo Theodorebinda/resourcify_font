@@ -43,6 +43,8 @@ export const API_ENDPOINTS = {
   // Resource endpoints
   RESOURCES: {
     CREATE: "/resources/",
+    UPDATE: (id: string) => `/resources/${id}/`,
+    DELETE: (id: string) => `/resources/${id}/delete/`,
     FEED: "/feed/",
     DETAIL: (id: string) => `/resources/${id}/detail/`,
     ACCESS: (id: string) => `/resources/${id}/access/`,
@@ -51,6 +53,7 @@ export const API_ENDPOINTS = {
     VOTE: "/resources/vote/",
     COMPLETE: (id: string) => `/resources/${id}/complete/`,
     PROGRESS: (id: string) => `/resources/${id}/progress/`,
+    USERS_PROGRESS: (id: string) => `/resources/${id}/users-progress/`,
   },
 
   // Comment endpoints
@@ -131,5 +134,7 @@ export const API_ENDPOINTS = {
       ACTIVITY: "/admin/dashboard/activity/",
       SYSTEM_HEALTH: "/admin/dashboard/system-health/",
     },
+    // Progress Management (Admin)
+    PROGRESS: "/admin/progress/",
   },
 } as const;
