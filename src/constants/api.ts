@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
 
   // Comment endpoints
   COMMENTS: {
+    CREATE: "/comments/",
     VOTE: "/comments/vote/",
   },
 

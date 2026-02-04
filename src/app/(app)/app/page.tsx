@@ -91,7 +91,7 @@ export default function AppDashboardPage() {
  
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
+
       <div>
         <div className="flex justify-between items-center w-full gap-2">
         <h1 className="text-xl font-bold mb-2">

@@ -7,8 +7,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 import { useResourceDetail } from "../../../../../services/api/queries/resources-queries";
-import { useVoteOnComment } from "../../../../../services/api/queries/comments-queries";
+import { useVoteOnComment, useCreateComment } from "../../../../../services/api/queries/comments-queries";
 import { useUser } from "../../../../../services/api/queries/auth-queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../../components/ui/card";
 import { Skeleton } from "../../../../../components/ui/skeleton";
@@ -55,6 +56,8 @@ export default function ResourceDetailPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const voteMutation = useVoteOnComment();
+  const createCommentMutation = useCreateComment();
+  const [commentContent, setCommentContent] = useState("");
 
   const { data: resource, isLoading, error } = useResourceDetail(resourceId);
   const serverErrorResult = useServerError(error, () => {});
@@ -78,6 +81,49 @@ export default function ResourceDetailPage() {
       toast({
         title: "Erreur",
         description: apiError.message || "Impossible d'enregistrer le vote",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateComment = async () => {
+    if (!commentContent.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Le commentaire ne peut pas être vide",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!resourceId) {
+      toast({
+        title: "Erreur",
+        description: "Ressource introuvable",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createCommentMutation.mutateAsync({
+        resource_id: resourceId,
+        content: commentContent.trim(),
+      });
+      toast({
+        title: "Commentaire ajouté",
+        description: "Votre commentaire a été ajouté avec succès.",
+      });
+      setCommentContent("");
+    } catch (error) {
+      const apiError = error as { message?: string; code?: string };
+      toast({
+        title: "Erreur",
+        description:
+          apiError.message ||
+          apiError.code === "access_denied"
+            ? "Vous n'avez pas accès à cette ressource"
+            : "Impossible d'ajouter le commentaire",
         variant: "destructive",
       });
     }
@@ -279,14 +325,17 @@ export default function ResourceDetailPage() {
               <Textarea
                 placeholder="Ajouter un commentaire..."
                 className="min-h-[100px] mb-2"
-                disabled
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                disabled={createCommentMutation.isPending}
               />
-              <Button disabled className="w-full">
-                Commenter
+              <Button
+                onClick={handleCreateComment}
+                disabled={!commentContent.trim() || createCommentMutation.isPending}
+                className="w-full"
+              >
+                {createCommentMutation.isPending ? "Publication..." : "Commenter"}
               </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                La fonctionnalité de commentaire sera bientôt disponible
-              </p>
             </div>
           )}
 

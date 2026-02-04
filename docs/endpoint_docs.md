@@ -130,6 +130,7 @@ CORS_ALLOWED_ORIGINS = [
    - [Request Role Change](#request-role-change)
 4. [Command Endpoints (Write Operations)](#command-endpoints)
    - [Create Resource](#create-resource)
+   - [Create Comment](#create-comment)
    - [Vote on Comment](#vote-on-comment)
    - [Create Resource Version](#create-resource-version)
    - [Access Resource](#access-resource)
@@ -137,6 +138,7 @@ CORS_ALLOWED_ORIGINS = [
 5. [Query Endpoints (Read Operations)](#query-endpoints)
    - [Get Resource Feed](#get-resource-feed)
    - [Get Resource Detail](#get-resource-detail)
+   - [Get Resource Comments](#get-resource-comments)
    - [Get Author Profile](#get-author-profile)
 6. [Webhook Endpoints](#webhook-endpoints)
    - [Stripe Webhook](#stripe-webhook)
@@ -1302,6 +1304,136 @@ try {
 
 ---
 
+### Create Comment
+
+**Endpoint**: `POST /api/comments/`  
+**Authentication**: Required (all authenticated users)  
+**Description**: Add a comment to a resource. All authenticated users can comment on resources they have access to.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  "content": "This is a great resource! Very helpful."
+}
+```
+
+**Field Descriptions**:
+- `resource_id` (string, required): UUID of the resource to comment on
+- `content` (string, required): Comment text (cannot be empty)
+
+**Permissions**:
+- ✅ All authenticated users can create comments
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot comment on resources without access (premium without subscription, private, etc.)
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "comment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "author_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "content": "This is a great resource! Very helpful.",
+    "created_at": "2026-02-04T12:00:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to comment on this resource"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Empty content:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Comment content cannot be empty"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/comments/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "content": "This is a great resource!"
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function createComment(resourceId, content) {
+  const response = await fetch('http://localhost:8000/api/comments/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({
+      resource_id: resourceId,
+      content: content
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to create comment');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await createComment(
+    '8a7b5c3d-1234-5678-90ab-cdef12345678',
+    'This is a great resource! Very helpful.'
+  );
+  console.log('Comment created:', result.data.comment_id);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- All authenticated users can create comments
+- Comments are automatically associated with the authenticated user
+- Users can only comment on resources they have access to (based on visibility rules)
+
+---
+
 ### Vote on Comment
 
 **Endpoint**: `POST /api/comments/vote/`  
@@ -2011,6 +2143,306 @@ async function getResourceDetail(resourceId) {
 const resource = await getResourceDetail('8a7b5c3d-1234-5678-90ab-cdef12345678');
 console.log(`Latest version: ${resource.versions[0].version_number}`);
 ```
+
+---
+
+### Get Resource Comments
+
+**Endpoint**: `GET /api/resources/{resource_id}/comments/`  
+**Authentication**: Optional (public endpoint, but access to resource is required)  
+**Description**: Get all comments for a specific resource with pagination. Only non-deleted comments are returned.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>  (optional)
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number (minimum: 1)
+- `page_size` (integer, optional, default: 20, max: 100): Number of comments per page
+
+**Example URLs**:
+- `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/` - First page, 20 comments
+- `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=2` - Second page, 20 comments
+- `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=1&page_size=50` - First page, 50 comments
+
+**Permissions**:
+- ✅ Public endpoint (no authentication required)
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot view comments on resources without access (premium without subscription, private, etc.)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "content": "This is a great resource! Very helpful.",
+      "author": {
+        "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "username": "john_doe",
+        "avatar_url": "https://example.com/avatar.jpg"
+      },
+      "stats": {
+        "upvotes": 5,
+        "downvotes": 1,
+        "total_votes": 6
+      },
+      "created_at": "2026-02-04T12:00:00Z",
+      "updated_at": "2026-02-04T12:00:00Z"
+    },
+    {
+      "id": "4gb96g75-6828-5679-01cd-ef0123456789",
+      "content": "I found this very useful for my project.",
+      "author": {
+        "id": "8d0f7780-8536-49ef-055c-f18fc2f01bf8",
+        "username": "jane_smith",
+        "avatar_url": null
+      },
+      "stats": {
+        "upvotes": 3,
+        "downvotes": 0,
+        "total_votes": 3
+      },
+      "created_at": "2026-02-04T11:30:00Z",
+      "updated_at": "2026-02-04T11:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 45,
+    "total_pages": 3,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Field Descriptions**:
+- `data`: Array of comment objects
+  - `id`: Comment UUID
+  - `content`: Comment text content
+  - `author`: Author information
+    - `id`: Author user UUID
+    - `username`: Author username (falls back to email if no profile)
+    - `avatar_url`: Author avatar URL (null if no avatar)
+  - `stats`: Comment voting statistics
+    - `upvotes`: Number of upvotes (+1)
+    - `downvotes`: Number of downvotes (-1)
+    - `total_votes`: Total number of votes
+  - `created_at`: ISO 8601 timestamp of comment creation
+  - `updated_at`: ISO 8601 timestamp of last update
+- `pagination`: Pagination metadata
+  - `page`: Current page number
+  - `page_size`: Number of items per page
+  - `total_count`: Total number of comments
+  - `total_pages`: Total number of pages
+  - `has_next`: Whether there is a next page
+  - `has_previous`: Whether there is a previous page
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": "Resource {resource_id} not found."
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": "You do not have permission to view comments on this resource."
+}
+```
+
+**Error (400 Bad Request)** - Invalid pagination:
+```json
+{
+  "error": "Invalid pagination parameters. 'page' and 'page_size' must be integers."
+}
+```
+
+#### cURL Example
+```bash
+# Get first page of comments
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/
+
+# Get second page with 50 comments per page
+curl "http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=2&page_size=50"
+
+# With authentication (optional)
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function getResourceComments(resourceId, page = 1, pageSize = 20) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString()
+  });
+  
+  const headers = {};
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/comments/?${params}`,
+    { headers }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch comments');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getResourceComments(
+    '8a7b5c3d-1234-5678-90ab-cdef12345678',
+    1,
+    20
+  );
+  
+  console.log(`Total comments: ${result.pagination.total_count}`);
+  console.log(`Page ${result.pagination.page} of ${result.pagination.total_pages}`);
+  
+  result.data.forEach(comment => {
+    console.log(`${comment.author.username}: ${comment.content}`);
+    console.log(`  Votes: ${comment.stats.upvotes} up, ${comment.stats.downvotes} down`);
+  });
+  
+  // Check if there are more pages
+  if (result.pagination.has_next) {
+    console.log('Load more comments...');
+  }
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+#### React Hook Example
+```jsx
+import { useState, useEffect } from 'react';
+
+function useResourceComments(resourceId, page = 1, pageSize = 20) {
+  const [comments, setComments] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    async function fetchComments() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          page: page.toString(),
+          page_size: pageSize.toString()
+        });
+        
+        const headers = {};
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(
+          `/api/resources/${resourceId}/comments/?${params}`,
+          { headers }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch comments');
+        }
+        
+        const data = await response.json();
+        setComments(data.data);
+        setPagination(data.pagination);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (resourceId) {
+      fetchComments();
+    }
+  }, [resourceId, page, pageSize]);
+  
+  return { comments, pagination, loading, error };
+}
+
+// Usage in component
+function ResourceComments({ resourceId }) {
+  const [page, setPage] = useState(1);
+  const { comments, pagination, loading, error } = useResourceComments(resourceId, page);
+  
+  if (loading) return <div>Loading comments...</div>;
+  if (error) return <div>Error: {error}</div>;
+  
+  return (
+    <div>
+      <h3>Comments ({pagination?.total_count || 0})</h3>
+      
+      {comments.map(comment => (
+        <div key={comment.id} className="comment">
+          <div className="comment-header">
+            <img 
+              src={comment.author.avatar_url || '/default-avatar.png'} 
+              alt={comment.author.username}
+            />
+            <strong>{comment.author.username}</strong>
+            <span>{new Date(comment.created_at).toLocaleDateString()}</span>
+          </div>
+          <p>{comment.content}</p>
+          <div className="comment-stats">
+            👍 {comment.stats.upvotes} 👎 {comment.stats.downvotes}
+          </div>
+        </div>
+      ))}
+      
+      <div className="pagination">
+        <button 
+          onClick={() => setPage(p => p - 1)} 
+          disabled={!pagination?.has_previous}
+        >
+          Previous
+        </button>
+        <span>Page {pagination?.page} of {pagination?.total_pages}</span>
+        <button 
+          onClick={() => setPage(p => p + 1)} 
+          disabled={!pagination?.has_next}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+**Note**: 
+- Comments are ordered by creation date (newest first)
+- Only non-deleted comments are returned
+- Author information falls back to email if no profile exists
+- Voting statistics are included for each comment
+- The endpoint is public but respects resource visibility rules
+- Pagination is 1-indexed (page 1 is the first page)
 
 ---
 
