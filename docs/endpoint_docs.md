@@ -126,7 +126,10 @@ CORS_ALLOWED_ORIGINS = [
    - [Submit Interests](#submit-interests)
 3. [User Management](#user-management)
    - [Get Current User](#get-current-user)
+   - [Update Profile](#update-profile)
+   - [Request Role Change](#request-role-change)
 4. [Command Endpoints (Write Operations)](#command-endpoints)
+   - [Create Resource](#create-resource)
    - [Vote on Comment](#vote-on-comment)
    - [Create Resource Version](#create-resource-version)
    - [Access Resource](#access-resource)
@@ -831,7 +834,7 @@ Authorization: Bearer <token>
 - Profile fields (`username`, `bio`, `avatar_url`) are provided for UI pre-filling
 - If Profile doesn't exist, these fields will be `null` (no error)
 - This endpoint is **READ-ONLY** - it does not modify any data
-- Profile modification is handled exclusively by onboarding endpoints
+- Profile modification after onboarding is handled by `PATCH /user/profile/`
 
 **HTTP Cookies Synced**:
 The backend automatically syncs the following cookies:
@@ -864,7 +867,440 @@ async function getCurrentUser() {
 
 ---
 
+### Update Profile
+
+**Endpoint**: `PATCH /api/user/profile/`  
+**Authentication**: Required  
+**Description**: Update user profile information (username, bio, avatar_url)
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body** (all fields optional):
+```json
+{
+  "username": "new_username",
+  "bio": "Updated bio text",
+  "avatar_url": "https://example.com/avatar.jpg"
+}
+```
+
+**Field Descriptions**:
+- `username` (string, optional): New username (must be unique, max 30 characters)
+- `bio` (string, optional): Biography text
+- `avatar_url` (string, optional): URL to user's avatar image (max 500 characters)
+
+**Validation Rules**:
+- **For regular users (USER role)**: Profile must be complete (username, and either bio or avatar_url)
+- **For ADMIN/SUPERADMIN**: Profile must exist with at least username
+- Username must be unique across all users
+- Username cannot be empty if provided
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "username": "new_username",
+    "bio": "Updated bio text",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "message": "Profile updated successfully"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Username already taken:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Username 'new_username' is already taken"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Profile incomplete for regular user:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Profile must be complete for regular users: username, bio or avatar_url required"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Profile missing for ADMIN/SUPERADMIN:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Profile must exist for ADMIN/SUPERADMIN users"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X PATCH http://localhost:8000/api/user/profile/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "username": "new_username",
+    "bio": "Updated bio",
+    "avatar_url": "https://example.com/avatar.jpg"
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function updateProfile(username, bio, avatarUrl) {
+  const body = {};
+  if (username) body.username = username;
+  if (bio !== undefined) body.bio = bio;
+  if (avatarUrl !== undefined) body.avatar_url = avatarUrl;
+  
+  const response = await fetch('http://localhost:8000/api/user/profile/', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify(body)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to update profile');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await updateProfile('new_username', 'My bio', 'https://example.com/avatar.jpg');
+  console.log('Profile updated:', result.data);
+} catch (error) {
+  console.error('Update error:', error.message);
+}
+```
+
+---
+
+### Request Role Change
+
+**Endpoint**: `POST /api/user/request-role/`  
+**Authentication**: Required  
+**Description**: Request a role change to MODERATOR or CONTRIBUTOR. Requires a complete profile.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "requested_role": "MODERATOR",
+  "reason": "I have experience moderating online communities and would like to help maintain quality content."
+}
+```
+
+**Field Descriptions**:
+- `requested_role` (string, required): Must be either `"MODERATOR"` or `"CONTRIBUTOR"`
+- `reason` (string, optional): Optional reason for the role request (max 1000 characters)
+
+**Validation Rules**:
+- User must have a complete profile (username, and either bio or avatar_url)
+- Only `MODERATOR` or `CONTRIBUTOR` roles can be requested
+- User cannot request a role they already have
+- User cannot have a pending request for the same role
+- Regular users (USER role) can request role changes
+- ADMIN and SUPERADMIN cannot use this endpoint (they already have elevated privileges)
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "requested_role": "MODERATOR",
+    "status": "pending",
+    "message": "Role change request submitted successfully. Your request for MODERATOR is pending admin review."
+  }
+}
+```
+
+**Error (400 Bad Request)** - Profile incomplete:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Profile must be complete before requesting role change. Please ensure your profile has username, bio or avatar_url."
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid role:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Only MODERATOR or CONTRIBUTOR roles can be requested. Got: ADMIN"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Already has role:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "User already has role MODERATOR"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Pending request exists:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "User already has a pending request for role MODERATOR"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/user/request-role/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "requested_role": "MODERATOR",
+    "reason": "I have experience moderating online communities."
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function requestRole(requestedRole, reason) {
+  const response = await fetch('http://localhost:8000/api/user/request-role/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({
+      requested_role: requestedRole, // "MODERATOR" or "CONTRIBUTOR"
+      reason: reason || ''
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to submit role request');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await requestRole(
+    'MODERATOR',
+    'I have experience moderating online communities.'
+  );
+  console.log('Role request submitted:', result.data);
+  alert('Your role request has been submitted and is pending admin review.');
+} catch (error) {
+  console.error('Request error:', error.message);
+  alert(`Error: ${error.message}`);
+}
+```
+
+**Note**: 
+- Role requests are reviewed by administrators
+- Users will be notified when their request is approved or rejected
+- Only one pending request per role is allowed at a time
+- Complete your profile before requesting a role change
+
+---
+
 ## Command Endpoints (Write Operations)
+
+### Create Resource
+
+**Endpoint**: `POST /api/resources/`  
+**Authentication**: Required (IsContributor: CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN)  
+**Description**: Create a new resource. The authenticated user automatically becomes the author.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "title": "My Resource Title",
+  "description": "Detailed description of the resource",
+  "visibility": "public",
+  "price_cents": null,
+  "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+  "file_url": "https://cdn.ressourcefy.com/files/resource-v1.pdf"
+}
+```
+
+**Field Descriptions**:
+- `title` (string, required): Resource title (max 200 characters)
+- `description` (string, required): Resource description
+- `visibility` (string, required): One of `public`, `premium`, or `private`
+- `price_cents` (integer, optional): Price in cents (required if visibility is `premium`, must be null otherwise)
+- `tag_ids` (array, optional): Array of tag UUIDs
+- `file_url` (string, optional): URL for the first version of the resource
+
+**Permissions**:
+- ✅ CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN can create resources
+- ❌ USER role cannot create resources (read-only access)
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "My Resource Title",
+    "description": "Detailed description of the resource",
+    "visibility": "public",
+    "price_cents": null,
+    "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "tags": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+    "created_at": "2026-02-04T12:00:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Insufficient permissions:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+**Error (400 Bad Request)** - Premium resource without price:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Premium resources must have a price"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Price on non-premium resource:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Only premium resources can have a price"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid tag:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "One or more tags not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/resources/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "title": "My Resource Title",
+    "description": "Detailed description",
+    "visibility": "public",
+    "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+    "file_url": "https://cdn.ressourcefy.com/files/resource.pdf"
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function createResource(title, description, visibility, priceCents = null, tagIds = [], fileUrl = null) {
+  const body = {
+    title,
+    description,
+    visibility
+  };
+  
+  if (priceCents !== null) body.price_cents = priceCents;
+  if (tagIds.length > 0) body.tag_ids = tagIds;
+  if (fileUrl) body.file_url = fileUrl;
+  
+  const response = await fetch('http://localhost:8000/api/resources/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify(body)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Failed to create resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await createResource(
+    'My Resource Title',
+    'Detailed description',
+    'public',
+    null,
+    ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+    'https://cdn.ressourcefy.com/files/resource.pdf'
+  );
+  console.log('Resource created:', result.data.resource_id);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- The authenticated user automatically becomes the author of the resource
+- Regular users (USER role) cannot create resources - they can only read, vote, and comment
+- To create resources, users must request CONTRIBUTOR or MODERATOR role via `/api/user/request-role/`
+
+---
 
 ### Vote on Comment
 
@@ -2187,13 +2623,38 @@ Authorization: Bearer <token>
     {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "email": "user@example.com",
+      "username": "john_doe",
+      "bio": "Full-stack developer",
+      "avatar_url": "https://example.com/avatar.jpg",
+      "has_profile": true,
       "role": "USER",
       "is_active": true,
-      "created_at": "2026-01-25T12:00:00Z"
+      "is_staff": false,
+      "is_superuser": false,
+      "is_activated": true,
+      "onboarding_step": "completed",
+      "created_at": "2026-01-25T12:00:00Z",
+      "updated_at": "2026-01-25T12:00:00Z"
     }
   ]
 }
 ```
+
+**Field Descriptions**:
+- `id`: User UUID
+- `email`: User email address
+- `username`: Username from Profile (null if Profile doesn't exist)
+- `bio`: Biography from Profile (null if Profile doesn't exist)
+- `avatar_url`: Avatar URL from Profile (null if Profile doesn't exist)
+- `has_profile`: Boolean indicating if user has a profile
+- `role`: User role (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER)
+- `is_active`: Django's active flag
+- `is_staff`: Django's staff flag
+- `is_superuser`: Django's superuser flag
+- `is_activated`: Email activation status
+- `onboarding_step`: Current onboarding step
+- `created_at`: Account creation timestamp
+- `updated_at`: Last update timestamp
 
 **Error (403 Forbidden)** - Not admin:
 ```json
@@ -2227,11 +2688,36 @@ Authorization: Bearer <token>
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "email": "user@example.com",
+  "username": "john_doe",
+  "bio": "Full-stack developer",
+  "avatar_url": "https://example.com/avatar.jpg",
+  "has_profile": true,
   "role": "USER",
   "is_active": true,
-  "created_at": "2026-01-25T12:00:00Z"
+  "is_staff": false,
+  "is_superuser": false,
+  "is_activated": true,
+  "onboarding_step": "completed",
+  "created_at": "2026-01-25T12:00:00Z",
+  "updated_at": "2026-01-25T12:00:00Z"
 }
 ```
+
+**Field Descriptions**:
+- `id`: User UUID
+- `email`: User email address
+- `username`: Username from Profile (null if Profile doesn't exist)
+- `bio`: Biography from Profile (null if Profile doesn't exist)
+- `avatar_url`: Avatar URL from Profile (null if Profile doesn't exist)
+- `has_profile`: Boolean indicating if user has a profile
+- `role`: User role (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER)
+- `is_active`: Django's active flag
+- `is_staff`: Django's staff flag
+- `is_superuser`: Django's superuser flag
+- `is_activated`: Email activation status
+- `onboarding_step`: Current onboarding step
+- `created_at`: Account creation timestamp
+- `updated_at`: Last update timestamp
 
 ---
 

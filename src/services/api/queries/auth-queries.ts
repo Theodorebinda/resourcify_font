@@ -286,6 +286,76 @@ export function useActivateAccount() {
 }
 
 /**
+ * Update user profile mutation
+ * Backend returns: { status: "ok", data: { username, bio, avatar_url, message } }
+ * Updates user profile information (username, bio, avatar_url)
+ * 
+ * Note: This is for updating profile AFTER onboarding is complete
+ * During onboarding, use useSubmitOnboardingProfile() instead
+ */
+export interface UpdateProfilePayload {
+  username?: string;
+  bio?: string;
+  avatar_url?: string;
+}
+
+export interface UpdateProfileResponse {
+  username: string;
+  bio: string | null;
+  avatar_url: string | null;
+  message: string;
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateProfileResponse, ApiError, UpdateProfilePayload>({
+    mutationFn: async (payload) => {
+      const response = await apiClient.patch<ApiResponse<UpdateProfileResponse>>(
+        API_ENDPOINTS.USER.UPDATE_PROFILE,
+        payload
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      // Invalidate user query to refetch updated profile
+      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+    },
+  });
+}
+
+/**
+ * Request role change mutation
+ * Backend returns: { status: "ok", data: { request_id, requested_role, status, message } }
+ * Requests a role change to MODERATOR or CONTRIBUTOR
+ * 
+ * Requires a complete profile before requesting
+ */
+export interface RequestRolePayload {
+  requested_role: "MODERATOR" | "CONTRIBUTOR";
+  reason?: string;
+}
+
+export interface RequestRoleResponse {
+  request_id: string;
+  requested_role: "MODERATOR" | "CONTRIBUTOR";
+  status: "pending";
+  message: string;
+}
+
+export function useRequestRole() {
+  return useMutation<RequestRoleResponse, ApiError, RequestRolePayload>({
+    mutationFn: async (payload) => {
+      const response = await apiClient.post<ApiResponse<RequestRoleResponse>>(
+        API_ENDPOINTS.USER.REQUEST_ROLE,
+        payload
+      );
+      return response.data.data;
+    },
+  });
+}
+
+/**
  * Resend activation email mutation
  * Sends a new activation email to the user
  * Used when user tries to login but account is not activated

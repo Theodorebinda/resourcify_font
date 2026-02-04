@@ -8,7 +8,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../client";
 import { API_ENDPOINTS } from "../../../constants/api";
 import type { ApiError, ApiResponse } from "../../../types";
-import { useUser } from "./auth-queries";
 
 // Query keys
 export const resourceKeys = {
@@ -156,21 +155,25 @@ export function useCreateResourceVersion() {
 
 /**
  * Create a new resource
- * Uses admin endpoint but accessible to authorized roles (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR)
+ * Uses POST /api/resources/ - the authenticated user automatically becomes the author
+ * Accessible to CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN roles
  */
 export function useCreateResource() {
   const queryClient = useQueryClient();
-  const { user } = useUser();
 
   return useMutation<CreateResourceFormResponse, ApiError, CreateResourceFormPayload>({
     mutationFn: async (payload) => {
-      if (!user?.id) {
-        throw new Error("User not authenticated");
-      }
-
-      // Use admin endpoint with current user as author
-      const adminPayload = {
-        author_id: user.id,
+      // Payload for POST /api/resources/
+      // The backend automatically sets the authenticated user as the author
+      // file_url is optional and can be provided for the first version
+      const resourcePayload: {
+        title: string;
+        description: string;
+        visibility: "public" | "premium" | "private";
+        price_cents: number | null;
+        tag_ids: string[];
+        file_url?: string;
+      } = {
         title: payload.title,
         description: payload.description,
         visibility: payload.visibility,
@@ -178,28 +181,31 @@ export function useCreateResource() {
         tag_ids: payload.tag_ids ?? [],
       };
 
-      const response = await apiClient.post<ApiResponse<{ resource_id: string; title: string; author_id: string }>>(
-        API_ENDPOINTS.ADMIN.RESOURCES.CREATE,
-        adminPayload
-      );
-
-      const resourceId = response.data.data.resource_id;
-
-      // Create first version if file_url is provided
-      if (payload.file_url) {
-        await apiClient.post<ApiResponse<CreateResourceVersionResponse>>(
-          API_ENDPOINTS.RESOURCES.VERSIONS,
-          {
-            resource_id: resourceId,
-            file_url: payload.file_url,
-          }
-        );
+      // Only include file_url if provided
+      if (payload.file_url && payload.file_url.trim()) {
+        resourcePayload.file_url = payload.file_url.trim();
       }
 
+      const response = await apiClient.post<ApiResponse<{
+        resource_id: string;
+        title: string;
+        description: string;
+        visibility: string;
+        price_cents: number | null;
+        author_id: string;
+        tags: string[];
+        created_at: string;
+      }>>(
+        API_ENDPOINTS.RESOURCES.CREATE,
+        resourcePayload
+      );
+
+      const resourceData = response.data.data;
+
       return {
-        resource_id: response.data.data.resource_id,
-        title: response.data.data.title,
-        author_id: response.data.data.author_id,
+        resource_id: resourceData.resource_id,
+        title: resourceData.title,
+        author_id: resourceData.author_id,
       };
     },
     onSuccess: () => {

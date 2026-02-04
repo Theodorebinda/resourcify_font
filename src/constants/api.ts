@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     ME: "/user/me/",
     PROFILE: "/user/profile/",
     UPDATE_PROFILE: "/user/profile/",
+    REQUEST_ROLE: "/user/request-role/",
   },
 
   // Onboarding endpoints
@@ -40,6 +41,7 @@ export const API_ENDPOINTS = {
 
   // Resource endpoints
   RESOURCES: {
+    CREATE: "/resources/",
     FEED: "/feed/",
     DETAIL: (id: string) => `/resources/${id}/detail/`,
     ACCESS: (id: string) => `/resources/${id}/`,

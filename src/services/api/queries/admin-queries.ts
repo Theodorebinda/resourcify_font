@@ -71,6 +71,10 @@ export interface AdminUser {
   onboarding_step?: string;
   created_at: string;
   updated_at?: string;
+  // Profile fields (may be included if backend supports it, or fetched separately)
+  username?: string | null;
+  bio?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface AdminUserListResponse {
@@ -395,6 +399,19 @@ export function useAdminUserDetail(userId: string) {
     enabled: !!userId,
   });
 }
+
+/**
+ * Get admin user with profile information
+ * 
+ * Note: The AdminUser interface now includes optional profile fields (username, bio, avatar_url).
+ * If the backend includes these fields in /admin/users/ or /admin/users/{id}/ responses, they will be available.
+ * 
+ * To fetch profile separately, use the useAuthorProfile hook from authors-queries:
+ * ```tsx
+ * const user = useAdminUserDetail(userId);
+ * const profile = useAuthorProfile(userId);
+ * ```
+ */
 
 export function useAdminUserActivity(userId: string, limit: number = 50) {
   return useQuery<AdminUserActivityResponse, ApiError>({

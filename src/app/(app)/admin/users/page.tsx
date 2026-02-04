@@ -206,6 +206,11 @@ export default function AdminUsersPage() {
                       <tr key={user.id} className="border-b hover:bg-muted/50">
                         <td className="p-4">
                           <div className="font-medium">{user.email}</div>
+                          {user.username && (
+                            <div className="text-sm text-muted-foreground">
+                              @{user.username}
+                            </div>
+                          )}
                         </td>
                         <td className="p-4">
                           <Badge variant={getRoleBadgeVariant(user.role)}>
