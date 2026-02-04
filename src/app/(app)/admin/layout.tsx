@@ -72,9 +72,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     if (!isLoading && user) {
-      // Vérifier si l'utilisateur est admin ou superadmin
-      // Note: Le backend vérifie les permissions, mais on peut faire une vérification côté client
-      // pour améliorer l'UX (redirection immédiate si non autorisé)
+
       const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
       if (!isAdmin) {
         router.replace(ROUTES.APP.DASHBOARD);
@@ -98,43 +96,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-background max-w-4xl mx-auto">
-      {/* Sidebar */}
-      <aside className="w-64 border-r bg-muted/40">
-        <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center border-b px-6">
-            <Shield className="mr-2 h-5 w-5" />
-            <span className="font-semibold">Administration</span>
-          </div>
-          <nav className="flex-1 space-y-1 p-4">
-            {adminNavItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    "hover:bg-accent hover:text-accent-foreground",
-                    "text-muted-foreground"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.title}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="border-t p-4">
-            <div className="text-xs text-muted-foreground">
-              <p className="font-medium">{user.email}</p>
-              <p className="mt-1">Rôle: {user.role}</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
+    <div className="flex min-h-screen bg-background">
       <main className="flex-1 overflow-auto">
         <div className="container mx-auto p-6">{children}</div>
       </main>

@@ -27,4 +27,9 @@ export * from "./password-reset-queries";
 
 // Admin queries
 export * from "./admin-queries";
+
+// Tags queries
 export * from "./tags-queries";
+
+// Progress queries
+export * from "./progress-queries";

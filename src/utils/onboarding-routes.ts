@@ -16,7 +16,7 @@ export const ONBOARDING_STEP_TO_ROUTE: Record<OnboardingStep, string> = {
   not_started: ROUTES.ONBOARDING.START,
   profile: ROUTES.ONBOARDING.PROFILE,
   interests: ROUTES.ONBOARDING.INTERESTS,
-  completed: ROUTES.APP.USER,
+  completed: ROUTES.APP.DASHBOARD,
 };
 
 /**
@@ -56,7 +56,7 @@ export function canAccessRoute(
 ): boolean {
   // If completed, can access app routes
   if (currentStep === "completed") {
-    return targetRoute.startsWith("/app") || targetRoute.startsWith("/user");
+    return targetRoute.startsWith("/app");
   }
 
   // If not_started, can only access profile

@@ -20,11 +20,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Skeleton } from "../../../components/ui/skeleton";
 import { SomethingWentWrong } from "../../../components/error/something-went-wrong";
 import { useServerError } from "../../../hooks/use-server-error";
-import { Avatar, AvatarFallback } from "../../../components/ui/avatar";
-import { Badge } from "../../../components/ui/badge";
+import { CreateResourceForm } from "../../../components/features/resources/create-resource-form";
+import { ResourceList } from "../../../components/features/resources/resource-list";
+import { ThemeSelector } from "@/src/components/shared/theme-selector";
 
 export default function AppDashboardPage() {
-  const { user, isLoading, error, isActivated, isOnboardingComplete } = useUser();
+  const { user, isLoading, error } = useUser();
   const serverErrorResult = useServerError(error, () => {});
   const isServerError = serverErrorResult?.isServerError ?? false;
 
@@ -87,87 +88,29 @@ export default function AppDashboardPage() {
     );
   }
 
-  // Success state - render dashboard content
+ 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
+
       <div>
-        <h1 className="text-3xl font-bold mb-2">
+        <div className="flex justify-between items-center w-full gap-2">
+        <h1 className="text-xl font-bold mb-2">
           Welcome back{user.username ? `, ${user.username}` : ""}!
-        </h1>
+          </h1>
+          <ThemeSelector/>
+        </div>
         <p className="text-muted-foreground">
           Here&apos;s what&apos;s happening with your account.
         </p>
       </div>
 
-      {/* User Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Information</CardTitle>
-          <CardDescription>Your account details and status</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-12 w-12">
-              <AvatarFallback>
-                {user.username
-                  ? user.username.slice(0, 2).toUpperCase()
-                  : user.email.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              {user.username && (
-                <p className="font-medium">{user.username}</p>
-              )}
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-          </div>
+      {/* Create Resource Form */}
+      <CreateResourceForm />
 
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant={isActivated ? "default" : "secondary"}>
-              {isActivated ? "Activated" : "Not Activated"}
-            </Badge>
-            <Badge variant={isOnboardingComplete ? "default" : "secondary"}>
-              {isOnboardingComplete ? "Onboarding Complete" : "Onboarding In Progress"}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dashboard Stats Placeholder */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Resources</CardTitle>
-            <CardDescription>Your resources</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">0</p>
-            <p className="text-xs text-muted-foreground">Coming soon</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Activity</CardTitle>
-            <CardDescription>Recent activity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">0</p>
-            <p className="text-xs text-muted-foreground">Coming soon</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Settings</CardTitle>
-            <CardDescription>Account settings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">—</p>
-            <p className="text-xs text-muted-foreground">Coming soon</p>
-          </CardContent>
-        </Card>
+      {/* Resources List */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Ressources</h2>
+        <ResourceList />
       </div>
     </div>
   );

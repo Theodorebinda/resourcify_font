@@ -55,6 +55,14 @@ import {
   Search,
   Bookmark,
   Bell,
+  LayoutDashboard,
+  Users,
+  Tags,
+  FileText,
+  CreditCard,
+  DollarSign,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "../../libs/utils";
@@ -65,6 +73,45 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
 }
+
+interface AdminSubItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const adminSubItems: AdminSubItem[] = [
+  {
+    title: "Dashboard",
+    url: ROUTES.ADMIN.DASHBOARD,
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Utilisateurs",
+    url: ROUTES.ADMIN.USERS,
+    icon: Users,
+  },
+  {
+    title: "Tags",
+    url: ROUTES.ADMIN.TAGS,
+    icon: Tags,
+  },
+  {
+    title: "Ressources",
+    url: ROUTES.ADMIN.RESOURCES,
+    icon: FileText,
+  },
+  {
+    title: "Abonnements",
+    url: ROUTES.ADMIN.SUBSCRIPTIONS,
+    icon: CreditCard,
+  },
+  {
+    title: "Paiements",
+    url: ROUTES.ADMIN.PAYMENTS,
+    icon: DollarSign,
+  },
+];
 
 const navItems: NavItem[] = [
   {
@@ -86,23 +133,17 @@ const navItems: NavItem[] = [
     title: "Ressources",
     url: "/app/resources",
     icon: Inbox,
-  },
+  },  
   {
     title: "Favoris",
     url: "/app/bookmarks",
     icon: Bookmark,
   },
-  {
-    title: "Paramètres",
-    url: "/app/settings",
-    icon: Settings,
-  },
-  {
-    title: "Administration",
-    url: ROUTES.ADMIN.DASHBOARD,
-    icon: Shield,
-    adminOnly: true,
-  },
+  // {
+  //   title: "Paramètres",
+  //   url: "/app/settings",
+  //   icon: Settings,
+  // },
 ];
 
 function AppSidebarContent() {
@@ -110,6 +151,7 @@ function AppSidebarContent() {
   const logoutMutation = useLogout();
   const router = useRouter();
   const pathname = usePathname();
+  const [adminMenuOpen, setAdminMenuOpen] = React.useState(false);
   // Le nouveau sidebar personnalisé n'a plus besoin de la synchronisation complexe
   // On garde juste useSidebar pour la compatibilité mais on ne l'utilise pas
   useSidebar();
@@ -133,14 +175,15 @@ function AppSidebarContent() {
     return "U";
   };
 
-  const filteredNavItems = navItems.filter((item) => {
-    // Filtrer les items admin si l'utilisateur n'est pas admin
-    if (item.adminOnly) {
-      const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
-      return isAdmin;
+  // Vérifier si l'utilisateur est admin
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+  
+  // Ouvrir automatiquement le menu admin si on est sur une page admin
+  React.useEffect(() => {
+    if (pathname?.startsWith("/admin/")) {
+      setAdminMenuOpen(true);
     }
-    return true;
-  });
+  }, [pathname]);
 
   return (
     <Sidebar>
@@ -154,7 +197,7 @@ function AppSidebarContent() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1 justify-end">
-              {filteredNavItems.map((item) => {
+              {navItems.map((item) => {
                 const isActive = pathname === item.url || pathname?.startsWith(item.url + "/");
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -173,6 +216,55 @@ function AppSidebarContent() {
                   </SidebarMenuItem>
                 );
               })}
+              
+              {/* Menu Administration (sous-menu) - Visible uniquement pour ADMIN et SUPERADMIN */}
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <div>
+                    <SidebarMenuButton
+                      onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+                      className={cn(
+                        "w-full justify-between rounded-full px-4 py-3 text-lg font-normal hover:bg-muted",
+                        pathname?.startsWith("/admin/") && "font-semibold"
+                      )}
+                    >
+                      <div className="flex items-center gap-4">
+                        <Shield className="h-6 w-6" />
+                        <span>Administration</span>
+                      </div>
+                      {adminMenuOpen ? (
+                        <ChevronDown className="h-5 w-5" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5" />
+                      )}
+                    </SidebarMenuButton>
+                    
+                    {/* Sous-menu admin */}
+                    {adminMenuOpen && (
+                      <div className="ml-8 mt-1 space-y-1">
+                        {adminSubItems.map((subItem) => {
+                          const isSubActive = pathname === subItem.url || pathname?.startsWith(subItem.url + "/");
+                          return (
+                            <SidebarMenuButton
+                              key={subItem.title}
+                              asChild
+                              className={cn(
+                                "w-full justify-start rounded-full px-4 py-2 text-base font-normal hover:bg-muted",
+                                isSubActive && "font-semibold bg-muted"
+                              )}
+                            >
+                              <Link href={subItem.url} className="flex items-center gap-3">
+                                <subItem.icon className="h-5 w-5" />
+                                <span>{subItem.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -221,12 +313,14 @@ function AppSidebarContent() {
               className="w-56"
             >
               <DropdownMenuItem
-                onClick={() => router.push(ROUTES.APP.DASHBOARD)}
+                onClick={() => router.push(ROUTES.APP.PROFILE)}
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>Profil</span>
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem
+                onClick={() => router.push(ROUTES.APP.SETTINGS)}
+              >
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Paramètres</span>
               </DropdownMenuItem>

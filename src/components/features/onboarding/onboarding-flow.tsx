@@ -48,7 +48,7 @@ export function OnboardingFlow() {
       <div className="rounded-md border border-input bg-muted/30 p-6 text-center text-sm text-muted-foreground">
         Onboarding terminé. Redirection vers votre espace utilisateur...
         <div className="mt-4">
-          <a className="text-primary underline" href={ROUTES.APP.USER}>
+          <a className="text-primary underline" href={ROUTES.APP.DASHBOARD}>
             Accéder à l&apos;espace utilisateur
           </a>
         </div>

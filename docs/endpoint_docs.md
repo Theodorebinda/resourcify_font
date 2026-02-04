@@ -126,15 +126,29 @@ CORS_ALLOWED_ORIGINS = [
    - [Submit Interests](#submit-interests)
 3. [User Management](#user-management)
    - [Get Current User](#get-current-user)
+   - [Update Profile](#update-profile)
+   - [Request Role Change](#request-role-change)
 4. [Command Endpoints (Write Operations)](#command-endpoints)
+   - [Create Resource](#create-resource)
+   - [Update Resource](#update-resource)
+   - [Delete Resource](#delete-resource)
+   - [Create Comment](#create-comment)
    - [Vote on Comment](#vote-on-comment)
+   - [Vote on Resource](#vote-on-resource)
    - [Create Resource Version](#create-resource-version)
    - [Access Resource](#access-resource)
+   - [Complete Resource Progress](#complete-resource-progress)
    - [Create Checkout Session](#create-checkout-session)
 5. [Query Endpoints (Read Operations)](#query-endpoints)
    - [Get Resource Feed](#get-resource-feed)
    - [Get Resource Detail](#get-resource-detail)
+   - [Get Resource Comments](#get-resource-comments)
    - [Get Author Profile](#get-author-profile)
+   - [Get User Progress](#get-user-progress)
+   - [Get Resource Progress](#get-resource-progress)
+   - [Get Resource Users Progress](#get-resource-users-progress)
+   - [Get All Progress (Admin)](#get-all-progress-admin)
+   - [Get User Resources](#get-user-resources)
 6. [Webhook Endpoints](#webhook-endpoints)
    - [Stripe Webhook](#stripe-webhook)
 7. [Health Endpoints](#health-endpoints)
@@ -831,7 +845,7 @@ Authorization: Bearer <token>
 - Profile fields (`username`, `bio`, `avatar_url`) are provided for UI pre-filling
 - If Profile doesn't exist, these fields will be `null` (no error)
 - This endpoint is **READ-ONLY** - it does not modify any data
-- Profile modification is handled exclusively by onboarding endpoints
+- Profile modification after onboarding is handled by `PATCH /user/profile/`
 
 **HTTP Cookies Synced**:
 The backend automatically syncs the following cookies:
@@ -864,7 +878,819 @@ async function getCurrentUser() {
 
 ---
 
+### Update Profile
+
+**Endpoint**: `PATCH /api/user/profile/`  
+**Authentication**: Required  
+**Description**: Update user profile information (username, bio, avatar_url)
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body** (all fields optional):
+```json
+{
+  "username": "new_username",
+  "bio": "Updated bio text",
+  "avatar_url": "https://example.com/avatar.jpg"
+}
+```
+
+**Field Descriptions**:
+- `username` (string, optional): New username (must be unique, max 30 characters)
+- `bio` (string, optional): Biography text
+- `avatar_url` (string, optional): URL to user's avatar image (max 500 characters)
+
+**Validation Rules**:
+- **For regular users (USER role)**: Profile must be complete (username, and either bio or avatar_url)
+- **For ADMIN/SUPERADMIN**: Profile must exist with at least username
+- Username must be unique across all users
+- Username cannot be empty if provided
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "username": "new_username",
+    "bio": "Updated bio text",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "message": "Profile updated successfully"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Username already taken:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Username 'new_username' is already taken"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Profile incomplete for regular user:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Profile must be complete for regular users: username, bio or avatar_url required"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Profile missing for ADMIN/SUPERADMIN:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Profile must exist for ADMIN/SUPERADMIN users"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X PATCH http://localhost:8000/api/user/profile/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "username": "new_username",
+    "bio": "Updated bio",
+    "avatar_url": "https://example.com/avatar.jpg"
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function updateProfile(username, bio, avatarUrl) {
+  const body = {};
+  if (username) body.username = username;
+  if (bio !== undefined) body.bio = bio;
+  if (avatarUrl !== undefined) body.avatar_url = avatarUrl;
+  
+  const response = await fetch('http://localhost:8000/api/user/profile/', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify(body)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to update profile');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await updateProfile('new_username', 'My bio', 'https://example.com/avatar.jpg');
+  console.log('Profile updated:', result.data);
+} catch (error) {
+  console.error('Update error:', error.message);
+}
+```
+
+---
+
+### Request Role Change
+
+**Endpoint**: `POST /api/user/request-role/`  
+**Authentication**: Required  
+**Description**: Request a role change to MODERATOR or CONTRIBUTOR. Requires a complete profile.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "requested_role": "MODERATOR",
+  "reason": "I have experience moderating online communities and would like to help maintain quality content."
+}
+```
+
+**Field Descriptions**:
+- `requested_role` (string, required): Must be either `"MODERATOR"` or `"CONTRIBUTOR"`
+- `reason` (string, optional): Optional reason for the role request (max 1000 characters)
+
+**Validation Rules**:
+- User must have a complete profile (username, and either bio or avatar_url)
+- Only `MODERATOR` or `CONTRIBUTOR` roles can be requested
+- User cannot request a role they already have
+- User cannot have a pending request for the same role
+- Regular users (USER role) can request role changes
+- ADMIN and SUPERADMIN cannot use this endpoint (they already have elevated privileges)
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "requested_role": "MODERATOR",
+    "status": "pending",
+    "message": "Role change request submitted successfully. Your request for MODERATOR is pending admin review."
+  }
+}
+```
+
+**Error (400 Bad Request)** - Profile incomplete:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Profile must be complete before requesting role change. Please ensure your profile has username, bio or avatar_url."
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid role:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Only MODERATOR or CONTRIBUTOR roles can be requested. Got: ADMIN"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Already has role:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "User already has role MODERATOR"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Pending request exists:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "User already has a pending request for role MODERATOR"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/user/request-role/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "requested_role": "MODERATOR",
+    "reason": "I have experience moderating online communities."
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function requestRole(requestedRole, reason) {
+  const response = await fetch('http://localhost:8000/api/user/request-role/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({
+      requested_role: requestedRole, // "MODERATOR" or "CONTRIBUTOR"
+      reason: reason || ''
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to submit role request');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await requestRole(
+    'MODERATOR',
+    'I have experience moderating online communities.'
+  );
+  console.log('Role request submitted:', result.data);
+  alert('Your role request has been submitted and is pending admin review.');
+} catch (error) {
+  console.error('Request error:', error.message);
+  alert(`Error: ${error.message}`);
+}
+```
+
+**Note**: 
+- Role requests are reviewed by administrators
+- Users will be notified when their request is approved or rejected
+- Only one pending request per role is allowed at a time
+- Complete your profile before requesting a role change
+
+---
+
 ## Command Endpoints (Write Operations)
+
+### Create Resource
+
+**Endpoint**: `POST /api/resources/`  
+**Authentication**: Required (IsContributor: CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN)  
+**Description**: Create a new resource. The authenticated user automatically becomes the author.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "title": "My Resource Title",
+  "description": "Detailed description of the resource",
+  "visibility": "public",
+  "price_cents": null,
+  "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+  "file_url": "https://cdn.ressourcefy.com/files/resource-v1.pdf"
+}
+```
+
+**Field Descriptions**:
+- `title` (string, required): Resource title (max 200 characters)
+- `description` (string, required): Resource description
+- `visibility` (string, required): One of `public`, `premium`, or `private`
+- `price_cents` (integer, optional): Price in cents (required if visibility is `premium`, must be null otherwise)
+- `tag_ids` (array, optional): Array of tag UUIDs
+- `file_url` (string, optional): URL for the first version of the resource
+
+**Permissions**:
+- ✅ CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN can create resources
+- ❌ USER role cannot create resources (read-only access)
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "My Resource Title",
+    "description": "Detailed description of the resource",
+    "visibility": "public",
+    "price_cents": null,
+    "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "tags": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+    "created_at": "2026-02-04T12:00:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Insufficient permissions:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+**Error (400 Bad Request)** - Premium resource without price:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Premium resources must have a price"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Price on non-premium resource:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Only premium resources can have a price"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid tag:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "One or more tags not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/resources/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "title": "My Resource Title",
+    "description": "Detailed description",
+    "visibility": "public",
+    "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+    "file_url": "https://cdn.ressourcefy.com/files/resource.pdf"
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function createResource(title, description, visibility, priceCents = null, tagIds = [], fileUrl = null) {
+  const body = {
+    title,
+    description,
+    visibility
+  };
+  
+  if (priceCents !== null) body.price_cents = priceCents;
+  if (tagIds.length > 0) body.tag_ids = tagIds;
+  if (fileUrl) body.file_url = fileUrl;
+  
+  const response = await fetch('http://localhost:8000/api/resources/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify(body)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Failed to create resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await createResource(
+    'My Resource Title',
+    'Detailed description',
+    'public',
+    null,
+    ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+    'https://cdn.ressourcefy.com/files/resource.pdf'
+  );
+  console.log('Resource created:', result.data.resource_id);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- The authenticated user automatically becomes the author of the resource
+- Regular users (USER role) cannot create resources - they can only read, vote, and comment
+- To create resources, users must request CONTRIBUTOR or MODERATOR role via `/api/user/request-role/`
+
+---
+
+### Update Resource
+
+**Endpoint**: `PATCH /api/resources/{resource_id}/`  
+**Authentication**: Required  
+**Description**: Update a resource. Only the resource author can update their own resource.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource to update
+
+**Body** (all fields optional):
+```json
+{
+  "title": "Updated Resource Title",
+  "description": "Updated description",
+  "visibility": "premium",
+  "price_cents": 999,
+  "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"]
+}
+```
+
+**Field Descriptions**:
+- `title` (string, optional): Resource title (max 200 characters)
+- `description` (string, optional): Resource description
+- `visibility` (string, optional): One of `public`, `premium`, or `private`
+- `price_cents` (integer, optional): Price in cents (required if visibility is `premium`, must be null otherwise)
+- `tag_ids` (array, optional): Array of tag UUIDs
+
+**Permissions**:
+- ✅ Only the resource author can update their resource
+- ❌ Other users cannot update resources they don't own
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "Updated Resource Title",
+    "description": "Updated description",
+    "visibility": "premium",
+    "price_cents": 999,
+    "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "tags": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+    "updated_at": "2026-02-04T14:30:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not the author:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only the resource author can update this resource"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Premium resource without price:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Premium resources must have a price"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid tag:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "One or more tags not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X PATCH http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "title": "Updated Resource Title",
+    "description": "Updated description",
+    "visibility": "premium",
+    "price_cents": 999
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function updateResource(resourceId, updates) {
+  const body = {};
+  if (updates.title) body.title = updates.title;
+  if (updates.description) body.description = updates.description;
+  if (updates.visibility) body.visibility = updates.visibility;
+  if (updates.priceCents !== undefined) body.price_cents = updates.priceCents;
+  if (updates.tagIds) body.tag_ids = updates.tagIds;
+  
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify(body)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Failed to update resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await updateResource('8a7b5c3d-1234-5678-90ab-cdef12345678', {
+    title: 'Updated Title',
+    description: 'Updated description',
+    visibility: 'premium',
+    priceCents: 999
+  });
+  console.log('Resource updated:', result.data.resource_id);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only the resource author can update their resource
+- All fields are optional - only provided fields will be updated
+- Price validation: premium resources must have a price, non-premium resources cannot have a price
+- All updates are logged via audit system
+
+---
+
+### Delete Resource
+
+**Endpoint**: `DELETE /api/resources/{resource_id}/delete/`  
+**Authentication**: Required  
+**Description**: Delete a resource (soft delete). Only the resource author can delete their own resource.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource to delete
+
+**Body**: Empty (no body required)
+
+**Permissions**:
+- ✅ Only the resource author can delete their resource
+- ❌ Other users cannot delete resources they don't own
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "My Resource Title",
+    "message": "Resource deleted successfully"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not the author:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only the resource author can delete this resource"
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X DELETE http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/delete/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function deleteResource(resourceId) {
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/delete/`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Failed to delete resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await deleteResource('8a7b5c3d-1234-5678-90ab-cdef12345678');
+  console.log('Resource deleted:', result.data.message);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only the resource author can delete their resource
+- Deletion is soft delete - the resource is marked as deleted but not permanently removed
+- All deletions are logged via audit system
+- Deleted resources are not visible in public feeds but can be viewed by admins
+
+---
+
+### Create Comment
+
+**Endpoint**: `POST /api/comments/`  
+**Authentication**: Required (all authenticated users)  
+**Description**: Add a comment to a resource. All authenticated users can comment on resources they have access to.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  "content": "This is a great resource! Very helpful."
+}
+```
+
+**Field Descriptions**:
+- `resource_id` (string, required): UUID of the resource to comment on
+- `content` (string, required): Comment text (cannot be empty)
+
+**Permissions**:
+- ✅ All authenticated users can create comments
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot comment on resources without access (premium without subscription, private, etc.)
+
+#### Response
+
+**Success (201 Created)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "comment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "author_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "content": "This is a great resource! Very helpful.",
+    "created_at": "2026-02-04T12:00:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to comment on this resource"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Empty content:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Comment content cannot be empty"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/comments/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "content": "This is a great resource!"
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function createComment(resourceId, content) {
+  const response = await fetch('http://localhost:8000/api/comments/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({
+      resource_id: resourceId,
+      content: content
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to create comment');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await createComment(
+    '8a7b5c3d-1234-5678-90ab-cdef12345678',
+    'This is a great resource! Very helpful.'
+  );
+  console.log('Comment created:', result.data.comment_id);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- All authenticated users can create comments
+- Comments are automatically associated with the authenticated user
+- Users can only comment on resources they have access to (based on visibility rules)
+- **A user can create MULTIPLE comments on the same resource** - there is no limit
+- **Comments are independent from votes** - voting on a resource does not affect your ability to comment, and commenting does not affect your ability to vote
+
+---
 
 ### Vote on Comment
 
@@ -987,6 +1813,231 @@ async function voteOnComment(commentId, value) {
 
 ---
 
+### Vote on Resource
+
+**Endpoint**: `POST /api/resources/vote/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Upvote or downvote a resource. All authenticated users with completed onboarding can vote on resources they have access to.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  "vote_value": 1
+}
+```
+
+**Field Descriptions**:
+- `resource_id` (string, required): UUID of the resource to vote on
+- `vote_value` (integer, required): `1` for upvote, `-1` for downvote
+
+**Permissions**:
+- ✅ All authenticated users with completed onboarding can vote
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot vote on resources without access (premium without subscription, private, etc.)
+- ❌ Cannot vote on deleted resources
+
+**Vote Behavior**:
+- **Idempotent**: Voting with the same value multiple times has no effect
+- **Toggle**: If you already voted, changing the vote value updates your vote
+- **One vote per user**: Each user can only have one vote per resource
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "vote_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "value": 1
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource doesn't exist:
+```json
+{
+  "error": "Resource {resource_id} not found."
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": "You do not have permission to vote on this resource."
+}
+```
+
+**Error (400 Bad Request)** - Invalid vote value:
+```json
+{
+  "vote_value": ["Vote value must be +1 or -1."]
+}
+```
+
+**Error (400 Bad Request)** - Resource deleted:
+```json
+{
+  "error": "Cannot vote on a deleted resource."
+}
+```
+
+**Error (401 Unauthorized)** - Not authenticated:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/resources/vote/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "vote_value": 1
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function voteOnResource(resourceId, value) {
+  const response = await fetch('http://localhost:8000/api/resources/vote/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({
+      resource_id: resourceId,
+      vote_value: value  // 1 for upvote, -1 for downvote
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.detail || 'Failed to vote');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await voteOnResource(
+    '8a7b5c3d-1234-5678-90ab-cdef12345678',
+    1  // Upvote
+  );
+  console.log('Vote successful:', result.data);
+} catch (error) {
+  console.error('Vote failed:', error.message);
+}
+```
+
+#### React Hook Example
+```jsx
+import { useState } from 'react';
+
+function useResourceVote(resourceId) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  const vote = async (value) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/resources/vote/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          resource_id: resourceId,
+          vote_value: value
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.detail || 'Failed to vote');
+      }
+      
+      return await response.json();
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return { vote, loading, error };
+}
+
+// Usage in component
+function ResourceVoteButtons({ resourceId }) {
+  const { vote, loading, error } = useResourceVote(resourceId);
+  
+  const handleUpvote = async () => {
+    try {
+      await vote(1);
+      // Update UI to reflect new vote
+    } catch (err) {
+      // Error already set in hook
+    }
+  };
+  
+  const handleDownvote = async () => {
+    try {
+      await vote(-1);
+      // Update UI to reflect new vote
+    } catch (err) {
+      // Error already set in hook
+    }
+  };
+  
+  return (
+    <div>
+      <button onClick={handleUpvote} disabled={loading}>
+        👍 Upvote
+      </button>
+      <button onClick={handleDownvote} disabled={loading}>
+        👎 Downvote
+      </button>
+      {error && <div className="error">{error}</div>}
+    </div>
+  );
+}
+```
+
+**Important Notes**: 
+- **A user can vote ONLY ONCE per resource** - enforced by unique database constraint
+- Votes are idempotent: voting with the same value multiple times has no effect
+- If you change your vote (e.g., from upvote to downvote), your previous vote is updated (not a new vote created)
+- **Votes are completely independent from comments**:
+  - Voting on a resource does NOT affect your ability to comment
+  - Commenting on a resource does NOT affect your ability to vote
+  - A user can vote on a resource AND comment multiple times on the same resource
+  - These are two separate, independent actions
+- All votes are logged via audit system
+- User must have completed onboarding to vote
+- Resource access is checked before allowing vote
+
+---
+
 ### Create Resource Version
 
 **Endpoint**: `POST /api/resources/versions/`  
@@ -1093,8 +2144,8 @@ console.log(`Version ${result.data.version_number} created`);
 
 ### Access Resource
 
-**Endpoint**: `POST /api/resources/<resource_id>/`  
-**Authentication**: Required  
+**Endpoint**: `GET /api/resources/{resource_id}/access/`  
+**Authentication**: Required (IsOnboardingComplete)  
 **Description**: Request access to a resource (checks permissions and returns access URL)
 
 #### Request
@@ -1107,7 +2158,7 @@ Authorization: Bearer <token>
 **URL Parameters**:
 - `resource_id` (string, required): UUID of the resource in the URL path
 
-**Body**: Empty (no body required)
+**Body**: Empty (no body required - GET request)
 
 #### Response
 
@@ -1142,15 +2193,15 @@ Authorization: Bearer <token>
 
 #### cURL Example
 ```bash
-curl -X POST http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/ \
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/access/ \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Fetch Example
 ```javascript
 async function accessResource(resourceId) {
-  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/`, {
-    method: 'POST',
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/access/`, {
+    method: 'GET',
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('authToken')}`
     }
@@ -1175,6 +2226,113 @@ async function accessResource(resourceId) {
   return data;
 }
 ```
+
+**Note**: 
+- Accessing a resource automatically creates/updates progress to `IN_PROGRESS` status
+- Progress tracking is non-blocking - if it fails, access is still granted
+- All progress changes are logged via audit system and emit outbox events
+
+---
+
+### Complete Resource Progress
+
+**Endpoint**: `POST /api/resources/{resource_id}/complete/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Mark a resource as completed for the authenticated user. This action is idempotent.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource to complete
+
+**Body**: Empty (no body required)
+
+**Permissions**:
+- ✅ All authenticated users with completed onboarding can complete resources
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot complete resources without access (premium without subscription, private, etc.)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "status": "COMPLETED",
+    "started_at": "2026-02-04T12:00:00Z",
+    "last_accessed_at": "2026-02-04T14:30:00Z",
+    "completed_at": "2026-02-04T14:30:00Z"
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to access this resource"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/complete/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function completeResource(resourceId) {
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/complete/`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to complete resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await completeResource('8a7b5c3d-1234-5678-90ab-cdef12345678');
+  console.log('Resource completed:', result.data.status);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- This endpoint is **idempotent**: calling it multiple times returns the same result without error
+- If already completed, `completed_at` timestamp remains unchanged
+- All completions are logged via audit system and emit outbox events
+- User must have completed onboarding to use this endpoint
 
 ---
 
@@ -1361,7 +2519,10 @@ Authorization: Bearer <token>  (optional)
       "author_avatar": "https://cdn.ressourcefy.com/avatars/john.jpg",
       "tags": ["python", "django", "backend"],
       "stats": {
-        "comment_count": 15
+        "comment_count": 15,
+        "upvotes": 23,
+        "downvotes": 2,
+        "total_votes": 25
       },
       "price_cents": null,
       "visibility": "public"
@@ -1373,7 +2534,10 @@ Authorization: Bearer <token>  (optional)
       "author_avatar": "https://cdn.ressourcefy.com/avatars/jane.jpg",
       "tags": ["react", "javascript", "frontend"],
       "stats": {
-        "comment_count": 42
+        "comment_count": 42,
+        "upvotes": 156,
+        "downvotes": 5,
+        "total_votes": 161
       },
       "price_cents": 999,
       "visibility": "premium"
@@ -1388,7 +2552,11 @@ Authorization: Bearer <token>  (optional)
 - `author_name`: Username of the author
 - `author_avatar`: Avatar URL (null if no avatar)
 - `tags`: Array of tag names
-- `stats.comment_count`: Number of comments on this resource
+- `stats`: Resource statistics
+  - `comment_count`: Number of comments on this resource
+  - `upvotes`: Number of upvotes (+1)
+  - `downvotes`: Number of downvotes (-1)
+  - `total_votes`: Total number of votes
 - `price_cents`: Price in cents (null for free resources)
 - `visibility`: "public", "premium", or "private"
 
@@ -1467,6 +2635,7 @@ function ResourceList() {
           <p>by {resource.author_name}</p>
           <p>Tags: {resource.tags.join(', ')}</p>
           <p>Comments: {resource.stats.comment_count}</p>
+          <p>Votes: 👍 {resource.stats.upvotes} 👎 {resource.stats.downvotes} (Total: {resource.stats.total_votes})</p>
         </div>
       ))}
       <button onClick={() => setPage(p => p - 1)} disabled={page === 1}>
@@ -1512,6 +2681,12 @@ Authorization: Bearer <token>
     "tags": ["python", "django", "backend"],
     "visibility": "public",
     "price_cents": null,
+    "stats": {
+      "comment_count": 15,
+      "upvotes": 23,
+      "downvotes": 2,
+      "total_votes": 25
+    },
     "versions": [
       {
         "version_number": 2,
@@ -1527,6 +2702,22 @@ Authorization: Bearer <token>
   }
 }
 ```
+
+**Field Descriptions**:
+- `id`: Resource UUID
+- `title`: Resource title
+- `description`: Resource description
+- `author_name`: Username of the author
+- `author_avatar`: Avatar URL (null if no avatar)
+- `tags`: Array of tag names
+- `visibility`: "public", "premium", or "private"
+- `price_cents`: Price in cents (null for free resources)
+- `stats`: Resource statistics
+  - `comment_count`: Number of comments on this resource
+  - `upvotes`: Number of upvotes (+1)
+  - `downvotes`: Number of downvotes (-1)
+  - `total_votes`: Total number of votes
+- `versions`: Array of version objects with version_number, file_url, and created_at
 
 **Error (403 Forbidden)** - No access to premium resource:
 ```json
@@ -1575,6 +2766,978 @@ async function getResourceDetail(resourceId) {
 const resource = await getResourceDetail('8a7b5c3d-1234-5678-90ab-cdef12345678');
 console.log(`Latest version: ${resource.versions[0].version_number}`);
 ```
+
+---
+
+### Get Resource Comments
+
+**Endpoint**: `GET /api/resources/{resource_id}/comments/`  
+**Authentication**: Optional (public endpoint, but access to resource is required)  
+**Description**: Get all comments for a specific resource with pagination. Only non-deleted comments are returned.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>  (optional)
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number (minimum: 1)
+- `page_size` (integer, optional, default: 20, max: 100): Number of comments per page
+
+**Example URLs**:
+- `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/` - First page, 20 comments
+- `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=2` - Second page, 20 comments
+- `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=1&page_size=50` - First page, 50 comments
+
+**Permissions**:
+- ✅ Public endpoint (no authentication required)
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot view comments on resources without access (premium without subscription, private, etc.)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "content": "This is a great resource! Very helpful.",
+      "author": {
+        "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "username": "john_doe",
+        "avatar_url": "https://example.com/avatar.jpg"
+      },
+      "stats": {
+        "upvotes": 5,
+        "downvotes": 1,
+        "total_votes": 6
+      },
+      "created_at": "2026-02-04T12:00:00Z",
+      "updated_at": "2026-02-04T12:00:00Z"
+    },
+    {
+      "id": "4gb96g75-6828-5679-01cd-ef0123456789",
+      "content": "I found this very useful for my project.",
+      "author": {
+        "id": "8d0f7780-8536-49ef-055c-f18fc2f01bf8",
+        "username": "jane_smith",
+        "avatar_url": null
+      },
+      "stats": {
+        "upvotes": 3,
+        "downvotes": 0,
+        "total_votes": 3
+      },
+      "created_at": "2026-02-04T11:30:00Z",
+      "updated_at": "2026-02-04T11:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 45,
+    "total_pages": 3,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Field Descriptions**:
+- `data`: Array of comment objects
+  - `id`: Comment UUID
+  - `content`: Comment text content
+  - `author`: Author information
+    - `id`: Author user UUID
+    - `username`: Author username (falls back to email if no profile)
+    - `avatar_url`: Author avatar URL (null if no avatar)
+  - `stats`: Comment voting statistics
+    - `upvotes`: Number of upvotes (+1)
+    - `downvotes`: Number of downvotes (-1)
+    - `total_votes`: Total number of votes
+  - `created_at`: ISO 8601 timestamp of comment creation
+  - `updated_at`: ISO 8601 timestamp of last update
+- `pagination`: Pagination metadata
+  - `page`: Current page number
+  - `page_size`: Number of items per page
+  - `total_count`: Total number of comments
+  - `total_pages`: Total number of pages
+  - `has_next`: Whether there is a next page
+  - `has_previous`: Whether there is a previous page
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": "Resource {resource_id} not found."
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": "You do not have permission to view comments on this resource."
+}
+```
+
+**Error (400 Bad Request)** - Invalid pagination:
+```json
+{
+  "error": "Invalid pagination parameters. 'page' and 'page_size' must be integers."
+}
+```
+
+#### cURL Example
+```bash
+# Get first page of comments
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/
+
+# Get second page with 50 comments per page
+curl "http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=2&page_size=50"
+
+# With authentication (optional)
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function getResourceComments(resourceId, page = 1, pageSize = 20) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString()
+  });
+  
+  const headers = {};
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/comments/?${params}`,
+    { headers }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch comments');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getResourceComments(
+    '8a7b5c3d-1234-5678-90ab-cdef12345678',
+    1,
+    20
+  );
+  
+  console.log(`Total comments: ${result.pagination.total_count}`);
+  console.log(`Page ${result.pagination.page} of ${result.pagination.total_pages}`);
+  
+  result.data.forEach(comment => {
+    console.log(`${comment.author.username}: ${comment.content}`);
+    console.log(`  Votes: ${comment.stats.upvotes} up, ${comment.stats.downvotes} down`);
+  });
+  
+  // Check if there are more pages
+  if (result.pagination.has_next) {
+    console.log('Load more comments...');
+  }
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+#### React Hook Example
+```jsx
+import { useState, useEffect } from 'react';
+
+function useResourceComments(resourceId, page = 1, pageSize = 20) {
+  const [comments, setComments] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    async function fetchComments() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          page: page.toString(),
+          page_size: pageSize.toString()
+        });
+        
+        const headers = {};
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(
+          `/api/resources/${resourceId}/comments/?${params}`,
+          { headers }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch comments');
+        }
+        
+        const data = await response.json();
+        setComments(data.data);
+        setPagination(data.pagination);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (resourceId) {
+      fetchComments();
+    }
+  }, [resourceId, page, pageSize]);
+  
+  return { comments, pagination, loading, error };
+}
+
+// Usage in component
+function ResourceComments({ resourceId }) {
+  const [page, setPage] = useState(1);
+  const { comments, pagination, loading, error } = useResourceComments(resourceId, page);
+  
+  if (loading) return <div>Loading comments...</div>;
+  if (error) return <div>Error: {error}</div>;
+  
+  return (
+    <div>
+      <h3>Comments ({pagination?.total_count || 0})</h3>
+      
+      {comments.map(comment => (
+        <div key={comment.id} className="comment">
+          <div className="comment-header">
+            <img 
+              src={comment.author.avatar_url || '/default-avatar.png'} 
+              alt={comment.author.username}
+            />
+            <strong>{comment.author.username}</strong>
+            <span>{new Date(comment.created_at).toLocaleDateString()}</span>
+          </div>
+          <p>{comment.content}</p>
+          <div className="comment-stats">
+            👍 {comment.stats.upvotes} 👎 {comment.stats.downvotes}
+          </div>
+        </div>
+      ))}
+      
+      <div className="pagination">
+        <button 
+          onClick={() => setPage(p => p - 1)} 
+          disabled={!pagination?.has_previous}
+        >
+          Previous
+        </button>
+        <span>Page {pagination?.page} of {pagination?.total_pages}</span>
+        <button 
+          onClick={() => setPage(p => p + 1)} 
+          disabled={!pagination?.has_next}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+**Note**: 
+- Comments are ordered by creation date (newest first)
+- Only non-deleted comments are returned
+- Author information falls back to email if no profile exists
+- Voting statistics are included for each comment
+- The endpoint is public but respects resource visibility rules
+- Pagination is 1-indexed (page 1 is the first page)
+
+---
+
+### Get User Progress
+
+**Endpoint**: `GET /api/user/progress/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Get paginated list of user's progress on resources with summary statistics.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number (minimum: 1)
+- `page_size` (integer, optional, default: 20, max: 100): Number of items per page
+
+**Example URLs**:
+- `/api/user/progress/` - First page, 20 items
+- `/api/user/progress/?page=2` - Second page, 20 items
+- `/api/user/progress/?page=1&page_size=50` - First page, 50 items
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "summary": {
+      "total_resources": 15,
+      "completed_count": 5,
+      "in_progress_count": 8,
+      "not_started_count": 2
+    },
+    "data": [
+      {
+        "progress_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+        "resource_title": "Advanced Django Patterns",
+        "author_name": "john_doe",
+        "author_avatar": "https://example.com/avatar.jpg",
+        "status": "COMPLETED",
+        "started_at": "2026-02-04T10:00:00Z",
+        "last_accessed_at": "2026-02-04T14:30:00Z",
+        "completed_at": "2026-02-04T14:30:00Z"
+      },
+      {
+        "progress_id": "4gb96g75-6828-5679-01cd-ef0123456789",
+        "resource_id": "9b8c6d4e-2345-6789-01bc-def123456789",
+        "resource_title": "React Best Practices",
+        "author_name": "jane_smith",
+        "author_avatar": null,
+        "status": "IN_PROGRESS",
+        "started_at": "2026-02-04T11:00:00Z",
+        "last_accessed_at": "2026-02-04T13:00:00Z",
+        "completed_at": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_count": 15,
+      "total_pages": 1,
+      "has_next": false,
+      "has_previous": false
+    }
+  }
+}
+```
+
+**Field Descriptions**:
+- `summary`: Aggregated statistics for user's progress
+  - `total_resources`: Total number of resources with progress tracking
+  - `completed_count`: Number of completed resources
+  - `in_progress_count`: Number of resources in progress
+  - `not_started_count`: Number of resources not started
+- `data`: Array of progress items, ordered by `last_accessed_at` (most recent first)
+  - `progress_id`: Progress entry UUID
+  - `resource_id`: Resource UUID
+  - `resource_title`: Resource title
+  - `author_name`: Author username (falls back to email if no profile)
+  - `author_avatar`: Author avatar URL (null if no avatar)
+  - `status`: Progress status (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`)
+  - `started_at`: When user first accessed the resource (null if not started)
+  - `last_accessed_at`: Last time user accessed the resource (null if not started)
+  - `completed_at`: When user marked resource as completed (null if not completed)
+- `pagination`: Pagination metadata
+
+#### cURL Example
+```bash
+curl http://localhost:8000/api/user/progress/?page=1&page_size=20 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function getUserProgress(page = 1, pageSize = 20) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString()
+  });
+  
+  const response = await fetch(`http://localhost:8000/api/user/progress/?${params}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to fetch user progress');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getUserProgress(1, 20);
+  console.log(`Completed: ${result.data.summary.completed_count}`);
+  console.log(`In Progress: ${result.data.summary.in_progress_count}`);
+  
+  result.data.data.forEach(progress => {
+    console.log(`${progress.resource_title}: ${progress.status}`);
+  });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Progress list is ordered by `last_accessed_at` (most recent first)
+- Summary counts are computed from all user's progress entries
+- Only resources the user has accessed or completed are included
+- User must have completed onboarding to use this endpoint
+
+---
+
+### Get Resource Progress
+
+**Endpoint**: `GET /api/resources/{resource_id}/progress/`  
+**Authentication**: Required (IsAuthenticated)  
+**Description**: Get current user's progress for a specific resource. Returns `NOT_STARTED` if no progress exists.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource
+
+#### Response
+
+**Success (200 OK)** - With progress:
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "status": "IN_PROGRESS",
+    "started_at": "2026-02-04T12:00:00Z",
+    "last_accessed_at": "2026-02-04T14:30:00Z",
+    "completed_at": null
+  }
+}
+```
+
+**Success (200 OK)** - No progress (NOT_STARTED):
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_id": null,
+    "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "status": "NOT_STARTED",
+    "started_at": null,
+    "last_accessed_at": null,
+    "completed_at": null
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to view progress for this resource"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/progress/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function getResourceProgress(resourceId) {
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/progress/`,
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to fetch resource progress');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getResourceProgress('8a7b5c3d-1234-5678-90ab-cdef12345678');
+  console.log(`Status: ${result.data.status}`);
+  if (result.data.completed_at) {
+    console.log(`Completed at: ${result.data.completed_at}`);
+  }
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Returns `NOT_STARTED` status if user has never accessed the resource
+- Progress is automatically created when user accesses a resource via `/api/resources/{id}/access/`
+- User must have access to the resource to view progress
+- All progress changes are logged via audit system
+
+---
+
+### Get Resource Users Progress
+
+**Endpoint**: `GET /api/resources/{resource_id}/users-progress/`  
+**Authentication**: Required (IsAuthenticated, IsContributor)  
+**Description**: Get paginated list of all users' progress on a specific resource. Only resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) or admins can view this.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20, max: 100): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "resource_title": "Advanced Django Patterns",
+    "progress_entries": [
+      {
+        "id": "1a2b3c4d-5678-90ab-cdef-1234567890ab",
+        "user_id": "2b3c4d5e-6789-01ab-cdef-2345678901bc",
+        "user_email": "user@example.com",
+        "username": "john_doe",
+        "avatar_url": "https://cdn.ressourcefy.com/avatars/john.jpg",
+        "status": "COMPLETED",
+        "started_at": "2026-01-25T10:00:00Z",
+        "last_accessed_at": "2026-01-25T15:30:00Z",
+        "completed_at": "2026-01-25T15:30:00Z"
+      },
+      {
+        "id": "3c4d5e6f-7890-12ab-cdef-3456789012cd",
+        "user_id": "4d5e6f7a-8901-23ab-cdef-4567890123de",
+        "user_email": "another@example.com",
+        "username": "jane_smith",
+        "avatar_url": null,
+        "status": "IN_PROGRESS",
+        "started_at": "2026-01-25T11:00:00Z",
+        "last_accessed_at": "2026-01-25T14:00:00Z",
+        "completed_at": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_count": 45,
+      "total_pages": 3,
+      "has_next": true,
+      "has_previous": false
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+- **403 Forbidden** (Not author or admin):
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to view progress for this resource. Only the resource author or admins can view this."
+  }
+}
+```
+
+- **404 Not Found** (Resource not found):
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "https://api.ressourcefy.com/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/users-progress/?page=1&page_size=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### JavaScript Example
+
+```javascript
+async function getResourceUsersProgress(resourceId, page = 1, pageSize = 20) {
+  const response = await fetch(
+    `https://api.ressourcefy.com/api/resources/${resourceId}/users-progress/?page=${page}&page_size=${pageSize}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error.message);
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getResourceUsersProgress('8a7b5c3d-1234-5678-90ab-cdef12345678', 1, 20);
+  console.log(`Total users: ${result.data.pagination.total_count}`);
+  result.data.progress_entries.forEach(entry => {
+    console.log(`${entry.user_email}: ${entry.status}`);
+  });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) can view progress on their resources
+- ADMIN and SUPERADMIN can view progress on any resource
+- Returns paginated list of all users who have progress on the resource
+- Ordered by `last_accessed_at` (most recent first)
+
+---
+
+### Get All Progress (Admin)
+
+**Endpoint**: `GET /api/admin/progress/`  
+**Authentication**: Required (IsAuthenticated, IsAdmin)  
+**Description**: Get paginated list of all progress entries across all resources. Only ADMIN and SUPERADMIN can access this endpoint.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `resource_id` (UUID, optional): Filter by resource ID
+- `user_id` (UUID, optional): Filter by user ID
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20, max: 100): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_entries": [
+      {
+        "id": "1a2b3c4d-5678-90ab-cdef-1234567890ab",
+        "user_id": "2b3c4d5e-6789-01ab-cdef-2345678901bc",
+        "user_email": "user@example.com",
+        "username": "john_doe",
+        "avatar_url": "https://cdn.ressourcefy.com/avatars/john.jpg",
+        "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+        "resource_title": "Advanced Django Patterns",
+        "author_id": "5e6f7a8b-9012-34ab-cdef-5678901234ef",
+        "author_email": "author@example.com",
+        "status": "COMPLETED",
+        "started_at": "2026-01-25T10:00:00Z",
+        "last_accessed_at": "2026-01-25T15:30:00Z",
+        "completed_at": "2026-01-25T15:30:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_count": 150,
+      "total_pages": 8,
+      "has_next": true,
+      "has_previous": false
+    },
+    "filters": {
+      "resource_id": null,
+      "user_id": null
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+- **403 Forbidden** (Not admin):
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only administrators can view all progress entries"
+  }
+}
+```
+
+- **404 Not Found** (Resource or user not found when filtering):
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+# Get all progress entries
+curl -X GET "https://api.ressourcefy.com/api/admin/progress/?page=1&page_size=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Filter by resource
+curl -X GET "https://api.ressourcefy.com/api/admin/progress/?resource_id=8a7b5c3d-1234-5678-90ab-cdef12345678" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Filter by user
+curl -X GET "https://api.ressourcefy.com/api/admin/progress/?user_id=2b3c4d5e-6789-01ab-cdef-2345678901bc" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### JavaScript Example
+
+```javascript
+async function getAllProgress(filters = {}, page = 1, pageSize = 20) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+    ...(filters.resource_id && { resource_id: filters.resource_id }),
+    ...(filters.user_id && { user_id: filters.user_id })
+  });
+  
+  const response = await fetch(
+    `https://api.ressourcefy.com/api/admin/progress/?${params}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error.message);
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  // Get all progress
+  const allProgress = await getAllProgress({}, 1, 20);
+  console.log(`Total entries: ${allProgress.data.pagination.total_count}`);
+  
+  // Filter by resource
+  const resourceProgress = await getAllProgress({ resource_id: '8a7b5c3d-1234-5678-90ab-cdef12345678' });
+  
+  // Filter by user
+  const userProgress = await getAllProgress({ user_id: '2b3c4d5e-6789-01ab-cdef-2345678901bc' });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only ADMIN and SUPERADMIN can access this endpoint
+- Supports optional filtering by `resource_id` and `user_id`
+- Returns all progress entries across all resources
+- Ordered by `last_accessed_at` (most recent first)
+- Useful for admin dashboards and analytics
+
+---
+
+### Get User Resources
+
+**Endpoint**: `GET /api/user/resources/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Get paginated list of current user's own resources.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number
+- `page_size` (integer, optional, default: 20, max: 100): Items per page
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": [
+    {
+      "id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+      "title": "Advanced Django Patterns",
+      "description": "A comprehensive guide to Django best practices",
+      "visibility": "public",
+      "price_cents": null,
+      "tags": ["django", "python", "web-development"],
+      "stats": {
+        "comment_count": 15,
+        "upvotes": 42,
+        "downvotes": 2,
+        "total_votes": 44
+      },
+      "created_at": "2026-01-25T10:00:00Z",
+      "updated_at": "2026-01-25T15:30:00Z"
+    },
+    {
+      "id": "9b8c7d6e-2345-6789-01ab-cdef23456789",
+      "title": "Premium React Course",
+      "description": "Learn React from scratch",
+      "visibility": "premium",
+      "price_cents": 2999,
+      "tags": ["react", "javascript", "frontend"],
+      "stats": {
+        "comment_count": 8,
+        "upvotes": 25,
+        "downvotes": 1,
+        "total_votes": 26
+      },
+      "created_at": "2026-01-24T14:20:00Z",
+      "updated_at": "2026-01-24T14:20:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 45,
+    "total_pages": 3,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** (Invalid pagination parameters):
+```json
+{
+  "error": "Invalid pagination parameters. 'page' and 'page_size' must be integers."
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "https://api.ressourcefy.com/api/user/resources/?page=1&page_size=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### JavaScript Example
+
+```javascript
+async function getUserResources(page = 1, pageSize = 20) {
+  const response = await fetch(
+    `https://api.ressourcefy.com/api/user/resources/?page=${page}&page_size=${pageSize}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to fetch user resources');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getUserResources(1, 20);
+  console.log(`Total resources: ${result.pagination.total_count}`);
+  result.data.forEach(resource => {
+    console.log(`${resource.title} (${resource.visibility})`);
+  });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Returns only resources created by the authenticated user
+- Includes all visibility types (public, premium, private)
+- Ordered by creation date (most recent first)
+- Includes statistics (comments, votes) for each resource
+- Useful for user dashboard to manage their own content
 
 ---
 
@@ -2187,13 +4350,38 @@ Authorization: Bearer <token>
     {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "email": "user@example.com",
+      "username": "john_doe",
+      "bio": "Full-stack developer",
+      "avatar_url": "https://example.com/avatar.jpg",
+      "has_profile": true,
       "role": "USER",
       "is_active": true,
-      "created_at": "2026-01-25T12:00:00Z"
+      "is_staff": false,
+      "is_superuser": false,
+      "is_activated": true,
+      "onboarding_step": "completed",
+      "created_at": "2026-01-25T12:00:00Z",
+      "updated_at": "2026-01-25T12:00:00Z"
     }
   ]
 }
 ```
+
+**Field Descriptions**:
+- `id`: User UUID
+- `email`: User email address
+- `username`: Username from Profile (null if Profile doesn't exist)
+- `bio`: Biography from Profile (null if Profile doesn't exist)
+- `avatar_url`: Avatar URL from Profile (null if Profile doesn't exist)
+- `has_profile`: Boolean indicating if user has a profile
+- `role`: User role (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER)
+- `is_active`: Django's active flag
+- `is_staff`: Django's staff flag
+- `is_superuser`: Django's superuser flag
+- `is_activated`: Email activation status
+- `onboarding_step`: Current onboarding step
+- `created_at`: Account creation timestamp
+- `updated_at`: Last update timestamp
 
 **Error (403 Forbidden)** - Not admin:
 ```json
@@ -2227,11 +4415,36 @@ Authorization: Bearer <token>
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "email": "user@example.com",
+  "username": "john_doe",
+  "bio": "Full-stack developer",
+  "avatar_url": "https://example.com/avatar.jpg",
+  "has_profile": true,
   "role": "USER",
   "is_active": true,
-  "created_at": "2026-01-25T12:00:00Z"
+  "is_staff": false,
+  "is_superuser": false,
+  "is_activated": true,
+  "onboarding_step": "completed",
+  "created_at": "2026-01-25T12:00:00Z",
+  "updated_at": "2026-01-25T12:00:00Z"
 }
 ```
+
+**Field Descriptions**:
+- `id`: User UUID
+- `email`: User email address
+- `username`: Username from Profile (null if Profile doesn't exist)
+- `bio`: Biography from Profile (null if Profile doesn't exist)
+- `avatar_url`: Avatar URL from Profile (null if Profile doesn't exist)
+- `has_profile`: Boolean indicating if user has a profile
+- `role`: User role (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR, USER)
+- `is_active`: Django's active flag
+- `is_staff`: Django's staff flag
+- `is_superuser`: Django's superuser flag
+- `is_activated`: Email activation status
+- `onboarding_step`: Current onboarding step
+- `created_at`: Account creation timestamp
+- `updated_at`: Last update timestamp
 
 ---
 

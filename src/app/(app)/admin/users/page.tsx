@@ -7,6 +7,7 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import { useAdminUsers, useDeleteAdminUser, useSetUserRole, useResetUserPassword } from "../../../../services/api/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Button } from "../../../../components/ui/button";
@@ -37,15 +38,37 @@ const ROLES = ["SUPERADMIN", "ADMIN", "MODERATOR", "CONTRIBUTOR", "USER"] as con
 export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<string>("");
   
-  const { data: usersData, isLoading, error: usersError } = useAdminUsers(page, 20);
+  // Debounce de la recherche pour éviter trop de requêtes
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset à la page 1 lors d'une nouvelle recherche
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+  
+  const { data: usersData, isLoading, error: usersError } = useAdminUsers(debouncedSearch, page, 20);
   const deleteUserMutation = useDeleteAdminUser();
   const setRoleMutation = useSetUserRole();
   const resetPasswordMutation = useResetUserPassword();
   const { toast } = useToast();
+
+  // Debug: Log des données reçues
+  React.useEffect(() => {
+    console.log("[Admin Users Page] State:", {
+      isLoading,
+      hasData: !!usersData,
+      data: usersData,
+      error: usersError,
+      resultsLength: usersData?.results?.length,
+      count: usersData?.count,
+    });
+  }, [isLoading, usersData, usersError]);
 
   const handleSetRole = async () => {
     if (!selectedUser || !newRole) return;
@@ -165,7 +188,7 @@ export default function AdminUsersPage() {
                 {usersError.message || "Impossible de charger les utilisateurs"}
               </p>
             </div>
-          ) : usersData && Array.isArray(usersData.results) && usersData.results.length > 0 ? (
+          ) : usersData && usersData.results && Array.isArray(usersData.results) && usersData.results.length > 0 ? (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -183,6 +206,11 @@ export default function AdminUsersPage() {
                       <tr key={user.id} className="border-b hover:bg-muted/50">
                         <td className="p-4">
                           <div className="font-medium">{user.email}</div>
+                          {user.username && (
+                            <div className="text-sm text-muted-foreground">
+                              @{user.username}
+                            </div>
+                          )}
                         </td>
                         <td className="p-4">
                           <Badge variant={getRoleBadgeVariant(user.role)}>
@@ -270,6 +298,9 @@ export default function AdminUsersPage() {
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Aucun utilisateur trouvé</p>
+              {usersData && usersData.count === 0 && (
+                <p className="text-sm mt-2">La recherche n&apos;a retourné aucun résultat.</p>
+              )}
             </div>
           )}
         </CardContent>

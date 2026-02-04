@@ -30,14 +30,14 @@ export default function AppLayout({
         <AppSidebar />
         
         {/* Colonne centrale - Contenu principal */}
-        <main className="flex-1 overflow-y-auto border-x border-border/50 bg-background">
+        <main className="flex-1 overflow-y-auto scrollbar-hide border-x border-border/50 bg-background">
           <div className="mx-auto ">
             {children}
           </div>
         </main>
         
         {/* Colonne droite - Suggestions (optionnel, masquée sur mobile) */}
-        <aside className="hidden lg:block w-80 border-l border-border/50 overflow-y-auto bg-background">
+        <aside className="hidden lg:block w-80 border-l border-border/50 overflow-y-auto scrollbar-hide bg-background">
           <div className="p-6">
             <div className="rounded-lg border border-border bg-muted/30 p-4">
               <h3 className="font-semibold mb-2">Suggestions</h3>

@@ -177,3 +177,17 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Masquer la scrollbar tout en gardant le scroll fonctionnel */
+  .scrollbar-hide {
+    /* Firefox */
+    scrollbar-width: none;
+    /* Safari et Chrome */
+    -ms-overflow-style: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

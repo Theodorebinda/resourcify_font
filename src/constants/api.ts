@@ -27,6 +27,9 @@ export const API_ENDPOINTS = {
     ME: "/user/me/",
     PROFILE: "/user/profile/",
     UPDATE_PROFILE: "/user/profile/",
+    REQUEST_ROLE: "/user/request-role/",
+    PROGRESS: "/user/progress/",
+    RESOURCES: "/user/resources/",
   },
 
   // Onboarding endpoints
@@ -40,14 +43,23 @@ export const API_ENDPOINTS = {
 
   // Resource endpoints
   RESOURCES: {
+    CREATE: "/resources/",
+    UPDATE: (id: string) => `/resources/${id}/`,
+    DELETE: (id: string) => `/resources/${id}/delete/`,
     FEED: "/feed/",
     DETAIL: (id: string) => `/resources/${id}/detail/`,
-    ACCESS: (id: string) => `/resources/${id}/`,
+    ACCESS: (id: string) => `/resources/${id}/access/`,
     VERSIONS: "/resources/versions/",
+    COMMENTS: (id: string) => `/resources/${id}/comments/`,
+    VOTE: "/resources/vote/",
+    COMPLETE: (id: string) => `/resources/${id}/complete/`,
+    PROGRESS: (id: string) => `/resources/${id}/progress/`,
+    USERS_PROGRESS: (id: string) => `/resources/${id}/users-progress/`,
   },
 
   // Comment endpoints
   COMMENTS: {
+    CREATE: "/comments/",
     VOTE: "/comments/vote/",
   },
 
@@ -123,5 +135,7 @@ export const API_ENDPOINTS = {
       ACTIVITY: "/admin/dashboard/activity/",
       SYSTEM_HEALTH: "/admin/dashboard/system-health/",
     },
+    // Progress Management (Admin)
+    PROGRESS: "/admin/progress/",
   },
 } as const;

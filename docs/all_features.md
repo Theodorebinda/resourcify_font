@@ -208,7 +208,32 @@ Immutability: file_url and version_number cannot be changed after creation
 Constraint: Unique(user, comment)
 ```
 
-### 4.5 Monetization App (`monetization/`)
+### 4.5 Progress App (`progress/`)
+
+**UserResourceProgress** (extends BaseModel, SoftDeleteModel)
+```python
+- user: ForeignKey(User)
+- resource: ForeignKey(Resource)
+- status: TextChoices (NOT_STARTED, IN_PROGRESS, COMPLETED)
+- started_at: DateTime (nullable) - When user first accessed the resource
+- last_accessed_at: DateTime (nullable) - Last access time
+- completed_at: DateTime (nullable) - When user marked as completed
+
+Constraint: Unique(user, resource)
+Indexes: (user, status, last_accessed_at), (resource, status)
+
+Managers:
+  - objects: SoftDeleteManager (filters out soft-deleted by default)
+  - all_objects: Manager (includes soft-deleted)
+
+Rules:
+  - One progress entry per user per resource
+  - Status transitions: NOT_STARTED → IN_PROGRESS → COMPLETED
+  - Timestamps are set on first transition (idempotent)
+  - Progress is automatically created when user accesses a resource
+```
+
+### 4.6 Monetization App (`monetization/`)
 
 **Subscription**
 ```python
@@ -247,7 +272,7 @@ Immutability: amount_cents and currency are immutable after creation
 - error_message: TextField
 ```
 
-### 4.6 Analytics App (`analytics/`)
+### 4.7 Analytics App (`analytics/`)
 
 **UserEvent** (High-Volume Tracking)
 ```python
@@ -259,7 +284,7 @@ Immutability: amount_cents and currency are immutable after creation
 - user_agent: CharField(500, nullable)
 ```
 
-### 4.7 Audit App (`audit/`)
+### 4.8 Audit App (`audit/`)
 
 **AuditLog** (Change Tracking)
 ```python
@@ -391,12 +416,45 @@ def refund_payment_admin(actor, payment_id: str, amount_cents: Optional[int] = N
     pass
 ```
 
+**Progress Management** (`progress/services/progress_service.py`):
+```python
+@transaction.atomic
+def start_progress(command: StartProgressCommand) -> UserResourceProgress:
+    """
+    Starts or updates progress for a user on a resource.
+    - Idempotent: if already COMPLETED, does nothing.
+    - Checks resource access policy.
+    - Transitions: NOT_STARTED → IN_PROGRESS
+    - Updates last_accessed_at on every call.
+    - Emits 'resource.progress.started' event on status change.
+    """
+    pass
+
+@transaction.atomic
+def complete_progress(command: CompleteProgressCommand) -> UserResourceProgress:
+    """
+    Marks a user's progress on a resource as completed.
+    - Idempotent: if already COMPLETED, updates last_accessed_at but not completed_at.
+    - Checks resource access policy.
+    - Transitions: IN_PROGRESS → COMPLETED
+    - Emits 'resource.progress.completed' event on completion.
+    """
+    pass
+```
+
 **All admin services**:
 - Wrapped in `@transaction.atomic` for data consistency
 - Use `audit_change()` for audit logging
 - Emit OutboxEvents for critical actions
 - Validate business invariants
 - Raise domain exceptions (NotFoundError, InvalidAction, etc.)
+
+**All progress services**:
+- Wrapped in `@transaction.atomic` for data consistency
+- Use `audit_change()` for audit logging
+- Emit OutboxEvents for state transitions
+- Check resource access policy via `can_access_resource()`
+- Idempotent operations (safe to call multiple times)
 
 ### 5.2 Application Layer (`application/`)
 
@@ -428,6 +486,11 @@ application/
 │       ├── manage_resources.py
 │       ├── manage_users_extended.py
 │       └── manage_pricing.py
+│   ├── progress/
+│       ├── start_progress.py
+│       ├── complete_progress.py
+│       ├── get_user_progress.py
+│       └── get_resource_progress.py
 ├── services/
 │   └── stripe_service.py
 └── exceptions.py
@@ -506,8 +569,12 @@ read_models/
 ├── resources/
 │   ├── resource_feed.py
 │   └── resource_detail.py
-└── users/
-    └── author_profile.py
+├── users/
+│   └── author_profile.py
+├── interactions/
+│   └── resource_comments.py
+└── progress/
+    └── user_progress_summary.py
 ```
 
 **Example: Resource Feed**
@@ -615,6 +682,22 @@ POST /api/onboarding/start/      # Start onboarding (not_started → profile)
 POST /api/onboarding/profile/    # Submit profile (profile → interests)
 POST /api/onboarding/interests/  # Submit interests (interests → completed)
 ```
+
+**User Resource Progress Endpoints**
+```
+POST /api/resources/{resource_id}/complete/              # Mark as completed (IsAuthenticated, IsOnboardingComplete)
+GET  /api/user/progress/                                # Get user's progress list with summary (IsAuthenticated, IsOnboardingComplete)
+GET  /api/resources/{resource_id}/progress/             # Get current user's progress on a resource (IsAuthenticated)
+GET  /api/resources/{resource_id}/users-progress/        # Get all users' progress on a resource (for authors/admins) (IsAuthenticated, IsContributor)
+GET  /api/admin/progress/                               # Get all progress entries (ADMIN/SUPERADMIN only) (IsAuthenticated, IsAdmin)
+```
+
+**Permissions**:
+- Regular users can only view their own progress
+- Resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) can view all users' progress on their resources via `/api/resources/{resource_id}/users-progress/`
+- ADMIN and SUPERADMIN can view all progress entries across all resources via `/api/admin/progress/`
+
+**Note**: Progress is automatically started when a user accesses a resource via `GET /api/resources/{resource_id}/access/`.
 
 **Admin Endpoints** (Role-based access control)
 ```
@@ -732,6 +815,49 @@ Note:
     * POST /onboarding/start/ (transitions not_started → profile)
     * POST /onboarding/profile/ (creates/updates Profile, transitions profile → interests)
   - This endpoint is READ-ONLY - it does not modify any data
+```
+
+**User Resources**
+```
+GET /api/user/resources/  # Requires JWT authentication, IsOnboardingComplete
+Query Parameters:
+  - page (integer, optional, default: 1)
+  - page_size (integer, optional, default: 20, max: 100)
+Response: {
+  "status": "ok",
+  "data": [
+    {
+      "id": "uuid",
+      "title": "...",
+      "description": "...",
+      "visibility": "public" | "premium" | "private",
+      "price_cents": 2999 | null,
+      "tags": ["tag1", "tag2"],
+      "stats": {
+        "comment_count": 15,
+        "upvotes": 42,
+        "downvotes": 2,
+        "total_votes": 44
+      },
+      "created_at": "2026-01-25T10:00:00Z",
+      "updated_at": "2026-01-25T15:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 45,
+    "total_pages": 3,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+
+Note:
+  - Returns only resources created by the authenticated user
+  - Includes all visibility types (public, premium, private)
+  - Ordered by creation date (most recent first)
+  - Includes statistics (comments, votes) for each resource
 ```
 
 ### 6.3 Admin Endpoints
@@ -1077,6 +1203,10 @@ def _dispatch_event(event):
         _send_password_reset_email(event.payload)
     elif event.event_type == 'user.activated':
         _send_welcome_email(event.payload)
+    elif event.event_type == 'resource.progress.started':
+        track_progress_analytics(event.payload)
+    elif event.event_type == 'resource.progress.completed':
+        track_completion_analytics(event.payload)
 ```
 
 **Email Service** (`core/services/email_service.py`)
@@ -1833,6 +1963,60 @@ python manage.py test users.tests.test_roles
   - All sensitive actions require appropriate permissions
   - Soft-deleted tags cannot be assigned or merged into
   - Admin password reset requires SUPERADMIN for SUPERADMIN targets
+
+### User Resource Progress (2026-01-25)
+- ✅ **Progress Tracking Model** (`progress/models.py`):
+  - `UserResourceProgress` model with status states (NOT_STARTED, IN_PROGRESS, COMPLETED)
+  - Unique constraint per user-resource pair
+  - Timestamps: `started_at`, `last_accessed_at`, `completed_at`
+  - Soft delete support with `SoftDeleteManager`
+  - Optimized indexes for queries
+
+- ✅ **Domain Services** (`progress/services/progress_service.py`):
+  - `start_progress()`: Idempotent operation to start/update progress
+  - `complete_progress()`: Idempotent operation to mark as completed
+  - Access policy checks via `can_access_resource()`
+  - Audit logging for all state transitions
+  - Outbox events: `resource.progress.started`, `resource.progress.completed`
+
+- ✅ **Application Layer**:
+  - Use cases: `StartProgress`, `CompleteProgress`, `GetUserProgress`, `GetResourceProgress`
+  - Immutable DTOs in `application/dto/progress_commands.py`
+  - Transaction safety with `@transaction.atomic`
+  - Comprehensive error handling
+
+- ✅ **API Endpoints**:
+  - `POST /api/resources/{resource_id}/complete/`: Mark as completed
+  - `GET /api/user/progress/`: Get user's progress list with summary
+  - `GET /api/resources/{resource_id}/progress/`: Get current user's progress on a resource
+  - `GET /api/resources/{resource_id}/users-progress/`: Get all users' progress on a resource (for authors/admins)
+  - `GET /api/admin/progress/`: Get all progress entries across all resources (ADMIN/SUPERADMIN only)
+  - Automatic progress start on resource access (`GET /api/resources/{id}/access/`)
+  
+- ✅ **Author & Admin Progress Visibility**:
+  - Resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) can view all users' progress on their resources
+  - ADMIN and SUPERADMIN can view all progress entries across all resources with optional filters (resource_id, user_id)
+  - All endpoints support pagination
+
+- ✅ **Read Models**:
+  - `read_models/progress/user_progress_summary.py`: Computes aggregated statistics
+  - Recent completed resources tracking
+  - Optimized queries with `select_related` and `prefetch_related`
+
+- ✅ **Architecture Compliance**:
+  - Strict layered architecture (API → Use Cases → Domain Services → Models)
+  - All mutations via domain services
+  - Immutable DTOs
+  - Transaction safety with `transaction.atomic`
+  - Audit logging via `audit_change()`
+  - Outbox events for state transitions
+  - Idempotent operations
+  - Permission checks: `IsAuthenticated`, `IsOnboardingComplete`
+
+- ✅ **Testing**:
+  - Unit tests for `ProgressService` domain service
+  - Integration tests for API endpoints
+  - Test coverage for idempotence, access checks, and state transitions
 
 ---
 
