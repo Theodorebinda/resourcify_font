@@ -27,6 +27,13 @@ import {
   DialogTitle,
   DialogTrigger 
 } from "../../../../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../../components/ui/select";
 import { useToast } from "../../../../hooks/use-toast";
 import { Tags, Plus, Search, Edit, Trash2, Merge } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
@@ -115,7 +122,23 @@ export default function AdminTagsPage() {
   };
 
   const handleMergeTags = async () => {
-    if (!sourceTagId || !targetTagId) return;
+    if (!sourceTagId || !targetTagId) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un tag source et un tag cible.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (sourceTagId === targetTagId) {
+      toast({
+        title: "Erreur",
+        description: "Le tag source et le tag cible doivent être différents.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       await mergeTagsMutation.mutateAsync({
@@ -138,6 +161,19 @@ export default function AdminTagsPage() {
       });
     }
   };
+
+  // Réinitialiser le tag cible si le tag source change
+  const handleSourceTagChange = (value: string) => {
+    setSourceTagId(value);
+    // Si le tag cible est le même que le nouveau tag source, le réinitialiser
+    if (value === targetTagId) {
+      setTargetTagId("");
+    }
+  };
+
+  // Tags disponibles pour les selects (exclure les tags déjà sélectionnés)
+  const availableTags = tagsData?.results || [];
+  const availableTargetTags = availableTags.filter(tag => tag.id !== sourceTagId);
 
   return (
     <div className="space-y-6">
@@ -212,21 +248,82 @@ export default function AdminTagsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Tag source</label>
-                <Input
-                  placeholder="ID du tag source"
+                <label className="text-sm font-medium mb-2 block">
+                  Tag source <span className="text-muted-foreground">(sera fusionné dans le tag cible)</span>
+                </label>
+                <Select
                   value={sourceTagId}
-                  onChange={(e) => setSourceTagId(e.target.value)}
-                />
+                  onValueChange={handleSourceTagChange}
+                  disabled={isLoading || availableTags.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un tag source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTags.length === 0 ? (
+                      <SelectItem value="no-tags" disabled>
+                        Aucun tag disponible
+                      </SelectItem>
+                    ) : (
+                      availableTags.map((tag) => (
+                        <SelectItem key={tag.id} value={tag.id}>
+                          {tag.name} <span className="text-muted-foreground">({tag.slug})</span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {sourceTagId && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Le tag sélectionné sera fusionné dans le tag cible et supprimé.
+                  </p>
+                )}
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Tag cible</label>
-                <Input
-                  placeholder="ID du tag cible"
+                <label className="text-sm font-medium mb-2 block">
+                  Tag cible <span className="text-muted-foreground">(recevra les associations du tag source)</span>
+                </label>
+                <Select
                   value={targetTagId}
-                  onChange={(e) => setTargetTagId(e.target.value)}
-                />
+                  onValueChange={setTargetTagId}
+                  disabled={isLoading || availableTargetTags.length === 0 || !sourceTagId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={sourceTagId ? "Sélectionner un tag cible" : "Sélectionnez d&apos;abord un tag source"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {!sourceTagId ? (
+                      <SelectItem value="no-source" disabled>
+                        Sélectionnez d&apos;abord un tag source
+                      </SelectItem>
+                    ) : availableTargetTags.length === 0 ? (
+                      <SelectItem value="no-tags" disabled>
+                        Aucun tag disponible
+                      </SelectItem>
+                    ) : (
+                      availableTargetTags.map((tag) => (
+                        <SelectItem key={tag.id} value={tag.id}>
+                          {tag.name} <span className="text-muted-foreground">({tag.slug})</span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {targetTagId && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ce tag recevra toutes les associations du tag source.
+                  </p>
+                )}
               </div>
+              {sourceTagId && targetTagId && sourceTagId !== targetTagId && (
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <p className="text-sm font-medium mb-1">Résumé de la fusion :</p>
+                  <p className="text-xs text-muted-foreground">
+                    Le tag <strong>{availableTags.find(t => t.id === sourceTagId)?.name}</strong> sera fusionné dans{" "}
+                    <strong>{availableTags.find(t => t.id === targetTagId)?.name}</strong>.
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setMergeDialogOpen(false)}>
@@ -241,6 +338,7 @@ export default function AdminTagsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+    
       </div>
 
       {/* Tags Grid */}

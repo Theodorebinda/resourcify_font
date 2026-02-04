@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../client";
 import { API_ENDPOINTS } from "../../../constants/api";
 import type { ApiError, ApiResponse } from "../../../types";
+import { useUser } from "./auth-queries";
 
 // Query keys
 export const resourceKeys = {
@@ -64,6 +65,21 @@ export interface CreateResourceVersionResponse {
   version_number: number;
   file_url: string;
   created_at: string;
+}
+
+export interface CreateResourceFormPayload {
+  title: string;
+  description: string;
+  visibility: "public" | "premium" | "private";
+  price_cents?: number | null;
+  tag_ids?: string[];
+  file_url: string; // URL du fichier pour la première version
+}
+
+export interface CreateResourceFormResponse {
+  resource_id: string;
+  title: string;
+  author_id: string;
 }
 
 /**
@@ -134,6 +150,61 @@ export function useCreateResourceVersion() {
     onSuccess: (data, variables) => {
       // Invalidate resource detail to refetch with new version
       queryClient.invalidateQueries({ queryKey: resourceKeys.detail(variables.resource_id) });
+    },
+  });
+}
+
+/**
+ * Create a new resource
+ * Uses admin endpoint but accessible to authorized roles (SUPERADMIN, ADMIN, MODERATOR, CONTRIBUTOR)
+ */
+export function useCreateResource() {
+  const queryClient = useQueryClient();
+  const { user } = useUser();
+
+  return useMutation<CreateResourceFormResponse, ApiError, CreateResourceFormPayload>({
+    mutationFn: async (payload) => {
+      if (!user?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      // Use admin endpoint with current user as author
+      const adminPayload = {
+        author_id: user.id,
+        title: payload.title,
+        description: payload.description,
+        visibility: payload.visibility,
+        price_cents: payload.price_cents ?? null,
+        tag_ids: payload.tag_ids ?? [],
+      };
+
+      const response = await apiClient.post<ApiResponse<{ resource_id: string; title: string; author_id: string }>>(
+        API_ENDPOINTS.ADMIN.RESOURCES.CREATE,
+        adminPayload
+      );
+
+      const resourceId = response.data.data.resource_id;
+
+      // Create first version if file_url is provided
+      if (payload.file_url) {
+        await apiClient.post<ApiResponse<CreateResourceVersionResponse>>(
+          API_ENDPOINTS.RESOURCES.VERSIONS,
+          {
+            resource_id: resourceId,
+            file_url: payload.file_url,
+          }
+        );
+      }
+
+      return {
+        resource_id: response.data.data.resource_id,
+        title: response.data.data.title,
+        author_id: response.data.data.author_id,
+      };
+    },
+    onSuccess: () => {
+      // Invalidate feed to show new resource
+      queryClient.invalidateQueries({ queryKey: resourceKeys.all });
     },
   });
 }

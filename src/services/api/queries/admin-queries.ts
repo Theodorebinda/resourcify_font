@@ -65,7 +65,12 @@ export interface AdminUser {
   email: string;
   role: "SUPERADMIN" | "ADMIN" | "MODERATOR" | "CONTRIBUTOR" | "USER";
   is_active: boolean;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  is_activated?: boolean;
+  onboarding_step?: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface AdminUserListResponse {
@@ -74,6 +79,9 @@ export interface AdminUserListResponse {
   previous: string | null;
   results: AdminUser[];
 }
+
+// Type pour la réponse directe (tableau simple)
+type AdminUserArrayResponse = AdminUser[];
 
 export interface AdminUserActivity {
   id: string;
@@ -315,14 +323,21 @@ export function useAdminUsers(search?: string, page: number = 1, pageSize: numbe
       if (search && search.trim()) {
         params.append("search", search.trim());
       }
-      const response = await apiClient.get<AdminUserListResponse>(
-        `${API_ENDPOINTS.ADMIN.USERS.LIST}?${params}`
-      );
-      // Django REST Framework retourne directement la structure paginée
-      // { count, next, previous, results }
+      const endpoint = `${API_ENDPOINTS.ADMIN.USERS.LIST}?${params}`;
+      console.log("[useAdminUsers] Fetching:", endpoint);
+      
+      const response = await apiClient.get<AdminUserListResponse | AdminUserArrayResponse>(endpoint);
+      
+      console.log("[useAdminUsers] Raw response:", response);
+      console.log("[useAdminUsers] Response data:", response.data);
+      console.log("[useAdminUsers] Response data type:", typeof response.data);
+      console.log("[useAdminUsers] Is array:", Array.isArray(response.data));
+      
       const data = response.data;
-      // Vérification de sécurité: s'assurer que results existe
-      if (!data || !Array.isArray(data.results)) {
+      
+      // Vérification de sécurité: s'assurer que data existe
+      if (!data) {
+        console.warn("[useAdminUsers] No data in response");
         return {
           count: 0,
           next: null,
@@ -330,7 +345,40 @@ export function useAdminUsers(search?: string, page: number = 1, pageSize: numbe
           results: [],
         };
       }
-      return data;
+      
+      // Si les données arrivent directement comme un tableau
+      if (Array.isArray(data)) {
+        console.log("[useAdminUsers] Data is array, length:", data.length);
+        return {
+          count: data.length,
+          next: null,
+          previous: null,
+          results: data as AdminUser[],
+        };
+      }
+      
+      // Si les données ont la structure paginée Django REST Framework
+      if (typeof data === "object" && "results" in data) {
+        if (!Array.isArray(data.results)) {
+          console.warn("[useAdminUsers] results is not an array:", data.results);
+          return {
+            count: 0,
+            next: null,
+            previous: null,
+            results: [],
+          };
+        }
+        return data as AdminUserListResponse;
+      }
+      
+      // Si la structure est différente
+      console.warn("[useAdminUsers] Unexpected data structure:", data);
+      return {
+        count: 0,
+        next: null,
+        previous: null,
+        results: [],
+      };
     },
   });
 }
@@ -445,21 +493,61 @@ export function useAdminTags(search?: string, page: number = 1, pageSize: number
         page: page.toString(),
         page_size: pageSize.toString(),
       });
-      if (search) params.append("search", search);
-      const response = await apiClient.get<AdminTagListResponse>(
-        `${API_ENDPOINTS.ADMIN.TAGS.LIST}?${params}`
-      );
+      if (search && search.trim()) {
+        params.append("search", search.trim());
+      }
+      const endpoint = `${API_ENDPOINTS.ADMIN.TAGS.LIST}?${params}`;
+      console.log("[useAdminTags] Fetching:", endpoint);
+      
+      // La réponse peut être { status: "ok", data: [...], count: number }
+      const response = await apiClient.get<ApiResponse<AdminTag[]> & { count?: number }>(endpoint);
+      
+      console.log("[useAdminTags] Raw response:", response);
+      console.log("[useAdminTags] Response data:", response.data);
+      
       const data = response.data;
-      // Vérification de sécurité
-      if (!data || !Array.isArray(data.results)) {
+      
+      // Si les données arrivent dans la structure { status: "ok", data: [...], count: number }
+      if (data && typeof data === "object" && "data" in data) {
+        const apiData = data as unknown as ApiResponse<AdminTag[]> & { count?: number };
+        if (Array.isArray(apiData.data)) {
+          console.log("[useAdminTags] Found ApiResponse structure, data length:", apiData.data.length, "count:", apiData.count);
+          return {
+            count: apiData.count ?? apiData.data.length,
+            next: null,
+            previous: null,
+            results: apiData.data as AdminTag[],
+          };
+        }
+      }
+      
+      // Si les données arrivent directement comme un tableau
+      if (Array.isArray(data)) {
+        console.log("[useAdminTags] Found direct array, length:", data.length);
         return {
-          count: 0,
+          count: data.length,
           next: null,
           previous: null,
-          results: [],
+          results: data as AdminTag[],
         };
       }
-      return data;
+      
+      // Si les données arrivent dans la structure Django REST Framework
+      if (data && typeof data === "object" && "results" in data) {
+        const paginatedData = data as unknown as AdminTagListResponse;
+        if (Array.isArray(paginatedData.results)) {
+          console.log("[useAdminTags] Found paginated data, results length:", paginatedData.results.length);
+          return paginatedData;
+        }
+      }
+      
+      console.warn("[useAdminTags] Unexpected data structure:", data);
+      return {
+        count: 0,
+        next: null,
+        previous: null,
+        results: [],
+      };
     },
   });
 }

@@ -58,6 +58,18 @@ export default function AdminUsersPage() {
   const resetPasswordMutation = useResetUserPassword();
   const { toast } = useToast();
 
+  // Debug: Log des données reçues
+  React.useEffect(() => {
+    console.log("[Admin Users Page] State:", {
+      isLoading,
+      hasData: !!usersData,
+      data: usersData,
+      error: usersError,
+      resultsLength: usersData?.results?.length,
+      count: usersData?.count,
+    });
+  }, [isLoading, usersData, usersError]);
+
   const handleSetRole = async () => {
     if (!selectedUser || !newRole) return;
     
@@ -176,7 +188,7 @@ export default function AdminUsersPage() {
                 {usersError.message || "Impossible de charger les utilisateurs"}
               </p>
             </div>
-          ) : usersData && Array.isArray(usersData.results) && usersData.results.length > 0 ? (
+          ) : usersData && usersData.results && Array.isArray(usersData.results) && usersData.results.length > 0 ? (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -281,6 +293,9 @@ export default function AdminUsersPage() {
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Aucun utilisateur trouvé</p>
+              {usersData && usersData.count === 0 && (
+                <p className="text-sm mt-2">La recherche n&apos;a retourné aucun résultat.</p>
+              )}
             </div>
           )}
         </CardContent>

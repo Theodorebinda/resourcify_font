@@ -74,7 +74,6 @@ export const ROUTE_ALLOWED_STATES: Record<string, UserState[]> = {
   // App routes - accessible to authenticated users
   // Components will handle access control based on API calls
   [ROUTES.APP.DASHBOARD]: ["AUTHENTICATED"],
-  [ROUTES.APP.USER]: ["AUTHENTICATED"],
 };
 
 /**
@@ -107,7 +106,7 @@ export function canAccessRoute(userState: UserState, route: string): boolean {
 
   // Onboarding and app routes - accessible to authenticated users
   // Components will handle access control based on API calls
-  if (route.startsWith("/onboarding/") || route.startsWith("/app") || route.startsWith("/user")) {
+  if (route.startsWith("/onboarding/") || route.startsWith("/app")) {
     return userState === "AUTHENTICATED";
   }
 
