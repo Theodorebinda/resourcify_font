@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
     PROFILE: "/user/profile/",
     UPDATE_PROFILE: "/user/profile/",
     REQUEST_ROLE: "/user/request-role/",
+    PROGRESS: "/user/progress/",
   },
 
   // Onboarding endpoints
@@ -44,10 +45,12 @@ export const API_ENDPOINTS = {
     CREATE: "/resources/",
     FEED: "/feed/",
     DETAIL: (id: string) => `/resources/${id}/detail/`,
-    ACCESS: (id: string) => `/resources/${id}/`,
+    ACCESS: (id: string) => `/resources/${id}/access/`,
     VERSIONS: "/resources/versions/",
     COMMENTS: (id: string) => `/resources/${id}/comments/`,
     VOTE: "/resources/vote/",
+    COMPLETE: (id: string) => `/resources/${id}/complete/`,
+    PROGRESS: (id: string) => `/resources/${id}/progress/`,
   },
 
   // Comment endpoints

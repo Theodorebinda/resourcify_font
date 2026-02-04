@@ -153,14 +153,23 @@ export function useResourceDetail(resourceId: string) {
 
 /**
  * Request access to a resource
+ * Note: This endpoint uses GET method according to API docs
  */
 export function useAccessResource() {
+  const queryClient = useQueryClient();
+
   return useMutation<ResourceAccessResponse, ApiError, string>({
     mutationFn: async (resourceId: string) => {
-      const response = await apiClient.post<ApiResponse<ResourceAccessResponse>>(
+      const response = await apiClient.get<ApiResponse<ResourceAccessResponse>>(
         API_ENDPOINTS.RESOURCES.ACCESS(resourceId)
       );
       return response.data.data;
+    },
+    onSuccess: (data) => {
+      // Invalidate resource detail and progress to refresh UI
+      queryClient.invalidateQueries({ queryKey: resourceKeys.detail(data.resource_id) });
+      queryClient.invalidateQueries({ queryKey: ["progress", "resource", data.resource_id] });
+      queryClient.invalidateQueries({ queryKey: ["progress", "user"] });
     },
   });
 }

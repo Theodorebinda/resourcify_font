@@ -130,17 +130,22 @@ CORS_ALLOWED_ORIGINS = [
    - [Request Role Change](#request-role-change)
 4. [Command Endpoints (Write Operations)](#command-endpoints)
    - [Create Resource](#create-resource)
+   - [Update Resource](#update-resource)
+   - [Delete Resource](#delete-resource)
    - [Create Comment](#create-comment)
    - [Vote on Comment](#vote-on-comment)
    - [Vote on Resource](#vote-on-resource)
    - [Create Resource Version](#create-resource-version)
    - [Access Resource](#access-resource)
+   - [Complete Resource Progress](#complete-resource-progress)
    - [Create Checkout Session](#create-checkout-session)
 5. [Query Endpoints (Read Operations)](#query-endpoints)
    - [Get Resource Feed](#get-resource-feed)
    - [Get Resource Detail](#get-resource-detail)
    - [Get Resource Comments](#get-resource-comments)
    - [Get Author Profile](#get-author-profile)
+   - [Get User Progress](#get-user-progress)
+   - [Get Resource Progress](#get-resource-progress)
 6. [Webhook Endpoints](#webhook-endpoints)
    - [Stripe Webhook](#stripe-webhook)
 7. [Health Endpoints](#health-endpoints)
@@ -1305,6 +1310,253 @@ try {
 
 ---
 
+### Update Resource
+
+**Endpoint**: `PATCH /api/resources/{resource_id}/`  
+**Authentication**: Required  
+**Description**: Update a resource. Only the resource author can update their own resource.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource to update
+
+**Body** (all fields optional):
+```json
+{
+  "title": "Updated Resource Title",
+  "description": "Updated description",
+  "visibility": "premium",
+  "price_cents": 999,
+  "tag_ids": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"]
+}
+```
+
+**Field Descriptions**:
+- `title` (string, optional): Resource title (max 200 characters)
+- `description` (string, optional): Resource description
+- `visibility` (string, optional): One of `public`, `premium`, or `private`
+- `price_cents` (integer, optional): Price in cents (required if visibility is `premium`, must be null otherwise)
+- `tag_ids` (array, optional): Array of tag UUIDs
+
+**Permissions**:
+- ✅ Only the resource author can update their resource
+- ❌ Other users cannot update resources they don't own
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "Updated Resource Title",
+    "description": "Updated description",
+    "visibility": "premium",
+    "price_cents": 999,
+    "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "tags": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+    "updated_at": "2026-02-04T14:30:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not the author:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only the resource author can update this resource"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Premium resource without price:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Premium resources must have a price"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid tag:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "One or more tags not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X PATCH http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "title": "Updated Resource Title",
+    "description": "Updated description",
+    "visibility": "premium",
+    "price_cents": 999
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function updateResource(resourceId, updates) {
+  const body = {};
+  if (updates.title) body.title = updates.title;
+  if (updates.description) body.description = updates.description;
+  if (updates.visibility) body.visibility = updates.visibility;
+  if (updates.priceCents !== undefined) body.price_cents = updates.priceCents;
+  if (updates.tagIds) body.tag_ids = updates.tagIds;
+  
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify(body)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Failed to update resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await updateResource('8a7b5c3d-1234-5678-90ab-cdef12345678', {
+    title: 'Updated Title',
+    description: 'Updated description',
+    visibility: 'premium',
+    priceCents: 999
+  });
+  console.log('Resource updated:', result.data.resource_id);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only the resource author can update their resource
+- All fields are optional - only provided fields will be updated
+- Price validation: premium resources must have a price, non-premium resources cannot have a price
+- All updates are logged via audit system
+
+---
+
+### Delete Resource
+
+**Endpoint**: `DELETE /api/resources/{resource_id}/delete/`  
+**Authentication**: Required  
+**Description**: Delete a resource (soft delete). Only the resource author can delete their own resource.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource to delete
+
+**Body**: Empty (no body required)
+
+**Permissions**:
+- ✅ Only the resource author can delete their resource
+- ❌ Other users cannot delete resources they don't own
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "title": "My Resource Title",
+    "message": "Resource deleted successfully"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not the author:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only the resource author can delete this resource"
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X DELETE http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/delete/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function deleteResource(resourceId) {
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/delete/`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || error.detail || 'Failed to delete resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await deleteResource('8a7b5c3d-1234-5678-90ab-cdef12345678');
+  console.log('Resource deleted:', result.data.message);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Only the resource author can delete their resource
+- Deletion is soft delete - the resource is marked as deleted but not permanently removed
+- All deletions are logged via audit system
+- Deleted resources are not visible in public feeds but can be viewed by admins
+
+---
+
 ### Create Comment
 
 **Endpoint**: `POST /api/comments/`  
@@ -1432,6 +1684,8 @@ try {
 - All authenticated users can create comments
 - Comments are automatically associated with the authenticated user
 - Users can only comment on resources they have access to (based on visibility rules)
+- **A user can create MULTIPLE comments on the same resource** - there is no limit
+- **Comments are independent from votes** - voting on a resource does not affect your ability to comment, and commenting does not affect your ability to vote
 
 ---
 
@@ -1766,9 +2020,15 @@ function ResourceVoteButtons({ resourceId }) {
 }
 ```
 
-**Note**: 
+**Important Notes**: 
+- **A user can vote ONLY ONCE per resource** - enforced by unique database constraint
 - Votes are idempotent: voting with the same value multiple times has no effect
-- If you change your vote (e.g., from upvote to downvote), your previous vote is updated
+- If you change your vote (e.g., from upvote to downvote), your previous vote is updated (not a new vote created)
+- **Votes are completely independent from comments**:
+  - Voting on a resource does NOT affect your ability to comment
+  - Commenting on a resource does NOT affect your ability to vote
+  - A user can vote on a resource AND comment multiple times on the same resource
+  - These are two separate, independent actions
 - All votes are logged via audit system
 - User must have completed onboarding to vote
 - Resource access is checked before allowing vote
@@ -1881,8 +2141,8 @@ console.log(`Version ${result.data.version_number} created`);
 
 ### Access Resource
 
-**Endpoint**: `POST /api/resources/<resource_id>/`  
-**Authentication**: Required  
+**Endpoint**: `GET /api/resources/{resource_id}/access/`  
+**Authentication**: Required (IsOnboardingComplete)  
 **Description**: Request access to a resource (checks permissions and returns access URL)
 
 #### Request
@@ -1895,7 +2155,7 @@ Authorization: Bearer <token>
 **URL Parameters**:
 - `resource_id` (string, required): UUID of the resource in the URL path
 
-**Body**: Empty (no body required)
+**Body**: Empty (no body required - GET request)
 
 #### Response
 
@@ -1930,15 +2190,15 @@ Authorization: Bearer <token>
 
 #### cURL Example
 ```bash
-curl -X POST http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/ \
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/access/ \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Fetch Example
 ```javascript
 async function accessResource(resourceId) {
-  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/`, {
-    method: 'POST',
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/access/`, {
+    method: 'GET',
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('authToken')}`
     }
@@ -1963,6 +2223,113 @@ async function accessResource(resourceId) {
   return data;
 }
 ```
+
+**Note**: 
+- Accessing a resource automatically creates/updates progress to `IN_PROGRESS` status
+- Progress tracking is non-blocking - if it fails, access is still granted
+- All progress changes are logged via audit system and emit outbox events
+
+---
+
+### Complete Resource Progress
+
+**Endpoint**: `POST /api/resources/{resource_id}/complete/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Mark a resource as completed for the authenticated user. This action is idempotent.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource to complete
+
+**Body**: Empty (no body required)
+
+**Permissions**:
+- ✅ All authenticated users with completed onboarding can complete resources
+- ✅ User must have access to the resource (visibility check)
+- ❌ Cannot complete resources without access (premium without subscription, private, etc.)
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "status": "COMPLETED",
+    "started_at": "2026-02-04T12:00:00Z",
+    "last_accessed_at": "2026-02-04T14:30:00Z",
+    "completed_at": "2026-02-04T14:30:00Z"
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to access this resource"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/complete/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function completeResource(resourceId) {
+  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/complete/`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to complete resource');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await completeResource('8a7b5c3d-1234-5678-90ab-cdef12345678');
+  console.log('Resource completed:', result.data.status);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- This endpoint is **idempotent**: calling it multiple times returns the same result without error
+- If already completed, `completed_at` timestamp remains unchanged
+- All completions are logged via audit system and emit outbox events
+- User must have completed onboarding to use this endpoint
 
 ---
 
@@ -2696,6 +3063,261 @@ function ResourceComments({ resourceId }) {
 - Voting statistics are included for each comment
 - The endpoint is public but respects resource visibility rules
 - Pagination is 1-indexed (page 1 is the first page)
+
+---
+
+### Get User Progress
+
+**Endpoint**: `GET /api/user/progress/`  
+**Authentication**: Required (IsAuthenticated, IsOnboardingComplete)  
+**Description**: Get paginated list of user's progress on resources with summary statistics.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1): Page number (minimum: 1)
+- `page_size` (integer, optional, default: 20, max: 100): Number of items per page
+
+**Example URLs**:
+- `/api/user/progress/` - First page, 20 items
+- `/api/user/progress/?page=2` - Second page, 20 items
+- `/api/user/progress/?page=1&page_size=50` - First page, 50 items
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "summary": {
+      "total_resources": 15,
+      "completed_count": 5,
+      "in_progress_count": 8,
+      "not_started_count": 2
+    },
+    "data": [
+      {
+        "progress_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+        "resource_title": "Advanced Django Patterns",
+        "author_name": "john_doe",
+        "author_avatar": "https://example.com/avatar.jpg",
+        "status": "COMPLETED",
+        "started_at": "2026-02-04T10:00:00Z",
+        "last_accessed_at": "2026-02-04T14:30:00Z",
+        "completed_at": "2026-02-04T14:30:00Z"
+      },
+      {
+        "progress_id": "4gb96g75-6828-5679-01cd-ef0123456789",
+        "resource_id": "9b8c6d4e-2345-6789-01bc-def123456789",
+        "resource_title": "React Best Practices",
+        "author_name": "jane_smith",
+        "author_avatar": null,
+        "status": "IN_PROGRESS",
+        "started_at": "2026-02-04T11:00:00Z",
+        "last_accessed_at": "2026-02-04T13:00:00Z",
+        "completed_at": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_count": 15,
+      "total_pages": 1,
+      "has_next": false,
+      "has_previous": false
+    }
+  }
+}
+```
+
+**Field Descriptions**:
+- `summary`: Aggregated statistics for user's progress
+  - `total_resources`: Total number of resources with progress tracking
+  - `completed_count`: Number of completed resources
+  - `in_progress_count`: Number of resources in progress
+  - `not_started_count`: Number of resources not started
+- `data`: Array of progress items, ordered by `last_accessed_at` (most recent first)
+  - `progress_id`: Progress entry UUID
+  - `resource_id`: Resource UUID
+  - `resource_title`: Resource title
+  - `author_name`: Author username (falls back to email if no profile)
+  - `author_avatar`: Author avatar URL (null if no avatar)
+  - `status`: Progress status (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`)
+  - `started_at`: When user first accessed the resource (null if not started)
+  - `last_accessed_at`: Last time user accessed the resource (null if not started)
+  - `completed_at`: When user marked resource as completed (null if not completed)
+- `pagination`: Pagination metadata
+
+#### cURL Example
+```bash
+curl http://localhost:8000/api/user/progress/?page=1&page_size=20 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function getUserProgress(page = 1, pageSize = 20) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString()
+  });
+  
+  const response = await fetch(`http://localhost:8000/api/user/progress/?${params}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to fetch user progress');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getUserProgress(1, 20);
+  console.log(`Completed: ${result.data.summary.completed_count}`);
+  console.log(`In Progress: ${result.data.summary.in_progress_count}`);
+  
+  result.data.data.forEach(progress => {
+    console.log(`${progress.resource_title}: ${progress.status}`);
+  });
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Progress list is ordered by `last_accessed_at` (most recent first)
+- Summary counts are computed from all user's progress entries
+- Only resources the user has accessed or completed are included
+- User must have completed onboarding to use this endpoint
+
+---
+
+### Get Resource Progress
+
+**Endpoint**: `GET /api/resources/{resource_id}/progress/`  
+**Authentication**: Required (IsAuthenticated)  
+**Description**: Get current user's progress for a specific resource. Returns `NOT_STARTED` if no progress exists.
+
+#### Request
+
+**Headers**:
+```http
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `resource_id` (string, required): UUID of the resource
+
+#### Response
+
+**Success (200 OK)** - With progress:
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "status": "IN_PROGRESS",
+    "started_at": "2026-02-04T12:00:00Z",
+    "last_accessed_at": "2026-02-04T14:30:00Z",
+    "completed_at": null
+  }
+}
+```
+
+**Success (200 OK)** - No progress (NOT_STARTED):
+```json
+{
+  "status": "ok",
+  "data": {
+    "progress_id": null,
+    "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "status": "NOT_STARTED",
+    "started_at": null,
+    "last_accessed_at": null,
+    "completed_at": null
+  }
+}
+```
+
+**Error (404 Not Found)** - Resource not found:
+```json
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Resource {resource_id} not found"
+  }
+}
+```
+
+**Error (403 Forbidden)** - No access to resource:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "You do not have permission to view progress for this resource"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/progress/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### JavaScript Example
+```javascript
+async function getResourceProgress(resourceId) {
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/progress/`,
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to fetch resource progress');
+  }
+  
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await getResourceProgress('8a7b5c3d-1234-5678-90ab-cdef12345678');
+  console.log(`Status: ${result.data.status}`);
+  if (result.data.completed_at) {
+    console.log(`Completed at: ${result.data.completed_at}`);
+  }
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**: 
+- Returns `NOT_STARTED` status if user has never accessed the resource
+- Progress is automatically created when user accesses a resource via `/api/resources/{id}/access/`
+- User must have access to the resource to view progress
+- All progress changes are logged via audit system
 
 ---
 
