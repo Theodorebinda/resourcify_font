@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Skeleton } from "../../ui/skeleton";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Badge } from "../../ui/badge";
-import { MessageCircle, Lock, Crown } from "lucide-react";
+import { MessageCircle, Lock, Crown, ThumbsUp, ThumbsDown } from "lucide-react";
 // Format date helper
 function formatDate(date: Date): string {
   const now = new Date();
@@ -127,11 +127,30 @@ export function ResourceList() {
                 </Badge>
               ))}
             </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4">              <div className="flex items-center gap-1">
                 <MessageCircle className="h-4 w-4" />
                 <span>{resource.stats.comment_count}</span>
               </div>
+              <div className="flex items-center gap-1">
+                <ThumbsUp className="h-4 w-4" />
+                <span>{resource.stats.upvotes || 0}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <ThumbsDown className="h-4 w-4" />
+                <span>{resource.stats.downvotes || 0}</span>
+                </div>
+                </div>
+
+              {resource.stats.total_votes > 0 && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">
+                    {resource.stats.total_votes} vote
+                    {resource.stats.total_votes > 1 ? "s" : ""}
+                  </span>
+                </div>
+                )}
+                
             </div>
           </CardContent>
         </Card>

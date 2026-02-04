@@ -25,6 +25,9 @@ export interface ResourceFeedItem {
   tags: string[];
   stats: {
     comment_count: number;
+    upvotes: number;
+    downvotes: number;
+    total_votes: number;
   };
   price_cents: number | null;
   visibility: "public" | "premium" | "private";
@@ -44,8 +47,9 @@ export interface ResourceDetail {
     file_url: string;
     created_at: string;
   }>;
-  // Vote stats (if available from backend)
+  // Vote stats (always present according to API docs)
   stats?: {
+    comment_count: number;
     upvotes: number;
     downvotes: number;
     total_votes: number;

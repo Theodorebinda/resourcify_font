@@ -2149,7 +2149,10 @@ Authorization: Bearer <token>  (optional)
       "author_avatar": "https://cdn.ressourcefy.com/avatars/john.jpg",
       "tags": ["python", "django", "backend"],
       "stats": {
-        "comment_count": 15
+        "comment_count": 15,
+        "upvotes": 23,
+        "downvotes": 2,
+        "total_votes": 25
       },
       "price_cents": null,
       "visibility": "public"
@@ -2161,7 +2164,10 @@ Authorization: Bearer <token>  (optional)
       "author_avatar": "https://cdn.ressourcefy.com/avatars/jane.jpg",
       "tags": ["react", "javascript", "frontend"],
       "stats": {
-        "comment_count": 42
+        "comment_count": 42,
+        "upvotes": 156,
+        "downvotes": 5,
+        "total_votes": 161
       },
       "price_cents": 999,
       "visibility": "premium"
@@ -2176,7 +2182,11 @@ Authorization: Bearer <token>  (optional)
 - `author_name`: Username of the author
 - `author_avatar`: Avatar URL (null if no avatar)
 - `tags`: Array of tag names
-- `stats.comment_count`: Number of comments on this resource
+- `stats`: Resource statistics
+  - `comment_count`: Number of comments on this resource
+  - `upvotes`: Number of upvotes (+1)
+  - `downvotes`: Number of downvotes (-1)
+  - `total_votes`: Total number of votes
 - `price_cents`: Price in cents (null for free resources)
 - `visibility`: "public", "premium", or "private"
 
@@ -2255,6 +2265,7 @@ function ResourceList() {
           <p>by {resource.author_name}</p>
           <p>Tags: {resource.tags.join(', ')}</p>
           <p>Comments: {resource.stats.comment_count}</p>
+          <p>Votes: 👍 {resource.stats.upvotes} 👎 {resource.stats.downvotes} (Total: {resource.stats.total_votes})</p>
         </div>
       ))}
       <button onClick={() => setPage(p => p - 1)} disabled={page === 1}>
@@ -2300,6 +2311,12 @@ Authorization: Bearer <token>
     "tags": ["python", "django", "backend"],
     "visibility": "public",
     "price_cents": null,
+    "stats": {
+      "comment_count": 15,
+      "upvotes": 23,
+      "downvotes": 2,
+      "total_votes": 25
+    },
     "versions": [
       {
         "version_number": 2,
@@ -2315,6 +2332,22 @@ Authorization: Bearer <token>
   }
 }
 ```
+
+**Field Descriptions**:
+- `id`: Resource UUID
+- `title`: Resource title
+- `description`: Resource description
+- `author_name`: Username of the author
+- `author_avatar`: Avatar URL (null if no avatar)
+- `tags`: Array of tag names
+- `visibility`: "public", "premium", or "private"
+- `price_cents`: Price in cents (null for free resources)
+- `stats`: Resource statistics
+  - `comment_count`: Number of comments on this resource
+  - `upvotes`: Number of upvotes (+1)
+  - `downvotes`: Number of downvotes (-1)
+  - `total_votes`: Total number of votes
+- `versions`: Array of version objects with version_number, file_url, and created_at
 
 **Error (403 Forbidden)** - No access to premium resource:
 ```json
