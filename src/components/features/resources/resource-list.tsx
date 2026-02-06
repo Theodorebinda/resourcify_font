@@ -62,12 +62,11 @@ export function ResourceList() {
 
   return (
     // Container principal style "Feed" : Bordure unique, séparation par ligne
-    <div className="border rounded-md bg-card divide-y">
+    <div className=" divide-y">
       {resources.map((resource) => (
         <div 
           key={resource.id} 
-          className="p-4 hover:bg-muted/30 transition-colors group cursor-pointer"
-          onClick={() => router.push(ROUTES.APP.RESOURCE_DETAIL(resource.id))}
+          className="p-4  "
         >
           <div className="flex gap-3 sm:gap-4">
          
@@ -78,18 +77,12 @@ export function ResourceList() {
                 </AvatarFallback>
               </Avatar>
             </div>
-
-            {/* Colonne Droite : Contenu */}
             <div className="flex-1 min-w-0">
-              
-              {/* Header du post (Auteur + Métadonnées) */}
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <span className="font-bold text-base truncate text-foreground">
                     {resource.author_name}
                   </span>
-                  
-                  {/* Badges de visibilité intégrés comme des "Verified/Status" */}
                   <div className="flex items-center gap-1 text-muted-foreground shrink-0">
                     <span className="text-muted-foreground/40 text-sm">•</span>
                     {resource.visibility === "premium" && (
@@ -105,20 +98,14 @@ export function ResourceList() {
                     )}
                   </div>
                 </div>
-
-                {/* Menu 3 points (décoratif ici pour matcher le look) */}
                 <button className="text-muted-foreground/50 hover:text-foreground transition-colors">
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
               </div>
-
-              {/* Corps du post */}
-              <div className="mb-3">
+              <div className="mb-3 cursor-pointer"   onClick={() => router.push(ROUTES.APP.RESOURCE_DETAIL(resource.id))} >
                 <h3 className="text-base sm:text-lg leading-snug text-foreground whitespace-pre-wrap mb-2">
                   {resource.title}
                 </h3>
-                
-                {/* Tags style Hashtags bleus */}
                 {resource.tags && resource.tags.length > 0 && (
                   <div className="flex flex-wrap gap-x-2 gap-y-0 mb-3">
                     {resource.tags.map((tag) => (
@@ -129,14 +116,7 @@ export function ResourceList() {
                   </div>
                 )}
               </div>
-
-              {/* Zone d'image (Placeholder pour respecter le design, même si on a pas l'URL image dans les props actuelles) */}
-              {/* Si tu avais une image dans `resource`, elle irait ici avec un aspect-ratio rounded-xl border */}
-              
-              {/* Barre d'action (Footer) */}
               <div className="flex items-center justify-between mt-3 max-w-md text-muted-foreground">
-                
-                {/* Commentaires */}
                 <div className="flex items-center gap-1.5 group/action hover:text-blue-500 transition-colors" title="Commentaires">
                   <div className="p-1.5 rounded-full group-hover/action:bg-blue-500/10 transition-colors">
                     <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -145,8 +125,6 @@ export function ResourceList() {
                     {resource.stats.comment_count > 0 && resource.stats.comment_count}
                   </span>
                 </div>
-
-                {/* Upvote */}
                 <div className="flex items-center gap-1.5 group/action hover:text-green-500 transition-colors" title="J'aime">
                   <div className="p-1.5 rounded-full group-hover/action:bg-green-500/10 transition-colors">
                     <ThumbsUp className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -155,8 +133,6 @@ export function ResourceList() {
                     {resource.stats.upvotes > 0 && resource.stats.upvotes}
                   </span>
                 </div>
-
-                 {/* Downvote */}
                  <div className="flex items-center gap-1.5 group/action hover:text-red-500 transition-colors" title="Je n'aime pas">
                   <div className="p-1.5 rounded-full group-hover/action:bg-red-500/10 transition-colors">
                     <ThumbsDown className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -165,8 +141,6 @@ export function ResourceList() {
                     {resource.stats.downvotes > 0 && resource.stats.downvotes}
                   </span>
                 </div>
-
-                {/* Share (Ajouté pour l'équilibre visuel du design tweet) */}
                 <div className="flex items-center gap-1.5 group/action hover:text-blue-500 transition-colors">
                   <div className="p-1.5 rounded-full group-hover/action:bg-blue-500/10 transition-colors">
                     <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
