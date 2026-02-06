@@ -19,6 +19,8 @@ export const resourceKeys = {
 // Types
 export interface ResourceFeedItem {
   id: string;
+  created_at: string;
+  updated_at: string;
   title: string;
   author_name: string;
   author_avatar: string | null;
@@ -35,6 +37,8 @@ export interface ResourceFeedItem {
 
 export interface ResourceDetail {
   id: string;
+  created_at: string;
+  updated_at: string;
   title: string;
   description: string;
   author_name: string;

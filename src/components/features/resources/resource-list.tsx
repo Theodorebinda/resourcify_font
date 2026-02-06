@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Skeleton } from "../../ui/skeleton";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Badge } from "../../ui/badge";
-import { MessageCircle, Lock, Crown, ThumbsUp, ThumbsDown, Share2, MoreHorizontal } from "lucide-react";
+import { MessageCircle, Lock, Crown, ThumbsUp, ThumbsDown, Share2 } from "lucide-react";
+import { formatRelativeDate } from "@/src/utils/date-formatter";
 
 export function ResourceList() {
   const router = useRouter();
@@ -98,9 +99,10 @@ export function ResourceList() {
                     )}
                   </div>
                 </div>
-                <button className="text-muted-foreground/50 hover:text-foreground transition-colors">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
+              
+                <span className="text-xs text-muted-foreground">
+                  {formatRelativeDate(new Date(resource.created_at))}
+                </span>
               </div>
               <div className="mb-3 cursor-pointer"   onClick={() => router.push(ROUTES.APP.RESOURCE_DETAIL(resource.id))} >
                 <h3 className="text-base sm:text-lg leading-snug text-foreground whitespace-pre-wrap mb-2">
