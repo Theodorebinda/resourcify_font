@@ -33,21 +33,7 @@ import { Textarea } from "../../../../../components/ui/textarea";
 import { useToast } from "../../../../../hooks/use-toast";
 import { ArrowLeft, Lock, Crown, MessageCircle, ThumbsUp, ThumbsDown, Download } from "lucide-react";
 import { ROUTES } from "../../../../../constants/routes";
-
-// Format date helper
-function formatDate(date: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (minutes < 1) return "À l'instant";
-  if (minutes < 60) return `Il y a ${minutes} min`;
-  if (hours < 24) return `Il y a ${hours}h`;
-  if (days < 7) return `Il y a ${days}j`;
-  return date.toLocaleDateString("fr-FR");
-}
+import { formatRelativeDate } from "../../../../../utils/date-formatter";
 
 export default function ResourceDetailPage() {
   const params = useParams();
@@ -295,9 +281,11 @@ export default function ResourceDetailPage() {
                 </Avatar>
                 <div>
                   <p className="font-semibold">{resource.author_name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(new Date())}
-                  </p>
+                  {resource.versions && resource.versions.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {formatRelativeDate(resource.versions[0].created_at)}
+                    </p>
+                  )}
                 </div>
               </div>
               <CardTitle className="text-2xl mb-2">{resource.title}</CardTitle>
@@ -393,7 +381,7 @@ export default function ResourceDetailPage() {
                         Version {version.version_number}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(new Date(version.created_at))}
+                        {formatRelativeDate(version.created_at)}
                       </p>
                     </div>
                     <Button
@@ -492,7 +480,7 @@ export default function ResourceDetailPage() {
                         {comment.author.username}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(new Date(comment.created_at))}
+                        {formatRelativeDate(comment.created_at)}
                       </p>
                     </div>
                     <p className="text-sm mb-2 whitespace-pre-wrap">
