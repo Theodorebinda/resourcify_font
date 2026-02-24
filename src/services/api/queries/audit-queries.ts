@@ -27,7 +27,7 @@ export const auditKeys = {
 };
 
 export type AuditIdentifier = string | number;
-export type AuditAction = "UPDATE" | "DELETE" | string;
+export type AuditAction = "INSERT" | "UPDATE" | "DELETE" | string;
 
 export interface AuditDiffEntry {
   from: unknown;
@@ -83,7 +83,7 @@ export interface RestoreAuditResponse {
 
 export interface AuditListFilters {
   table_name?: string;
-  operation?: "UPDATE" | "DELETE";
+  operation?: "INSERT" | "UPDATE" | "DELETE";
   changed_by?: string;
   request_id?: string;
 }
@@ -128,6 +128,7 @@ function asNullableBoolean(value: unknown): boolean | null {
 function normalizeAuditAction(value: unknown): AuditAction {
   const normalized = asString(value).trim().toUpperCase();
   if (!normalized) return "UNKNOWN";
+  if (normalized === "INSERT") return "INSERT";
   if (normalized === "UPDATE") return "UPDATE";
   if (normalized === "DELETE") return "DELETE";
   return normalized;

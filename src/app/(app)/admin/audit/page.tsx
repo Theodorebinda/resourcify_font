@@ -106,6 +106,7 @@ function humanizeTableName(tableName: string): string {
 
 function formatActionLabel(action: string): string {
   const normalizedAction = action.toUpperCase();
+  if (normalizedAction === "INSERT") return "Création";
   if (normalizedAction === "UPDATE") return "Mise à jour";
   if (normalizedAction === "DELETE") return "Suppression";
   return normalizedAction || "Action inconnue";
@@ -113,6 +114,7 @@ function formatActionLabel(action: string): string {
 
 function getActionBadgeVariant(action: string): "default" | "secondary" | "destructive" | "outline" {
   const normalizedAction = action.toUpperCase();
+  if (normalizedAction === "INSERT") return "default";
   if (normalizedAction === "UPDATE") return "secondary";
   if (normalizedAction === "DELETE") return "destructive";
   return "outline";
@@ -123,6 +125,13 @@ function extractOldestVisibleEntry(entries: AuditHistoryItem[]): AuditHistoryIte
 
   const sortedEntries = [...entries].sort((a, b) => toTimestamp(a.timestamp) - toTimestamp(b.timestamp));
   return sortedEntries[0] ?? null;
+}
+
+function extractOldestRestorableEntry(entries: AuditHistoryItem[]): AuditHistoryItem | null {
+  if (entries.length === 0) return null;
+
+  const sortedEntries = [...entries].sort((a, b) => toTimestamp(a.timestamp) - toTimestamp(b.timestamp));
+  return sortedEntries.find((entry) => isSupportedRestoreAction(entry.action)) ?? null;
 }
 
 function formatResolvedUserLabel(user: AuditResolvedUser, fallbackId: string): string {
@@ -166,7 +175,9 @@ export default function AdminAuditPage() {
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [restoreReason, setRestoreReason] = useState("");
   const [restoreTarget, setRestoreTarget] = useState<{ auditId: number; label: string } | null>(null);
-  const [globalOperationFilter, setGlobalOperationFilter] = useState<"ALL" | "UPDATE" | "DELETE">(
+  const [globalOperationFilter, setGlobalOperationFilter] = useState<
+    "ALL" | "INSERT" | "UPDATE" | "DELETE"
+  >(
     "ALL"
   );
   const canSearch = tableName.trim().length > 0 && rowId.trim().length > 0;
@@ -316,6 +327,10 @@ export default function AdminAuditPage() {
     () => extractOldestVisibleEntry(historyQuery.data?.results ?? []),
     [historyQuery.data]
   );
+  const oldestRestorableEntry = useMemo(
+    () => extractOldestRestorableEntry(historyQuery.data?.results ?? []),
+    [historyQuery.data]
+  );
 
   const effectiveHistoryQuery = hasActiveSearch ? historyQuery : allAuditsQuery;
   const historyEntries = useMemo(
@@ -438,6 +453,9 @@ export default function AdminAuditPage() {
   const resolveActorLabel = (entry: AuditHistoryItem): string => {
     const actorId = entry.actor_id?.trim();
     if (actorId) {
+      if (actorId.toLowerCase() === "system") {
+        return "Système";
+      }
       const resolvedActor = usersById[actorId];
       if (resolvedActor) {
         return formatResolvedUserLabel(resolvedActor, actorId);
@@ -620,15 +638,17 @@ export default function AdminAuditPage() {
                 variant="secondary"
                 onClick={() =>
                   openRestoreDialog(
-                    oldestVisibleEntry,
-                    `Restaurer la plus ancienne version visible (audit #${oldestVisibleEntry.audit_id})`
+                    oldestRestorableEntry ?? oldestVisibleEntry,
+                    `Restaurer la plus ancienne version restaurable (audit #${
+                      (oldestRestorableEntry ?? oldestVisibleEntry).audit_id
+                    })`
                   )
                 }
                 className="gap-2"
-                disabled={!isSupportedRestoreAction(oldestVisibleEntry.action)}
+                disabled={!oldestRestorableEntry}
               >
                 <RotateCcw className="h-4 w-4" />
-                Restaurer la plus ancienne version
+                Restaurer la plus ancienne version restaurable
               </Button>
             )}
           </div>
@@ -645,6 +665,16 @@ export default function AdminAuditPage() {
                 }}
               >
                 Toutes
+              </Button>
+              <Button
+                size="sm"
+                variant={globalOperationFilter === "INSERT" ? "default" : "outline"}
+                onClick={() => {
+                  setGlobalOperationFilter("INSERT");
+                  setPage(1);
+                }}
+              >
+                INSERT
               </Button>
               <Button
                 size="sm"
@@ -717,7 +747,7 @@ export default function AdminAuditPage() {
           <CardDescription>
             {hasActiveSearch
               ? `${historyQuery.data?.count ?? 0} entrée(s) d'audit trouvée(s).`
-              : `${allAuditsQuery.data?.count ?? 0} audit(s) disponible(s). Seules les opérations UPDATE/DELETE sont visibles.`}
+              : `${allAuditsQuery.data?.count ?? 0} audit(s) disponible(s). (INSERT/UPDATE/DELETE)`}
           </CardDescription>
         </CardHeader>
         <CardContent>

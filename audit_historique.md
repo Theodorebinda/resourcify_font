@@ -1,9 +1,12 @@
-# Intégration Front - Historique d'audit
+# Integration Front - Audit Historique
 
 ## Politique officielle
-- L'audit expose uniquement les opérations `UPDATE` et `DELETE`.
-- Les opérations `INSERT`, `CREATE` et `RESTORE` ne sont pas visibles dans les endpoints de lecture.
-- La restauration API est autorisée seulement pour des entrées `UPDATE` ou `DELETE`.
+- L'audit expose `INSERT`, `UPDATE`, `DELETE`.
+- Chaque entree inclut:
+  - `changed_by` (UUID utilisateur ou `system`)
+  - `changed_at` (timestamp UTC)
+  - `request_id` (UUID de corrélation)
+- Les lectures restent filtrees par permissions (admin ou owner selon endpoint).
 
 ## Endpoints
 
@@ -11,16 +14,16 @@
 `GET /api/audit/`
 
 Query params optionnels:
-- `page` (défaut: `1`)
-- `page_size` (défaut: `20`, max: `100`)
+- `page` (defaut: `1`)
+- `page_size` (defaut: `20`, max: `100`)
 - `table_name`
-- `operation` (`UPDATE|DELETE`)
-- `changed_by` (UUID user en string)
+- `operation` (`INSERT|UPDATE|DELETE`)
+- `changed_by` (UUID user en string ou `system`)
 - `request_id` (UUID)
 
 Exemple:
 ```bash
-curl -X GET "http://127.0.0.1:8000/api/audit/?page=1&page_size=20&operation=UPDATE" \
+curl -X GET "http://127.0.0.1:8000/api/audit/?operation=INSERT&page=1&page_size=20" \
   -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
 
@@ -33,10 +36,8 @@ curl -X GET "http://127.0.0.1:8000/api/audit/resources_resource/UUID_RESOURCE/?p
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-### 3) Détail d'une entrée
+### 3) Detail d'une entree
 `GET /api/audit/entry/{audit_id}/`
-
-Si l'entrée ciblée n'est pas en `UPDATE/DELETE`, l'API répond `404`.
 
 Exemple:
 ```bash
@@ -63,12 +64,12 @@ curl -X POST "http://127.0.0.1:8000/api/audit/restore/" \
   -d '{"audit_id": 42, "reason": "Rollback after bad update"}'
 ```
 
-## Sémantique restore
+## Semantique restore
 - `UPDATE`: restauration de `old_data` via ORM.
-- `DELETE`: recréation/restauration de `old_data` via ORM.
-- `INSERT|CREATE|RESTORE`: non supporté, réponse `400` avec code `unsupported_restore_operation`.
+- `DELETE`: recreation/restauration de `old_data` via ORM.
+- `INSERT|CREATE|RESTORE`: non supporte, reponse `400` avec `unsupported_restore_operation`.
 
-Exemple de réponse succès:
+## Exemple reponse succes
 ```json
 {
   "status": "ok",
@@ -83,19 +84,7 @@ Exemple de réponse succès:
 }
 ```
 
-Exemple d'erreur opération non supportée:
-```json
-{
-  "error": {
-    "code": "unsupported_restore_operation",
-    "message": "Restore is allowed only for UPDATE and DELETE entries."
-  }
-}
-```
-
 ## Exemple fetch (frontend)
-
-### Liste globale (admin)
 ```js
 async function fetchAllAudits(token, params = {}) {
   const query = new URLSearchParams({
@@ -118,81 +107,17 @@ async function fetchAllAudits(token, params = {}) {
   if (!res.ok) {
     throw new Error(`Audit list failed: ${res.status}`);
   }
-
   return res.json();
 }
 ```
 
-### Historique d'une ligne
-```js
-async function fetchAuditHistory(tableName, rowId, token, page = 1, pageSize = 20) {
-  const res = await fetch(
-    `/api/audit/${encodeURIComponent(tableName)}/${encodeURIComponent(rowId)}/?page=${page}&page_size=${pageSize}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    },
-  );
-
-  if (!res.ok) {
-    throw new Error(`Audit history failed: ${res.status}`);
-  }
-
-  return res.json();
-}
-```
-
-### Détail entrée
-```js
-async function fetchAuditEntry(auditId, token) {
-  const res = await fetch(`/api/audit/entry/${auditId}/`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`Audit entry failed: ${res.status}`);
-  }
-
-  return res.json();
-}
-```
-
-### Restore (admin)
-```js
-async function restoreFromAudit(auditId, token, reason = "") {
-  const res = await fetch(`/api/audit/restore/`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ audit_id: auditId, reason }),
-  });
-
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new Error(payload?.error?.code ?? `Audit restore failed: ${res.status}`);
-  }
-
-  return res.json();
-}
-```
-
-## Réponses usuelles
-- `200`: succès.
-- `400`: table non supportée / snapshot invalide / opération restore non supportée / `request_id` invalide.
+## Reponses usuelles
+- `200`: succes.
+- `400`: table non supportee / snapshot invalide / operation restore non supportee / `request_id` invalide.
 - `403`: permissions insuffisantes.
-- `404`: entrée d'audit introuvable ou non visible.
+- `404`: entree d'audit introuvable ou non visible.
 
-## Notes sécurité
-- Les champs sensibles sont masqués (`password`, `token`, `secret`, `access_token`, `refresh_token`).
+## Notes securite
+- Les champs sensibles sont masques (`password`, `token`, `secret`, `access_token`, `refresh_token`).
 - `GET /api/audit/` est admin-only.
-- La lecture d'un historique de ligne est restreinte au propriétaire de la ligne ou admin.
-- La restauration est réservée aux admins.
+- La restauration est reservee aux admins.
