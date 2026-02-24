@@ -33,3 +33,6 @@ export * from "./tags-queries";
 
 // Progress queries
 export * from "./progress-queries";
+
+// Audit queries
+export * from "./audit-queries";

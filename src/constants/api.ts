@@ -85,6 +85,14 @@ export const API_ENDPOINTS = {
     READY: "/health/ready/",
   },
 
+  // Audit endpoints
+  AUDIT: {
+    LIST: "/audit/",
+    HISTORY: (tableName: string, rowId: string) => `/audit/${tableName}/${rowId}/`,
+    ENTRY: (auditId: string | number) => `/audit/entry/${auditId}/`,
+    RESTORE: "/audit/restore/",
+  },
+
   // Admin endpoints
   ADMIN: {
     // User Management
