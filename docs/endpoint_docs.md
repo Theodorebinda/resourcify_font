@@ -133,6 +133,7 @@ CORS_ALLOWED_ORIGINS = [
    - [Update Resource](#update-resource)
    - [Delete Resource](#delete-resource)
    - [Create Comment](#create-comment)
+   - [Update Comment](#update-comment)
    - [Vote on Comment](#vote-on-comment)
    - [Vote on Resource](#vote-on-resource)
    - [Create Resource Version](#create-resource-version)
@@ -1689,6 +1690,136 @@ try {
 - Users can only comment on resources they have access to (based on visibility rules)
 - **A user can create MULTIPLE comments on the same resource** - there is no limit
 - **Comments are independent from votes** - voting on a resource does not affect your ability to comment, and commenting does not affect your ability to vote
+- Comment creation is logged via the audit system
+
+---
+
+### Update Comment
+
+**Endpoint**: `PATCH /api/comments/{comment_id}/`  
+**Authentication**: Required  
+**Description**: Update a comment content. Only the comment author can update their own comment.
+
+#### Request
+
+**Headers**:
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+- `comment_id` (string, required): UUID of the comment to update
+
+**Body**:
+```json
+{
+  "content": "Updated comment text"
+}
+```
+
+**Field Descriptions**:
+- `content` (string, required): New comment text (cannot be empty)
+
+**Permissions**:
+- ✅ Only the comment author can update their own comment
+- ❌ Other users cannot update comments they do not own
+- ❌ Deleted comments cannot be updated
+
+#### Response
+
+**Success (200 OK)**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "comment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "author_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "content": "Updated comment text",
+    "created_at": "2026-02-04T12:00:00Z",
+    "updated_at": "2026-02-04T12:05:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not the comment author:
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only the comment author can update this comment"
+  }
+}
+```
+
+**Error (404 Not Found)** - Comment not found:
+```json
+{
+  "error": {
+    "code": "comment_not_found",
+    "message": "Comment {comment_id} not found"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid content or deleted comment:
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Comment content cannot be empty"
+  }
+}
+```
+
+#### cURL Example
+```bash
+curl -X PATCH http://localhost:8000/api/comments/3fa85f64-5717-4562-b3fc-2c963f66afa6/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "content": "Updated comment text"
+  }'
+```
+
+#### JavaScript Example
+```javascript
+async function updateComment(commentId, content) {
+  const response = await fetch(`http://localhost:8000/api/comments/${commentId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({ content })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to update comment');
+  }
+
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await updateComment(
+    '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    'Updated comment text'
+  );
+  console.log('Comment updated:', result.data.comment_id);
+} catch (error) {
+  console.error('Error:', error.message);
+}
+```
+
+**Note**:
+- Only the comment author can update their own comment
+- Leading/trailing spaces are trimmed before saving
+- Comment updates are logged via the audit system
+- An outbox event `comment.updated` is emitted for async processing
 
 ---
 

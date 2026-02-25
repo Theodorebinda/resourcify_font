@@ -13,11 +13,13 @@ import {
   useResourceDetail,
   useVoteOnResource,
   useAccessResource,
+  useUpdateResource,
 } from "../../../../../services/api/queries/resources-queries";
 import { useResourceProgress } from "../../../../../services/api/queries/progress-queries";
 import {
   useVoteOnComment,
   useCreateComment,
+  useUpdateComment,
   useResourceComments,
   type Comment,
 } from "../../../../../services/api/queries/comments-queries";
@@ -30,10 +32,27 @@ import { Avatar, AvatarFallback } from "../../../../../components/ui/avatar";
 import { Badge } from "../../../../../components/ui/badge";
 import { Button } from "../../../../../components/ui/button";
 import { Textarea } from "../../../../../components/ui/textarea";
+import { Input } from "../../../../../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../../../components/ui/select";
 import { useToast } from "../../../../../hooks/use-toast";
-import { ArrowLeft, Lock, Crown, MessageCircle, ThumbsUp, ThumbsDown, Download } from "lucide-react";
+import { ArrowLeft, Lock, Crown, MessageCircle, ThumbsUp, ThumbsDown, Download, Pencil, Check, X } from "lucide-react";
 import { ROUTES } from "../../../../../constants/routes";
 import { formatRelativeDate } from "../../../../../utils/date-formatter";
+
+type ResourceVisibility = "public" | "premium" | "private";
+
+interface ResourceEditFormState {
+  title: string;
+  description: string;
+  visibility: ResourceVisibility;
+  priceCents: string;
+}
 
 export default function ResourceDetailPage() {
   const params = useParams();
@@ -43,8 +62,19 @@ export default function ResourceDetailPage() {
   const { toast } = useToast();
   const voteCommentMutation = useVoteOnComment();
   const voteResourceMutation = useVoteOnResource();
+  const updateResourceMutation = useUpdateResource();
   const createCommentMutation = useCreateComment();
+  const updateCommentMutation = useUpdateComment();
   const [commentContent, setCommentContent] = useState("");
+  const [isEditingResource, setIsEditingResource] = useState(false);
+  const [resourceEditForm, setResourceEditForm] = useState<ResourceEditFormState>({
+    title: "",
+    description: "",
+    visibility: "public",
+    priceCents: "",
+  });
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentContent, setEditingCommentContent] = useState("");
 
   const { data: resource, isLoading, error } = useResourceDetail(resourceId);
   const [commentsPage, setCommentsPage] = useState(1);
@@ -82,6 +112,32 @@ export default function ResourceDetailPage() {
   // Use comments from the dedicated endpoint
   const comments: Comment[] = commentsData?.data || [];
   const pagination = commentsData?.pagination;
+  const isResourceAuthor = Boolean(user && resource && user.username === resource.author_name);
+
+  const startResourceEdit = () => {
+    if (!resource) return;
+
+    setResourceEditForm({
+      title: resource.title,
+      description: resource.description,
+      visibility: resource.visibility,
+      priceCents:
+        resource.price_cents !== null && resource.price_cents !== undefined
+          ? (resource.price_cents / 100).toString()
+          : "",
+    });
+    setIsEditingResource(true);
+  };
+
+  const cancelResourceEdit = () => {
+    setIsEditingResource(false);
+    setResourceEditForm({
+      title: "",
+      description: "",
+      visibility: "public",
+      priceCents: "",
+    });
+  };
 
   const handleVoteOnComment = async (commentId: string, voteValue: 1 | -1) => {
     try {
@@ -170,9 +226,126 @@ export default function ResourceDetailPage() {
         title: "Erreur",
         description:
           apiError.message ||
-          apiError.code === "access_denied"
+          (apiError.code === "access_denied"
             ? "Vous n'avez pas accès à cette ressource"
-            : "Impossible d'ajouter le commentaire",
+            : "Impossible d'ajouter le commentaire"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateResource = async () => {
+    if (!resourceId || !resource) {
+      toast({
+        title: "Erreur",
+        description: "Ressource introuvable",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const title = resourceEditForm.title.trim();
+    const description = resourceEditForm.description.trim();
+
+    if (!title || !description) {
+      toast({
+        title: "Erreur",
+        description: "Le titre et la description sont obligatoires",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (resourceEditForm.visibility === "premium" && !resourceEditForm.priceCents.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Les ressources premium nécessitent un prix",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const parsedPrice =
+      resourceEditForm.visibility === "premium"
+        ? Math.round(parseFloat(resourceEditForm.priceCents || "0") * 100)
+        : null;
+
+    if (
+      resourceEditForm.visibility === "premium" &&
+      (!Number.isFinite(parsedPrice ?? NaN) || (parsedPrice ?? 0) < 0)
+    ) {
+      toast({
+        title: "Erreur",
+        description: "Le prix doit être un nombre valide",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateResourceMutation.mutateAsync({
+        resource_id: resourceId,
+        title,
+        description,
+        visibility: resourceEditForm.visibility,
+        price_cents: parsedPrice,
+      });
+
+      toast({
+        title: "Ressource mise à jour",
+        description: "Votre ressource a été mise à jour avec succès.",
+      });
+
+      cancelResourceEdit();
+    } catch (error) {
+      const apiError = error as { message?: string };
+      toast({
+        title: "Erreur",
+        description: apiError.message || "Impossible de mettre à jour la ressource",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startCommentEdit = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentContent(comment.content);
+  };
+
+  const cancelCommentEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentContent("");
+  };
+
+  const handleUpdateComment = async (comment: Comment) => {
+    const content = editingCommentContent.trim();
+
+    if (!content) {
+      toast({
+        title: "Erreur",
+        description: "Le commentaire ne peut pas être vide",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateCommentMutation.mutateAsync({
+        comment_id: comment.id,
+        content,
+      });
+
+      toast({
+        title: "Commentaire mis à jour",
+        description: "Votre commentaire a été modifié avec succès.",
+      });
+
+      cancelCommentEdit();
+    } catch (error) {
+      const apiError = error as { message?: string };
+      toast({
+        title: "Erreur",
+        description: apiError.message || "Impossible de mettre à jour le commentaire",
         variant: "destructive",
       });
     }
@@ -355,9 +528,122 @@ export default function ResourceDetailPage() {
                 ))}
               </div>
             </div>
+            {isResourceAuthor && (
+              <Button
+                type="button"
+                variant={isEditingResource ? "outline" : "secondary"}
+                size="sm"
+                className="ml-4 shrink-0"
+                onClick={isEditingResource ? cancelResourceEdit : startResourceEdit}
+                disabled={updateResourceMutation.isPending}
+              >
+                {isEditingResource ? (
+                  <>
+                    <X className="h-4 w-4 mr-2" />
+                    Annuler
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifier
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {isEditingResource && isResourceAuthor && (
+            <div className="rounded-lg border border-border p-4 space-y-4 bg-muted/20">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Titre</label>
+                <Input
+                  value={resourceEditForm.title}
+                  onChange={(e) =>
+                    setResourceEditForm((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  placeholder="Titre de la ressource"
+                  disabled={updateResourceMutation.isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  value={resourceEditForm.description}
+                  onChange={(e) =>
+                    setResourceEditForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  className="min-h-[120px]"
+                  placeholder="Description"
+                  disabled={updateResourceMutation.isPending}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Visibilité</label>
+                  <Select
+                    value={resourceEditForm.visibility}
+                    onValueChange={(value: ResourceVisibility) =>
+                      setResourceEditForm((prev) => ({
+                        ...prev,
+                        visibility: value,
+                        priceCents: value === "premium" ? prev.priceCents : "",
+                      }))
+                    }
+                    disabled={updateResourceMutation.isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                      <SelectItem value="private">Privé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {resourceEditForm.visibility === "premium" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Prix (€)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={resourceEditForm.priceCents}
+                      onChange={(e) =>
+                        setResourceEditForm((prev) => ({ ...prev, priceCents: e.target.value }))
+                      }
+                      placeholder="0.00"
+                      disabled={updateResourceMutation.isPending}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={cancelResourceEdit}
+                  disabled={updateResourceMutation.isPending}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleUpdateResource}
+                  disabled={updateResourceMutation.isPending}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  {updateResourceMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div>
             <h3 className="font-semibold mb-2">Description</h3>
@@ -483,16 +769,60 @@ export default function ResourceDetailPage() {
                         {formatRelativeDate(comment.created_at)}
                       </p>
                     </div>
-                    <p className="text-sm mb-2 whitespace-pre-wrap">
-                      {comment.content}
-                    </p>
+                    {editingCommentId === comment.id ? (
+                      <div className="space-y-2 mb-2">
+                        <Textarea
+                          value={editingCommentContent}
+                          onChange={(e) => setEditingCommentContent(e.target.value)}
+                          className="min-h-[90px]"
+                          disabled={updateCommentMutation.isPending}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleUpdateComment(comment)}
+                            disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            {updateCommentMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={cancelCommentEdit}
+                            disabled={updateCommentMutation.isPending}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Annuler
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm mb-2 whitespace-pre-wrap">
+                        {comment.content}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2">
+                      {user?.id === comment.author.id && editingCommentId !== comment.id && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => startCommentEdit(comment)}
+                        >
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Modifier
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2"
                         onClick={() => handleVoteOnComment(comment.id, 1)}
-                        disabled={voteCommentMutation.isPending}
+                        disabled={voteCommentMutation.isPending || editingCommentId === comment.id}
                       >
                         <ThumbsUp className="h-3 w-3 mr-1" />
                         {comment.stats.upvotes > 0 && comment.stats.upvotes}
@@ -502,7 +832,7 @@ export default function ResourceDetailPage() {
                         size="sm"
                         className="h-7 px-2"
                         onClick={() => handleVoteOnComment(comment.id, -1)}
-                        disabled={voteCommentMutation.isPending}
+                        disabled={voteCommentMutation.isPending || editingCommentId === comment.id}
                       >
                         <ThumbsDown className="h-3 w-3 mr-1" />
                         {comment.stats.downvotes > 0 && comment.stats.downvotes}

@@ -36,6 +36,31 @@ curl -X GET "http://127.0.0.1:8000/api/audit/resources_resource/UUID_RESOURCE/?p
   -H "Authorization: Bearer <TOKEN>"
 ```
 
+#### Cas courant: voir l'historique d'une ressource
+Oui, pour une ressource on utilise:
+
+`GET /api/audit/resources_resource/{resource_id}/`
+
+Ce endpoint permet de consulter l'historique de la ligne `resources_resource` (operations `INSERT`, `UPDATE`, `DELETE`) avec pagination.
+
+Chaque entree retourne notamment:
+- `old_data`
+- `new_data`
+- `diff` (resume des champs modifies)
+- `changed_by`
+- `changed_at`
+- `request_id`
+- `reason`
+
+Permissions:
+- Admin: acces autorise
+- Owner (auteur de la ressource): acces autorise
+- Autres utilisateurs: refuse (`403`)
+
+Important:
+- Cet historique couvre la ligne `resources_resource` elle-meme.
+- Les changements lies (ex: tags M2M, versions, commentaires) ne sont pas agreges automatiquement dans ce meme endpoint.
+
 ### 3) Detail d'une entree
 `GET /api/audit/entry/{audit_id}/`
 

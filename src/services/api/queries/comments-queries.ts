@@ -103,6 +103,20 @@ export interface VoteOnCommentResponse {
   value: number;
 }
 
+export interface UpdateCommentPayload {
+  comment_id: string;
+  content: string;
+}
+
+export interface UpdateCommentResponse {
+  comment_id: string;
+  resource_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Create a comment on a resource
  */
@@ -129,6 +143,28 @@ export function useCreateComment() {
 }
 
 /**
+ * Update a comment (author only)
+ */
+export function useUpdateComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateCommentResponse, ApiError, UpdateCommentPayload>({
+    mutationFn: async ({ comment_id, content }) => {
+      const response = await apiClient.patch<ApiResponse<UpdateCommentResponse>>(
+        API_ENDPOINTS.COMMENTS.UPDATE(comment_id),
+        { content }
+      );
+      return response.data.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: commentKeys.resource(data.resource_id) });
+      queryClient.invalidateQueries({ queryKey: resourceKeys.detail(data.resource_id) });
+      queryClient.invalidateQueries({ queryKey: resourceKeys.all });
+    },
+  });
+}
+
+/**
  * Vote on a comment (upvote or downvote)
  */
 export function useVoteOnComment() {
@@ -142,7 +178,7 @@ export function useVoteOnComment() {
       );
       return response.data.data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate comments queries to refresh vote counts
       // We need to invalidate all comment queries since we don't know which resource
       queryClient.invalidateQueries({ queryKey: commentKeys.all });
