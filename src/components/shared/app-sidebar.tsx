@@ -61,6 +61,7 @@ import {
   FileText,
   CreditCard,
   DollarSign,
+  History,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -110,6 +111,11 @@ const adminSubItems: AdminSubItem[] = [
     title: "Paiements",
     url: ROUTES.ADMIN.PAYMENTS,
     icon: DollarSign,
+  },
+  {
+    title: "Audit",
+    url: ROUTES.ADMIN.AUDIT,
+    icon: History,
   },
 ];
 

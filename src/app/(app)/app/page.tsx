@@ -76,7 +76,6 @@ export default function AppDashboardPage() {
     );
   }
 
-  // Empty state (no user data)
   if (!user) {
     return (
       <Card>
@@ -94,22 +93,15 @@ export default function AppDashboardPage() {
 
       <div>
         <div className="flex justify-between items-center w-full gap-2">
-        <h1 className="text-xl font-bold mb-2">
-          Welcome back{user.username ? `, ${user.username}` : ""}!
-          </h1>
+       <span className="text-xl font-bold mb-2">Ressources</span>
           <ThemeSelector/>
         </div>
         <p className="text-muted-foreground">
-          Here&apos;s what&apos;s happening with your account.
+          Parcourez les ressources de la communauté
         </p>
       </div>
-
-      {/* Create Resource Form */}
       <CreateResourceForm />
-
-      {/* Resources List */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Ressources</h2>
         <ResourceList />
       </div>
     </div>

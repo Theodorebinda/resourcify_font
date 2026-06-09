@@ -12,56 +12,62 @@
 All API requests should be made to the base URL with the following headers:
 
 ```javascript
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 // Standard headers for authenticated requests
 const headers = {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${accessToken}` // Required for authenticated endpoints
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${accessToken}`, // Required for authenticated endpoints
 };
 ```
 
 ### Authentication Setup
 
 1. **Store tokens securely**:
+
    ```javascript
    // After login, store tokens
-   localStorage.setItem('authToken', accessToken);
-   localStorage.setItem('refreshToken', refreshToken);
+   localStorage.setItem("authToken", accessToken);
+   localStorage.setItem("refreshToken", refreshToken);
    ```
 
 2. **Create API client**:
+
    ```javascript
    class RessourcefyAPI {
      constructor() {
-       this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+       this.baseURL =
+         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
      }
-     
+
      async request(endpoint, options = {}) {
-       const token = localStorage.getItem('authToken');
+       const token = localStorage.getItem("authToken");
        const url = `${this.baseURL}${endpoint}`;
-       
+
        const config = {
          ...options,
          headers: {
-           'Content-Type': 'application/json',
-           ...(token && { 'Authorization': `Bearer ${token}` }),
-           ...options.headers
+           "Content-Type": "application/json",
+           ...(token && { Authorization: `Bearer ${token}` }),
+           ...options.headers,
          },
-         credentials: 'include' // Important for cookies
+         credentials: "include", // Important for cookies
        };
-       
+
        const response = await fetch(url, config);
-       
+
        if (!response.ok) {
          const error = await response.json();
-         throw new Error(error.error?.message || error.detail || 'Request failed');
+         throw new Error(
+           error.error?.message || error.detail || "Request failed",
+         );
        }
-       
+
        return await response.json();
      }
    }
-   
+
    export default new RessourcefyAPI();
    ```
 
@@ -70,7 +76,7 @@ const headers = {
    // Add token refresh logic if needed
    if (response.status === 401) {
      // Attempt refresh
-     const refreshToken = localStorage.getItem('refreshToken');
+     const refreshToken = localStorage.getItem("refreshToken");
      // Call refresh endpoint and retry request
    }
    ```
@@ -81,9 +87,9 @@ Admin endpoints require elevated permissions (`IsAdmin` or `IsSuperAdmin`). Ensu
 
 ```javascript
 // Check user role before making admin requests
-const user = JSON.parse(localStorage.getItem('user'));
-if (!user || !['ADMIN', 'SUPERADMIN'].includes(user.role)) {
-  throw new Error('Insufficient permissions');
+const user = JSON.parse(localStorage.getItem("user"));
+if (!user || !["ADMIN", "SUPERADMIN"].includes(user.role)) {
+  throw new Error("Insufficient permissions");
 }
 ```
 
@@ -93,10 +99,10 @@ All endpoints follow a consistent error format:
 
 ```javascript
 try {
-  const data = await api.request('/admin/users/');
+  const data = await api.request("/admin/users/");
 } catch (error) {
   // Handle error
-  if (error.message.includes('permission')) {
+  if (error.message.includes("permission")) {
     // Redirect to unauthorized page
   } else {
     // Show error message to user
@@ -133,6 +139,7 @@ CORS_ALLOWED_ORIGINS = [
    - [Update Resource](#update-resource)
    - [Delete Resource](#delete-resource)
    - [Create Comment](#create-comment)
+   - [Update Comment](#update-comment)
    - [Vote on Comment](#vote-on-comment)
    - [Vote on Resource](#vote-on-resource)
    - [Create Resource Version](#create-resource-version)
@@ -221,11 +228,13 @@ The Ressourcefy API uses **JWT (JSON Web Tokens)** for authentication. Users mus
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 ```
 
 **Body**:
+
 ```json
 {
   "email": "user@example.com",
@@ -236,6 +245,7 @@ Content-Type: application/json
 ```
 
 **Field Descriptions**:
+
 - `email` (string, required): Valid email address (will be normalized to lowercase)
 - `password` (string, required): Minimum 8 characters
 - `username` (string, required): 3-30 characters, unique
@@ -244,6 +254,7 @@ Content-Type: application/json
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -255,6 +266,7 @@ Content-Type: application/json
 ```
 
 **Error (422 Unprocessable Entity)** - Email already exists:
+
 ```json
 {
   "error": {
@@ -265,6 +277,7 @@ Content-Type: application/json
 ```
 
 **Error (400 Bad Request)** - Username taken:
+
 ```json
 {
   "error": {
@@ -275,6 +288,7 @@ Content-Type: application/json
 ```
 
 **Error (400 Bad Request)** - Terms not accepted:
+
 ```json
 {
   "error": {
@@ -285,6 +299,7 @@ Content-Type: application/json
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/auth/register/ \
   -H "Content-Type: application/json" \
@@ -297,35 +312,40 @@ curl -X POST http://localhost:8000/api/auth/register/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function register(email, password, username) {
-  const response = await fetch('http://localhost:8000/api/auth/register/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/auth/register/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       email,
       password,
       username,
-      accepted_terms: true
-    })
+      accepted_terms: true,
+    }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error.message || 'Registration failed');
+    throw new Error(error.error.message || "Registration failed");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await register('user@example.com', 'SecurePassword123!', 'john_doe');
-  console.log('Registration successful. Check email for activation link.');
+  const result = await register(
+    "user@example.com",
+    "SecurePassword123!",
+    "john_doe",
+  );
+  console.log("Registration successful. Check email for activation link.");
 } catch (error) {
-  console.error('Registration error:', error.message);
+  console.error("Registration error:", error.message);
 }
 ```
 
@@ -340,11 +360,13 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 ```
 
 **Body**:
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -352,11 +374,13 @@ Content-Type: application/json
 ```
 
 **Field Descriptions**:
+
 - `token` (string, required): Activation token from email (valid for 24 hours)
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -367,6 +391,7 @@ Content-Type: application/json
 ```
 
 **Success (200 OK)** - Already activated:
+
 ```json
 {
   "status": "ok",
@@ -377,6 +402,7 @@ Content-Type: application/json
 ```
 
 **Error (400 Bad Request)** - Invalid or expired token:
+
 ```json
 {
   "error": {
@@ -387,6 +413,7 @@ Content-Type: application/json
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/auth/activate/ \
   -H "Content-Type: application/json" \
@@ -396,35 +423,36 @@ curl -X POST http://localhost:8000/api/auth/activate/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function activateAccount(token) {
-  const response = await fetch('http://localhost:8000/api/auth/activate/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/auth/activate/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ token })
+    body: JSON.stringify({ token }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error.message || 'Activation failed');
+    throw new Error(error.error.message || "Activation failed");
   }
-  
+
   return await response.json();
 }
 
 // Usage (extract token from URL query params)
 const urlParams = new URLSearchParams(window.location.search);
-const token = urlParams.get('token');
+const token = urlParams.get("token");
 
 if (token) {
   try {
     await activateAccount(token);
-    console.log('Account activated! Redirecting to login...');
-    window.location.href = '/login';
+    console.log("Account activated! Redirecting to login...");
+    window.location.href = "/login";
   } catch (error) {
-    console.error('Activation error:', error.message);
+    console.error("Activation error:", error.message);
   }
 }
 ```
@@ -440,11 +468,13 @@ if (token) {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 ```
 
 **Body**:
+
 ```json
 {
   "email": "user@example.com",
@@ -453,12 +483,14 @@ Content-Type: application/json
 ```
 
 **Field Descriptions**:
+
 - `email` (string, required): User's email address
 - `password` (string, required): User's password
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -478,6 +510,7 @@ Content-Type: application/json
 
 **HTTP Cookies Set** (for Next.js middleware):
 The backend automatically sets the following HTTP cookies:
+
 - `access_token` (HttpOnly, Secure in production, SameSite=Lax)
 - `refresh_token` (HttpOnly, Secure in production, SameSite=Lax)
 - `activated` (readable by JS, Secure in production, SameSite=Lax) - Value: `"true"` or `"false"`
@@ -486,6 +519,7 @@ The backend automatically sets the following HTTP cookies:
 **Note**: Cookies are automatically set by the backend. The frontend does NOT need to manually set them. The middleware can read these cookies to determine user state.
 
 **Error (401 Unauthorized)** - Wrong credentials:
+
 ```json
 {
   "error": {
@@ -496,6 +530,7 @@ The backend automatically sets the following HTTP cookies:
 ```
 
 **Error (403 Forbidden)** - Account not activated:
+
 ```json
 {
   "error": {
@@ -506,6 +541,7 @@ The backend automatically sets the following HTTP cookies:
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/auth/login/ \
   -H "Content-Type: application/json" \
@@ -516,30 +552,31 @@ curl -X POST http://localhost:8000/api/auth/login/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function login(email, password) {
-  const response = await fetch('http://localhost:8000/api/auth/login/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/auth/login/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
-    credentials: 'include', // Important: Include cookies
-    body: JSON.stringify({ email, password })
+    credentials: "include", // Important: Include cookies
+    body: JSON.stringify({ email, password }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error.message || 'Login failed');
+    throw new Error(error.error.message || "Login failed");
   }
-  
+
   const data = await response.json();
-  
+
   // Cookies are automatically set by backend
   // Optional: Store tokens in localStorage for API calls
-  localStorage.setItem('authToken', data.data.access_token);
-  localStorage.setItem('refreshToken', data.data.refresh_token);
-  localStorage.setItem('user', JSON.stringify(data.data.user));
-  
+  localStorage.setItem("authToken", data.data.access_token);
+  localStorage.setItem("refreshToken", data.data.refresh_token);
+  localStorage.setItem("user", JSON.stringify(data.data.user));
+
   // Middleware will read cookies and redirect based on onboarding_step
   // No need to manually redirect here - let middleware handle it
   return data.data;
@@ -547,14 +584,14 @@ async function login(email, password) {
 
 // Usage
 try {
-  const userData = await login('user@example.com', 'SecurePassword123!');
-  console.log('Logged in as:', userData.user.username);
-  console.log('Onboarding step:', userData.user.onboarding_step);
-  
+  const userData = await login("user@example.com", "SecurePassword123!");
+  console.log("Logged in as:", userData.user.username);
+  console.log("Onboarding step:", userData.user.onboarding_step);
+
   // Redirect to post-login handler (middleware will decide final destination)
-  window.location.href = '/auth/post-login';
+  window.location.href = "/auth/post-login";
 } catch (error) {
-  console.error('Login error:', error.message);
+  console.error("Login error:", error.message);
 }
 ```
 
@@ -569,6 +606,7 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>  (optional)
@@ -579,6 +617,7 @@ Authorization: Bearer <token>  (optional)
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -590,12 +629,14 @@ Authorization: Bearer <token>  (optional)
 
 **HTTP Cookies Cleared**:
 The backend automatically clears the following cookies:
+
 - `access_token` (expired immediately)
 - `refresh_token` (expired immediately)
 - `activated` (expired immediately)
 - `onboarding_step` (expired immediately)
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/auth/logout/ \
   -H "Content-Type: application/json" \
@@ -604,29 +645,30 @@ curl -X POST http://localhost:8000/api/auth/logout/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function logout() {
-  const response = await fetch('http://localhost:8000/api/auth/logout/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/auth/logout/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
-    credentials: 'include' // Important: Include cookies
+    credentials: "include", // Important: Include cookies
   });
-  
+
   if (!response.ok) {
-    throw new Error('Logout failed');
+    throw new Error("Logout failed");
   }
-  
+
   // Clear local storage
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
-  
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+
   // Cookies are automatically cleared by backend
   // Redirect to login
-  window.location.href = '/login';
+  window.location.href = "/login";
 }
 
 // Usage
@@ -644,11 +686,13 @@ logout();
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 ```
 
 **Body**:
+
 ```json
 {
   "email": "user@example.com"
@@ -656,11 +700,13 @@ Content-Type: application/json
 ```
 
 **Field Descriptions**:
+
 - `email` (string, required): Email address to send reset link to
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -673,6 +719,7 @@ Content-Type: application/json
 **Note**: Always returns success to prevent email enumeration attacks.
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/auth/password-reset/ \
   -H "Content-Type: application/json" \
@@ -682,22 +729,26 @@ curl -X POST http://localhost:8000/api/auth/password-reset/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function requestPasswordReset(email) {
-  const response = await fetch('http://localhost:8000/api/auth/password-reset/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
+  const response = await fetch(
+    "http://localhost:8000/api/auth/password-reset/",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
     },
-    body: JSON.stringify({ email })
-  });
-  
+  );
+
   const data = await response.json();
   return data.data.message;
 }
 
 // Usage
-const message = await requestPasswordReset('user@example.com');
+const message = await requestPasswordReset("user@example.com");
 console.log(message);
 ```
 
@@ -712,11 +763,13 @@ console.log(message);
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 ```
 
 **Body**:
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -725,12 +778,14 @@ Content-Type: application/json
 ```
 
 **Field Descriptions**:
+
 - `token` (string, required): Reset token from email (valid for 1 hour)
 - `new_password` (string, required): Minimum 8 characters
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -741,6 +796,7 @@ Content-Type: application/json
 ```
 
 **Error (400 Bad Request)** - Invalid or expired token:
+
 ```json
 {
   "error": {
@@ -751,6 +807,7 @@ Content-Type: application/json
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/auth/password-reset/confirm/ \
   -H "Content-Type: application/json" \
@@ -761,37 +818,41 @@ curl -X POST http://localhost:8000/api/auth/password-reset/confirm/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function confirmPasswordReset(token, newPassword) {
-  const response = await fetch('http://localhost:8000/api/auth/password-reset/confirm/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
+  const response = await fetch(
+    "http://localhost:8000/api/auth/password-reset/confirm/",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        new_password: newPassword,
+      }),
     },
-    body: JSON.stringify({
-      token,
-      new_password: newPassword
-    })
-  });
-  
+  );
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error.message || 'Password reset failed');
+    throw new Error(error.error.message || "Password reset failed");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 const urlParams = new URLSearchParams(window.location.search);
-const token = urlParams.get('token');
+const token = urlParams.get("token");
 
 try {
-  await confirmPasswordReset(token, 'NewSecurePassword456!');
-  console.log('Password reset successful. Redirecting to login...');
-  window.location.href = '/login';
+  await confirmPasswordReset(token, "NewSecurePassword456!");
+  console.log("Password reset successful. Redirecting to login...");
+  window.location.href = "/login";
 } catch (error) {
-  console.error('Reset error:', error.message);
+  console.error("Reset error:", error.message);
 }
 ```
 
@@ -808,6 +869,7 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
@@ -815,6 +877,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -832,6 +895,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `id`: User UUID
 - `email`: User email address
 - `username`: Username from Profile (null if Profile doesn't exist)
@@ -841,7 +905,8 @@ Authorization: Bearer <token>
 - `onboarding_step`: Current onboarding step (authoritative, server-driven)
 - `createdAt`: Account creation timestamp
 
-**Note**: 
+**Note**:
+
 - Profile fields (`username`, `bio`, `avatar_url`) are provided for UI pre-filling
 - If Profile doesn't exist, these fields will be `null` (no error)
 - This endpoint is **READ-ONLY** - it does not modify any data
@@ -849,28 +914,30 @@ Authorization: Bearer <token>
 
 **HTTP Cookies Synced**:
 The backend automatically syncs the following cookies:
+
 - `activated` (updated if changed)
 - `onboarding_step` (updated if changed)
 
 #### JavaScript Example
+
 ```javascript
 async function getCurrentUser() {
-  const response = await fetch('http://localhost:8000/api/user/me/', {
+  const response = await fetch("http://localhost:8000/api/user/me/", {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
-    credentials: 'include'
+    credentials: "include",
   });
-  
+
   if (!response.ok) {
     if (response.status === 401) {
       // Redirect to login
-      window.location.href = '/login';
+      window.location.href = "/login";
       return;
     }
-    throw new Error('Failed to fetch user');
+    throw new Error("Failed to fetch user");
   }
-  
+
   const data = await response.json();
   return data.data;
 }
@@ -887,12 +954,14 @@ async function getCurrentUser() {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body** (all fields optional):
+
 ```json
 {
   "username": "new_username",
@@ -902,11 +971,13 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `username` (string, optional): New username (must be unique, max 30 characters)
 - `bio` (string, optional): Biography text
 - `avatar_url` (string, optional): URL to user's avatar image (max 500 characters)
 
 **Validation Rules**:
+
 - **For regular users (USER role)**: Profile must be complete (username, and either bio or avatar_url)
 - **For ADMIN/SUPERADMIN**: Profile must exist with at least username
 - Username must be unique across all users
@@ -915,6 +986,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -928,6 +1000,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Username already taken:
+
 ```json
 {
   "error": {
@@ -938,6 +1011,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Profile incomplete for regular user:
+
 ```json
 {
   "error": {
@@ -948,6 +1022,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Profile missing for ADMIN/SUPERADMIN:
+
 ```json
 {
   "error": {
@@ -958,6 +1033,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X PATCH http://localhost:8000/api/user/profile/ \
   -H "Content-Type: application/json" \
@@ -970,36 +1046,41 @@ curl -X PATCH http://localhost:8000/api/user/profile/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function updateProfile(username, bio, avatarUrl) {
   const body = {};
   if (username) body.username = username;
   if (bio !== undefined) body.bio = bio;
   if (avatarUrl !== undefined) body.avatar_url = avatarUrl;
-  
-  const response = await fetch('http://localhost:8000/api/user/profile/', {
-    method: 'PATCH',
+
+  const response = await fetch("http://localhost:8000/api/user/profile/", {
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to update profile');
+    throw new Error(error.error?.message || "Failed to update profile");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await updateProfile('new_username', 'My bio', 'https://example.com/avatar.jpg');
-  console.log('Profile updated:', result.data);
+  const result = await updateProfile(
+    "new_username",
+    "My bio",
+    "https://example.com/avatar.jpg",
+  );
+  console.log("Profile updated:", result.data);
 } catch (error) {
-  console.error('Update error:', error.message);
+  console.error("Update error:", error.message);
 }
 ```
 
@@ -1014,12 +1095,14 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "requested_role": "MODERATOR",
@@ -1028,10 +1111,12 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `requested_role` (string, required): Must be either `"MODERATOR"` or `"CONTRIBUTOR"`
 - `reason` (string, optional): Optional reason for the role request (max 1000 characters)
 
 **Validation Rules**:
+
 - User must have a complete profile (username, and either bio or avatar_url)
 - Only `MODERATOR` or `CONTRIBUTOR` roles can be requested
 - User cannot request a role they already have
@@ -1042,6 +1127,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -1055,6 +1141,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Profile incomplete:
+
 ```json
 {
   "error": {
@@ -1065,6 +1152,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Invalid role:
+
 ```json
 {
   "error": {
@@ -1075,6 +1163,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Already has role:
+
 ```json
 {
   "error": {
@@ -1085,6 +1174,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Pending request exists:
+
 ```json
 {
   "error": {
@@ -1095,6 +1185,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/user/request-role/ \
   -H "Content-Type: application/json" \
@@ -1106,43 +1197,45 @@ curl -X POST http://localhost:8000/api/user/request-role/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function requestRole(requestedRole, reason) {
-  const response = await fetch('http://localhost:8000/api/user/request-role/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/user/request-role/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
     body: JSON.stringify({
       requested_role: requestedRole, // "MODERATOR" or "CONTRIBUTOR"
-      reason: reason || ''
-    })
+      reason: reason || "",
+    }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to submit role request');
+    throw new Error(error.error?.message || "Failed to submit role request");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
   const result = await requestRole(
-    'MODERATOR',
-    'I have experience moderating online communities.'
+    "MODERATOR",
+    "I have experience moderating online communities.",
   );
-  console.log('Role request submitted:', result.data);
-  alert('Your role request has been submitted and is pending admin review.');
+  console.log("Role request submitted:", result.data);
+  alert("Your role request has been submitted and is pending admin review.");
 } catch (error) {
-  console.error('Request error:', error.message);
+  console.error("Request error:", error.message);
   alert(`Error: ${error.message}`);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Role requests are reviewed by administrators
 - Users will be notified when their request is approved or rejected
 - Only one pending request per role is allowed at a time
@@ -1161,12 +1254,14 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "title": "My Resource Title",
@@ -1179,6 +1274,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `title` (string, required): Resource title (max 200 characters)
 - `description` (string, required): Resource description
 - `visibility` (string, required): One of `public`, `premium`, or `private`
@@ -1187,12 +1283,14 @@ Authorization: Bearer <token>
 - `file_url` (string, optional): URL for the first version of the resource
 
 **Permissions**:
+
 - ✅ CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN can create resources
 - ❌ USER role cannot create resources (read-only access)
 
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -1210,6 +1308,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Insufficient permissions:
+
 ```json
 {
   "detail": "You do not have permission to perform this action."
@@ -1217,6 +1316,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Premium resource without price:
+
 ```json
 {
   "error": {
@@ -1227,6 +1327,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Price on non-premium resource:
+
 ```json
 {
   "error": {
@@ -1237,6 +1338,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Invalid tag:
+
 ```json
 {
   "error": {
@@ -1247,6 +1349,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/resources/ \
   -H "Content-Type: application/json" \
@@ -1261,52 +1364,63 @@ curl -X POST http://localhost:8000/api/resources/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
-async function createResource(title, description, visibility, priceCents = null, tagIds = [], fileUrl = null) {
+async function createResource(
+  title,
+  description,
+  visibility,
+  priceCents = null,
+  tagIds = [],
+  fileUrl = null,
+) {
   const body = {
     title,
     description,
-    visibility
+    visibility,
   };
-  
+
   if (priceCents !== null) body.price_cents = priceCents;
   if (tagIds.length > 0) body.tag_ids = tagIds;
   if (fileUrl) body.file_url = fileUrl;
-  
-  const response = await fetch('http://localhost:8000/api/resources/', {
-    method: 'POST',
+
+  const response = await fetch("http://localhost:8000/api/resources/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || error.detail || 'Failed to create resource');
+    throw new Error(
+      error.error?.message || error.detail || "Failed to create resource",
+    );
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
   const result = await createResource(
-    'My Resource Title',
-    'Detailed description',
-    'public',
+    "My Resource Title",
+    "Detailed description",
+    "public",
     null,
-    ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
-    'https://cdn.ressourcefy.com/files/resource.pdf'
+    ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+    "https://cdn.ressourcefy.com/files/resource.pdf",
   );
-  console.log('Resource created:', result.data.resource_id);
+  console.log("Resource created:", result.data.resource_id);
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - The authenticated user automatically becomes the author of the resource
 - Regular users (USER role) cannot create resources - they can only read, vote, and comment
 - To create resources, users must request CONTRIBUTOR or MODERATOR role via `/api/user/request-role/`
@@ -1322,15 +1436,18 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource to update
 
 **Body** (all fields optional):
+
 ```json
 {
   "title": "Updated Resource Title",
@@ -1342,6 +1459,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `title` (string, optional): Resource title (max 200 characters)
 - `description` (string, optional): Resource description
 - `visibility` (string, optional): One of `public`, `premium`, or `private`
@@ -1349,12 +1467,14 @@ Authorization: Bearer <token>
 - `tag_ids` (array, optional): Array of tag UUIDs
 
 **Permissions**:
+
 - ✅ Only the resource author can update their resource
 - ❌ Other users cannot update resources they don't own
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -1372,6 +1492,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Not the author:
+
 ```json
 {
   "error": {
@@ -1382,6 +1503,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Premium resource without price:
+
 ```json
 {
   "error": {
@@ -1392,6 +1514,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Invalid tag:
+
 ```json
 {
   "error": {
@@ -1402,6 +1525,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X PATCH http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/ \
   -H "Content-Type: application/json" \
@@ -1415,6 +1539,7 @@ curl -X PATCH http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function updateResource(resourceId, updates) {
   const body = {};
@@ -1423,39 +1548,45 @@ async function updateResource(resourceId, updates) {
   if (updates.visibility) body.visibility = updates.visibility;
   if (updates.priceCents !== undefined) body.price_cents = updates.priceCents;
   if (updates.tagIds) body.tag_ids = updates.tagIds;
-  
-  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body)
-  });
-  
+  );
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || error.detail || 'Failed to update resource');
+    throw new Error(
+      error.error?.message || error.detail || "Failed to update resource",
+    );
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await updateResource('8a7b5c3d-1234-5678-90ab-cdef12345678', {
-    title: 'Updated Title',
-    description: 'Updated description',
-    visibility: 'premium',
-    priceCents: 999
+  const result = await updateResource("8a7b5c3d-1234-5678-90ab-cdef12345678", {
+    title: "Updated Title",
+    description: "Updated description",
+    visibility: "premium",
+    priceCents: 999,
   });
-  console.log('Resource updated:', result.data.resource_id);
+  console.log("Resource updated:", result.data.resource_id);
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Only the resource author can update their resource
 - All fields are optional - only provided fields will be updated
 - Price validation: premium resources must have a price, non-premium resources cannot have a price
@@ -1472,22 +1603,26 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource to delete
 
 **Body**: Empty (no body required)
 
 **Permissions**:
+
 - ✅ Only the resource author can delete their resource
 - ❌ Other users cannot delete resources they don't own
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -1500,6 +1635,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Not the author:
+
 ```json
 {
   "error": {
@@ -1510,6 +1646,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)** - Resource not found:
+
 ```json
 {
   "error": {
@@ -1520,39 +1657,47 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X DELETE http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/delete/ \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function deleteResource(resourceId) {
-  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/delete/`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-    }
-  });
-  
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/delete/`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
+  );
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || error.detail || 'Failed to delete resource');
+    throw new Error(
+      error.error?.message || error.detail || "Failed to delete resource",
+    );
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await deleteResource('8a7b5c3d-1234-5678-90ab-cdef12345678');
-  console.log('Resource deleted:', result.data.message);
+  const result = await deleteResource("8a7b5c3d-1234-5678-90ab-cdef12345678");
+  console.log("Resource deleted:", result.data.message);
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Only the resource author can delete their resource
 - Deletion is soft delete - the resource is marked as deleted but not permanently removed
 - All deletions are logged via audit system
@@ -1569,12 +1714,14 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
@@ -1583,10 +1730,12 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `resource_id` (string, required): UUID of the resource to comment on
 - `content` (string, required): Comment text (cannot be empty)
 
 **Permissions**:
+
 - ✅ All authenticated users can create comments
 - ✅ User must have access to the resource (visibility check)
 - ❌ Cannot comment on resources without access (premium without subscription, private, etc.)
@@ -1594,6 +1743,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -1608,6 +1758,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - No access to resource:
+
 ```json
 {
   "error": {
@@ -1618,6 +1769,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Empty content:
+
 ```json
 {
   "error": {
@@ -1628,6 +1780,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Resource not found:
+
 ```json
 {
   "error": {
@@ -1638,6 +1791,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/comments/ \
   -H "Content-Type: application/json" \
@@ -1649,46 +1803,193 @@ curl -X POST http://localhost:8000/api/comments/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function createComment(resourceId, content) {
-  const response = await fetch('http://localhost:8000/api/comments/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/comments/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
     body: JSON.stringify({
       resource_id: resourceId,
-      content: content
-    })
+      content: content,
+    }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to create comment');
+    throw new Error(error.error?.message || "Failed to create comment");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
   const result = await createComment(
-    '8a7b5c3d-1234-5678-90ab-cdef12345678',
-    'This is a great resource! Very helpful.'
+    "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "This is a great resource! Very helpful.",
   );
-  console.log('Comment created:', result.data.comment_id);
+  console.log("Comment created:", result.data.comment_id);
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - All authenticated users can create comments
 - Comments are automatically associated with the authenticated user
 - Users can only comment on resources they have access to (based on visibility rules)
 - **A user can create MULTIPLE comments on the same resource** - there is no limit
 - **Comments are independent from votes** - voting on a resource does not affect your ability to comment, and commenting does not affect your ability to vote
+- Comment creation is logged via the audit system
+
+---
+
+### Update Comment
+
+**Endpoint**: `PATCH /api/comments/{comment_id}/`  
+**Authentication**: Required  
+**Description**: Update a comment content. Only the comment author can update their own comment.
+
+#### Request
+
+**Headers**:
+
+```http
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**URL Parameters**:
+
+- `comment_id` (string, required): UUID of the comment to update
+
+**Body**:
+
+```json
+{
+  "content": "Updated comment text"
+}
+```
+
+**Field Descriptions**:
+
+- `content` (string, required): New comment text (cannot be empty)
+
+**Permissions**:
+
+- ✅ Only the comment author can update their own comment
+- ❌ Other users cannot update comments they do not own
+- ❌ Deleted comments cannot be updated
+
+#### Response
+
+**Success (200 OK)**:
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "comment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    "author_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "content": "Updated comment text",
+    "created_at": "2026-02-04T12:00:00Z",
+    "updated_at": "2026-02-04T12:05:00Z"
+  }
+}
+```
+
+**Error (403 Forbidden)** - Not the comment author:
+
+```json
+{
+  "error": {
+    "code": "access_denied",
+    "message": "Only the comment author can update this comment"
+  }
+}
+```
+
+**Error (404 Not Found)** - Comment not found:
+
+```json
+{
+  "error": {
+    "code": "comment_not_found",
+    "message": "Comment {comment_id} not found"
+  }
+}
+```
+
+**Error (400 Bad Request)** - Invalid content or deleted comment:
+
+```json
+{
+  "error": {
+    "code": "invalid_action",
+    "message": "Comment content cannot be empty"
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X PATCH http://localhost:8000/api/comments/3fa85f64-5717-4562-b3fc-2c963f66afa6/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "content": "Updated comment text"
+  }'
+```
+
+#### JavaScript Example
+
+```javascript
+async function updateComment(commentId, content) {
+  const response = await fetch(
+    `http://localhost:8000/api/comments/${commentId}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+      body: JSON.stringify({ content }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || "Failed to update comment");
+  }
+
+  return await response.json();
+}
+
+// Usage
+try {
+  const result = await updateComment(
+    "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "Updated comment text",
+  );
+  console.log("Comment updated:", result.data.comment_id);
+} catch (error) {
+  console.error("Error:", error.message);
+}
+```
+
+**Note**:
+
+- Only the comment author can update their own comment
+- Leading/trailing spaces are trimmed before saving
+- Comment updates are logged via the audit system
+- An outbox event `comment.updated` is emitted for async processing
 
 ---
 
@@ -1701,12 +2002,14 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "comment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -1715,12 +2018,14 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `comment_id` (string, required): UUID of the comment to vote on
 - `vote_value` (integer, required): `1` for upvote, `-1` for downvote
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -1733,6 +2038,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Cannot vote on deleted comment:
+
 ```json
 {
   "error": "Cannot vote on deleted content"
@@ -1740,6 +2046,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)** - Comment doesn't exist:
+
 ```json
 {
   "error": "Comment not found"
@@ -1747,6 +2054,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/comments/vote/ \
   -H "Content-Type: application/json" \
@@ -1758,55 +2066,61 @@ curl -X POST http://localhost:8000/api/comments/vote/ \
 ```
 
 #### JavaScript Fetch Example
+
 ```javascript
 async function voteOnComment(commentId, value) {
-  const response = await fetch('http://localhost:8000/api/comments/vote/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/comments/vote/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
     body: JSON.stringify({
       comment_id: commentId,
-      vote_value: value  // 1 or -1
-    })
+      vote_value: value, // 1 or -1
+    }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to vote');
+    throw new Error(error.error || "Failed to vote");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await voteOnComment('3fa85f64-5717-4562-b3fc-2c963f66afa6', 1);
-  console.log('Vote successful:', result.data);
+  const result = await voteOnComment("3fa85f64-5717-4562-b3fc-2c963f66afa6", 1);
+  console.log("Vote successful:", result.data);
 } catch (error) {
-  console.error('Vote failed:', error.message);
+  console.error("Vote failed:", error.message);
 }
 ```
 
 #### Axios Example
+
 ```javascript
-import axios from 'axios';
+import axios from "axios";
 
 async function voteOnComment(commentId, value) {
   try {
-    const response = await axios.post('/api/comments/vote/', {
-      comment_id: commentId,
-      vote_value: value
-    }, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    });
-    
+    const response = await axios.post(
+      "/api/comments/vote/",
+      {
+        comment_id: commentId,
+        vote_value: value,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+        },
+      },
+    );
+
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.error || 'Failed to vote');
+    throw new Error(error.response?.data?.error || "Failed to vote");
   }
 }
 ```
@@ -1822,12 +2136,14 @@ async function voteOnComment(commentId, value) {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
@@ -1836,16 +2152,19 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `resource_id` (string, required): UUID of the resource to vote on
 - `vote_value` (integer, required): `1` for upvote, `-1` for downvote
 
 **Permissions**:
+
 - ✅ All authenticated users with completed onboarding can vote
 - ✅ User must have access to the resource (visibility check)
 - ❌ Cannot vote on resources without access (premium without subscription, private, etc.)
 - ❌ Cannot vote on deleted resources
 
 **Vote Behavior**:
+
 - **Idempotent**: Voting with the same value multiple times has no effect
 - **Toggle**: If you already voted, changing the vote value updates your vote
 - **One vote per user**: Each user can only have one vote per resource
@@ -1853,6 +2172,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -1865,6 +2185,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)** - Resource doesn't exist:
+
 ```json
 {
   "error": "Resource {resource_id} not found."
@@ -1872,6 +2193,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - No access to resource:
+
 ```json
 {
   "error": "You do not have permission to vote on this resource."
@@ -1879,6 +2201,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Invalid vote value:
+
 ```json
 {
   "vote_value": ["Vote value must be +1 or -1."]
@@ -1886,6 +2209,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Resource deleted:
+
 ```json
 {
   "error": "Cannot vote on a deleted resource."
@@ -1893,6 +2217,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (401 Unauthorized)** - Not authenticated:
+
 ```json
 {
   "detail": "Authentication credentials were not provided."
@@ -1900,6 +2225,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/resources/vote/ \
   -H "Content-Type: application/json" \
@@ -1911,70 +2237,74 @@ curl -X POST http://localhost:8000/api/resources/vote/ \
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function voteOnResource(resourceId, value) {
-  const response = await fetch('http://localhost:8000/api/resources/vote/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/resources/vote/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
     body: JSON.stringify({
       resource_id: resourceId,
-      vote_value: value  // 1 for upvote, -1 for downvote
-    })
+      vote_value: value, // 1 for upvote, -1 for downvote
+    }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || error.detail || 'Failed to vote');
+    throw new Error(error.error || error.detail || "Failed to vote");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
   const result = await voteOnResource(
-    '8a7b5c3d-1234-5678-90ab-cdef12345678',
-    1  // Upvote
+    "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    1, // Upvote
   );
-  console.log('Vote successful:', result.data);
+  console.log("Vote successful:", result.data);
 } catch (error) {
-  console.error('Vote failed:', error.message);
+  console.error("Vote failed:", error.message);
 }
 ```
 
 #### React Hook Example
+
 ```jsx
-import { useState } from 'react';
+import { useState } from "react";
 
 function useResourceVote(resourceId) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const vote = async (value) => {
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await fetch('/api/resources/vote/', {
-        method: 'POST',
+
+      const response = await fetch("/api/resources/vote/", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
         body: JSON.stringify({
           resource_id: resourceId,
-          vote_value: value
-        })
+          vote_value: value,
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || errorData.detail || 'Failed to vote');
+        throw new Error(
+          errorData.error || errorData.detail || "Failed to vote",
+        );
       }
-      
+
       return await response.json();
     } catch (err) {
       setError(err.message);
@@ -1983,14 +2313,14 @@ function useResourceVote(resourceId) {
       setLoading(false);
     }
   };
-  
+
   return { vote, loading, error };
 }
 
 // Usage in component
 function ResourceVoteButtons({ resourceId }) {
   const { vote, loading, error } = useResourceVote(resourceId);
-  
+
   const handleUpvote = async () => {
     try {
       await vote(1);
@@ -1999,7 +2329,7 @@ function ResourceVoteButtons({ resourceId }) {
       // Error already set in hook
     }
   };
-  
+
   const handleDownvote = async () => {
     try {
       await vote(-1);
@@ -2008,7 +2338,7 @@ function ResourceVoteButtons({ resourceId }) {
       // Error already set in hook
     }
   };
-  
+
   return (
     <div>
       <button onClick={handleUpvote} disabled={loading}>
@@ -2023,7 +2353,8 @@ function ResourceVoteButtons({ resourceId }) {
 }
 ```
 
-**Important Notes**: 
+**Important Notes**:
+
 - **A user can vote ONLY ONCE per resource** - enforced by unique database constraint
 - Votes are idempotent: voting with the same value multiple times has no effect
 - If you change your vote (e.g., from upvote to downvote), your previous vote is updated (not a new vote created)
@@ -2047,12 +2378,14 @@ function ResourceVoteButtons({ resourceId }) {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "resource_id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
@@ -2061,12 +2394,14 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `resource_id` (string, required): UUID of the resource
 - `file_url` (string, required): Valid URL to the file (must be a valid URL format)
 
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -2079,6 +2414,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Invalid URL:
+
 ```json
 {
   "file_url": ["Enter a valid URL."]
@@ -2086,6 +2422,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Not the resource author:
+
 ```json
 {
   "error": "You do not have permission to create versions for this resource"
@@ -2093,6 +2430,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)** - Resource doesn't exist:
+
 ```json
 {
   "error": "Resource not found"
@@ -2100,6 +2438,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/resources/versions/ \
   -H "Content-Type: application/json" \
@@ -2111,31 +2450,35 @@ curl -X POST http://localhost:8000/api/resources/versions/ \
 ```
 
 #### JavaScript Fetch Example
+
 ```javascript
 async function createResourceVersion(resourceId, fileUrl) {
-  const response = await fetch('http://localhost:8000/api/resources/versions/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+  const response = await fetch(
+    "http://localhost:8000/api/resources/versions/",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+      body: JSON.stringify({
+        resource_id: resourceId,
+        file_url: fileUrl,
+      }),
     },
-    body: JSON.stringify({
-      resource_id: resourceId,
-      file_url: fileUrl
-    })
-  });
-  
+  );
+
   if (!response.ok) {
-    throw new Error('Failed to create version');
+    throw new Error("Failed to create version");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 const result = await createResourceVersion(
-  '8a7b5c3d-1234-5678-90ab-cdef12345678',
-  'https://cdn.ressourcefy.com/files/my-resource-v2.pdf'
+  "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  "https://cdn.ressourcefy.com/files/my-resource-v2.pdf",
 );
 console.log(`Version ${result.data.version_number} created`);
 ```
@@ -2151,11 +2494,13 @@ console.log(`Version ${result.data.version_number} created`);
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource in the URL path
 
 **Body**: Empty (no body required - GET request)
@@ -2163,6 +2508,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)** - Access granted:
+
 ```json
 {
   "status": "ok",
@@ -2178,6 +2524,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Premium resource, no subscription:
+
 ```json
 {
   "error": "This resource requires a premium subscription"
@@ -2185,6 +2532,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)**:
+
 ```json
 {
   "error": "Resource not found"
@@ -2192,42 +2540,48 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/access/ \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Fetch Example
+
 ```javascript
 async function accessResource(resourceId) {
-  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/access/`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-    }
-  });
-  
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/access/`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
+  );
+
   if (!response.ok) {
     const error = await response.json();
     if (response.status === 403) {
       // Show upgrade prompt
-      throw new Error('Premium subscription required');
+      throw new Error("Premium subscription required");
     }
-    throw new Error(error.error || 'Access denied');
+    throw new Error(error.error || "Access denied");
   }
-  
+
   const data = await response.json();
-  
+
   // Redirect to file or display inline
   if (data.data.access_granted) {
     window.location.href = data.data.latest_version.file_url;
   }
-  
+
   return data;
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Accessing a resource automatically creates/updates progress to `IN_PROGRESS` status
 - Progress tracking is non-blocking - if it fails, access is still granted
 - All progress changes are logged via audit system and emit outbox events
@@ -2243,16 +2597,19 @@ async function accessResource(resourceId) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource to complete
 
 **Body**: Empty (no body required)
 
 **Permissions**:
+
 - ✅ All authenticated users with completed onboarding can complete resources
 - ✅ User must have access to the resource (visibility check)
 - ❌ Cannot complete resources without access (premium without subscription, private, etc.)
@@ -2260,6 +2617,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -2276,6 +2634,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)** - Resource not found:
+
 ```json
 {
   "error": {
@@ -2286,6 +2645,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - No access to resource:
+
 ```json
 {
   "error": {
@@ -2296,39 +2656,45 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/complete/ \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function completeResource(resourceId) {
-  const response = await fetch(`http://localhost:8000/api/resources/${resourceId}/complete/`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-    }
-  });
-  
+  const response = await fetch(
+    `http://localhost:8000/api/resources/${resourceId}/complete/`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
+  );
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to complete resource');
+    throw new Error(error.error?.message || "Failed to complete resource");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await completeResource('8a7b5c3d-1234-5678-90ab-cdef12345678');
-  console.log('Resource completed:', result.data.status);
+  const result = await completeResource("8a7b5c3d-1234-5678-90ab-cdef12345678");
+  console.log("Resource completed:", result.data.status);
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - This endpoint is **idempotent**: calling it multiple times returns the same result without error
 - If already completed, `completed_at` timestamp remains unchanged
 - All completions are logged via audit system and emit outbox events
@@ -2345,12 +2711,14 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "price_id": "price_1234567890abcdef",
@@ -2360,6 +2728,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `price_id` (string, required): Stripe Price ID (e.g., `price_1234...`)
 - `success_url` (string, required): Full URL where user is redirected after successful payment
 - `cancel_url` (string, required): Full URL where user is redirected if they cancel
@@ -2367,6 +2736,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -2377,6 +2747,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Invalid URL format:
+
 ```json
 {
   "success_url": ["Enter a valid URL."]
@@ -2384,6 +2755,7 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl -X POST http://localhost:8000/api/billing/checkout/ \
   -H "Content-Type: application/json" \
@@ -2396,22 +2768,23 @@ curl -X POST http://localhost:8000/api/billing/checkout/ \
 ```
 
 #### JavaScript Fetch Example with Stripe.js
+
 ```javascript
 // Step 1: Create checkout session
 async function createCheckoutSession() {
-  const response = await fetch('http://localhost:8000/api/billing/checkout/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/billing/checkout/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
     body: JSON.stringify({
-      price_id: 'price_1234567890abcdef',  // Your Stripe Price ID
+      price_id: "price_1234567890abcdef", // Your Stripe Price ID
       success_url: `${window.location.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${window.location.origin}/payment/cancel`
-    })
+      cancel_url: `${window.location.origin}/payment/cancel`,
+    }),
   });
-  
+
   const data = await response.json();
   return data.data.sessionId;
 }
@@ -2419,64 +2792,63 @@ async function createCheckoutSession() {
 // Step 2: Redirect to Stripe Checkout
 async function initiateCheckout() {
   const sessionId = await createCheckoutSession();
-  
+
   // Using Stripe.js (must include <script src="https://js.stripe.com/v3/"></script>)
-  const stripe = Stripe('pk_test_YOUR_PUBLISHABLE_KEY');
-  
+  const stripe = Stripe("pk_test_YOUR_PUBLISHABLE_KEY");
+
   const { error } = await stripe.redirectToCheckout({
-    sessionId: sessionId
+    sessionId: sessionId,
   });
-  
+
   if (error) {
-    console.error('Stripe redirect error:', error);
+    console.error("Stripe redirect error:", error);
   }
 }
 
 // Usage in your component
-document.getElementById('subscribeButton').addEventListener('click', initiateCheckout);
+document
+  .getElementById("subscribeButton")
+  .addEventListener("click", initiateCheckout);
 ```
 
 #### React Example
-```jsx
-import React from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe('pk_test_YOUR_PUBLISHABLE_KEY');
+```jsx
+import React from "react";
+import { loadStripe } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe("pk_test_YOUR_PUBLISHABLE_KEY");
 
 function SubscribeButton() {
   const handleSubscribe = async () => {
     try {
       // Create checkout session
-      const response = await fetch('/api/billing/checkout/', {
-        method: 'POST',
+      const response = await fetch("/api/billing/checkout/", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
         body: JSON.stringify({
-          price_id: 'price_1234567890abcdef',
+          price_id: "price_1234567890abcdef",
           success_url: `${window.location.origin}/success`,
-          cancel_url: `${window.location.origin}/cancel`
-        })
+          cancel_url: `${window.location.origin}/cancel`,
+        }),
       });
-      
+
       const data = await response.json();
-      
+
       // Redirect to Stripe
       const stripe = await stripePromise;
       await stripe.redirectToCheckout({
-        sessionId: data.data.sessionId
+        sessionId: data.data.sessionId,
       });
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error("Checkout error:", error);
     }
   };
-  
-  return (
-    <button onClick={handleSubscribe}>
-      Subscribe to Premium
-    </button>
-  );
+
+  return <button onClick={handleSubscribe}>Subscribe to Premium</button>;
 }
 ```
 
@@ -2493,15 +2865,18 @@ function SubscribeButton() {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>  (optional)
 ```
 
 **Query Parameters**:
+
 - `page` (integer, optional, default: 1): Page number
 - `page_size` (integer, optional, default: 20): Number of items per page (max: 100)
 
 **Example URLs**:
+
 - `/api/feed/` - First page, 20 items
 - `/api/feed/?page=2` - Second page, 20 items
 - `/api/feed/?page=1&page_size=50` - First page, 50 items
@@ -2509,6 +2884,7 @@ Authorization: Bearer <token>  (optional)
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "data": [
@@ -2547,6 +2923,7 @@ Authorization: Bearer <token>  (optional)
 ```
 
 **Field Descriptions**:
+
 - `id`: Resource UUID
 - `title`: Resource title
 - `author_name`: Username of the author
@@ -2561,44 +2938,47 @@ Authorization: Bearer <token>  (optional)
 - `visibility`: "public", "premium", or "private"
 
 #### cURL Example
+
 ```bash
 curl http://localhost:8000/api/feed/?page=1&page_size=10
 ```
 
 #### JavaScript Fetch Example
+
 ```javascript
 async function getResourceFeed(page = 1, pageSize = 20) {
   const params = new URLSearchParams({
     page: page.toString(),
-    page_size: pageSize.toString()
+    page_size: pageSize.toString(),
   });
-  
+
   const response = await fetch(`http://localhost:8000/api/feed/?${params}`);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch resource feed');
+    throw new Error("Failed to fetch resource feed");
   }
-  
+
   const data = await response.json();
-  return data.data;  // Array of resources
+  return data.data; // Array of resources
 }
 
 // Usage
 const resources = await getResourceFeed(1, 20);
-resources.forEach(resource => {
+resources.forEach((resource) => {
   console.log(`${resource.title} by ${resource.author_name}`);
 });
 ```
 
 #### React Hook Example
+
 ```jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 function useResourceFeed(page = 1) {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
     async function fetchFeed() {
       try {
@@ -2612,10 +2992,10 @@ function useResourceFeed(page = 1) {
         setLoading(false);
       }
     }
-    
+
     fetchFeed();
   }, [page]);
-  
+
   return { resources, loading, error };
 }
 
@@ -2623,27 +3003,28 @@ function useResourceFeed(page = 1) {
 function ResourceList() {
   const [page, setPage] = useState(1);
   const { resources, loading, error } = useResourceFeed(page);
-  
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
-  
+
   return (
     <div>
-      {resources.map(resource => (
+      {resources.map((resource) => (
         <div key={resource.id}>
           <h3>{resource.title}</h3>
           <p>by {resource.author_name}</p>
-          <p>Tags: {resource.tags.join(', ')}</p>
+          <p>Tags: {resource.tags.join(", ")}</p>
           <p>Comments: {resource.stats.comment_count}</p>
-          <p>Votes: 👍 {resource.stats.upvotes} 👎 {resource.stats.downvotes} (Total: {resource.stats.total_votes})</p>
+          <p>
+            Votes: 👍 {resource.stats.upvotes} 👎 {resource.stats.downvotes}{" "}
+            (Total: {resource.stats.total_votes})
+          </p>
         </div>
       ))}
-      <button onClick={() => setPage(p => p - 1)} disabled={page === 1}>
+      <button onClick={() => setPage((p) => p - 1)} disabled={page === 1}>
         Previous
       </button>
-      <button onClick={() => setPage(p => p + 1)}>
-        Next
-      </button>
+      <button onClick={() => setPage((p) => p + 1)}>Next</button>
     </div>
   );
 }
@@ -2660,16 +3041,19 @@ function ResourceList() {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "data": {
@@ -2704,6 +3088,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `id`: Resource UUID
 - `title`: Resource title
 - `description`: Resource description
@@ -2720,6 +3105,7 @@ Authorization: Bearer <token>
 - `versions`: Array of version objects with version_number, file_url, and created_at
 
 **Error (403 Forbidden)** - No access to premium resource:
+
 ```json
 {
   "error": "You do not have permission to view this resource."
@@ -2727,6 +3113,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)**:
+
 ```json
 {
   "error": "Resource not found."
@@ -2734,36 +3121,40 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/detail/ \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Fetch Example
+
 ```javascript
 async function getResourceDetail(resourceId) {
   const response = await fetch(
     `http://localhost:8000/api/resources/${resourceId}/detail/`,
     {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   if (!response.ok) {
     if (response.status === 403) {
-      throw new Error('Premium subscription required');
+      throw new Error("Premium subscription required");
     }
-    throw new Error('Failed to fetch resource details');
+    throw new Error("Failed to fetch resource details");
   }
-  
+
   const data = await response.json();
   return data.data;
 }
 
 // Usage
-const resource = await getResourceDetail('8a7b5c3d-1234-5678-90ab-cdef12345678');
+const resource = await getResourceDetail(
+  "8a7b5c3d-1234-5678-90ab-cdef12345678",
+);
 console.log(`Latest version: ${resource.versions[0].version_number}`);
 ```
 
@@ -2778,23 +3169,28 @@ console.log(`Latest version: ${resource.versions[0].version_number}`);
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>  (optional)
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource
 
 **Query Parameters**:
+
 - `page` (integer, optional, default: 1): Page number (minimum: 1)
 - `page_size` (integer, optional, default: 20, max: 100): Number of comments per page
 
 **Example URLs**:
+
 - `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/` - First page, 20 comments
 - `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=2` - Second page, 20 comments
 - `/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/?page=1&page_size=50` - First page, 50 comments
 
 **Permissions**:
+
 - ✅ Public endpoint (no authentication required)
 - ✅ User must have access to the resource (visibility check)
 - ❌ Cannot view comments on resources without access (premium without subscription, private, etc.)
@@ -2802,6 +3198,7 @@ Authorization: Bearer <token>  (optional)
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "data": [
@@ -2850,6 +3247,7 @@ Authorization: Bearer <token>  (optional)
 ```
 
 **Field Descriptions**:
+
 - `data`: Array of comment objects
   - `id`: Comment UUID
   - `content`: Comment text content
@@ -2872,6 +3270,7 @@ Authorization: Bearer <token>  (optional)
   - `has_previous`: Whether there is a previous page
 
 **Error (404 Not Found)** - Resource not found:
+
 ```json
 {
   "error": "Resource {resource_id} not found."
@@ -2879,6 +3278,7 @@ Authorization: Bearer <token>  (optional)
 ```
 
 **Error (403 Forbidden)** - No access to resource:
+
 ```json
 {
   "error": "You do not have permission to view comments on this resource."
@@ -2886,6 +3286,7 @@ Authorization: Bearer <token>  (optional)
 ```
 
 **Error (400 Bad Request)** - Invalid pagination:
+
 ```json
 {
   "error": "Invalid pagination parameters. 'page' and 'page_size' must be integers."
@@ -2893,6 +3294,7 @@ Authorization: Bearer <token>  (optional)
 ```
 
 #### cURL Example
+
 ```bash
 # Get first page of comments
 curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/comments/
@@ -2906,92 +3308,98 @@ curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/co
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function getResourceComments(resourceId, page = 1, pageSize = 20) {
   const params = new URLSearchParams({
     page: page.toString(),
-    page_size: pageSize.toString()
+    page_size: pageSize.toString(),
   });
-  
+
   const headers = {};
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem("authToken");
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
-  
+
   const response = await fetch(
     `http://localhost:8000/api/resources/${resourceId}/comments/?${params}`,
-    { headers }
+    { headers },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch comments');
+    throw new Error(error.error || "Failed to fetch comments");
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
   const result = await getResourceComments(
-    '8a7b5c3d-1234-5678-90ab-cdef12345678',
+    "8a7b5c3d-1234-5678-90ab-cdef12345678",
     1,
-    20
+    20,
   );
-  
+
   console.log(`Total comments: ${result.pagination.total_count}`);
-  console.log(`Page ${result.pagination.page} of ${result.pagination.total_pages}`);
-  
-  result.data.forEach(comment => {
+  console.log(
+    `Page ${result.pagination.page} of ${result.pagination.total_pages}`,
+  );
+
+  result.data.forEach((comment) => {
     console.log(`${comment.author.username}: ${comment.content}`);
-    console.log(`  Votes: ${comment.stats.upvotes} up, ${comment.stats.downvotes} down`);
+    console.log(
+      `  Votes: ${comment.stats.upvotes} up, ${comment.stats.downvotes} down`,
+    );
   });
-  
+
   // Check if there are more pages
   if (result.pagination.has_next) {
-    console.log('Load more comments...');
+    console.log("Load more comments...");
   }
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
 #### React Hook Example
+
 ```jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 function useResourceComments(resourceId, page = 1, pageSize = 20) {
   const [comments, setComments] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
     async function fetchComments() {
       try {
         setLoading(true);
         const params = new URLSearchParams({
           page: page.toString(),
-          page_size: pageSize.toString()
+          page_size: pageSize.toString(),
         });
-        
+
         const headers = {};
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem("authToken");
         if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
+          headers["Authorization"] = `Bearer ${token}`;
         }
-        
+
         const response = await fetch(
           `/api/resources/${resourceId}/comments/?${params}`,
-          { headers }
+          { headers },
         );
-        
+
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch comments');
+          throw new Error(errorData.error || "Failed to fetch comments");
         }
-        
+
         const data = await response.json();
         setComments(data.data);
         setPagination(data.pagination);
@@ -3001,32 +3409,35 @@ function useResourceComments(resourceId, page = 1, pageSize = 20) {
         setLoading(false);
       }
     }
-    
+
     if (resourceId) {
       fetchComments();
     }
   }, [resourceId, page, pageSize]);
-  
+
   return { comments, pagination, loading, error };
 }
 
 // Usage in component
 function ResourceComments({ resourceId }) {
   const [page, setPage] = useState(1);
-  const { comments, pagination, loading, error } = useResourceComments(resourceId, page);
-  
+  const { comments, pagination, loading, error } = useResourceComments(
+    resourceId,
+    page,
+  );
+
   if (loading) return <div>Loading comments...</div>;
   if (error) return <div>Error: {error}</div>;
-  
+
   return (
     <div>
       <h3>Comments ({pagination?.total_count || 0})</h3>
-      
-      {comments.map(comment => (
+
+      {comments.map((comment) => (
         <div key={comment.id} className="comment">
           <div className="comment-header">
-            <img 
-              src={comment.author.avatar_url || '/default-avatar.png'} 
+            <img
+              src={comment.author.avatar_url || "/default-avatar.png"}
               alt={comment.author.username}
             />
             <strong>{comment.author.username}</strong>
@@ -3038,17 +3449,19 @@ function ResourceComments({ resourceId }) {
           </div>
         </div>
       ))}
-      
+
       <div className="pagination">
-        <button 
-          onClick={() => setPage(p => p - 1)} 
+        <button
+          onClick={() => setPage((p) => p - 1)}
           disabled={!pagination?.has_previous}
         >
           Previous
         </button>
-        <span>Page {pagination?.page} of {pagination?.total_pages}</span>
-        <button 
-          onClick={() => setPage(p => p + 1)} 
+        <span>
+          Page {pagination?.page} of {pagination?.total_pages}
+        </span>
+        <button
+          onClick={() => setPage((p) => p + 1)}
           disabled={!pagination?.has_next}
         >
           Next
@@ -3059,7 +3472,8 @@ function ResourceComments({ resourceId }) {
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Comments are ordered by creation date (newest first)
 - Only non-deleted comments are returned
 - Author information falls back to email if no profile exists
@@ -3078,15 +3492,18 @@ function ResourceComments({ resourceId }) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `page` (integer, optional, default: 1): Page number (minimum: 1)
 - `page_size` (integer, optional, default: 20, max: 100): Number of items per page
 
 **Example URLs**:
+
 - `/api/user/progress/` - First page, 20 items
 - `/api/user/progress/?page=2` - Second page, 20 items
 - `/api/user/progress/?page=1&page_size=50` - First page, 50 items
@@ -3094,6 +3511,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -3141,6 +3559,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `summary`: Aggregated statistics for user's progress
   - `total_resources`: Total number of resources with progress tracking
   - `completed_count`: Number of completed resources
@@ -3159,30 +3578,35 @@ Authorization: Bearer <token>
 - `pagination`: Pagination metadata
 
 #### cURL Example
+
 ```bash
 curl http://localhost:8000/api/user/progress/?page=1&page_size=20 \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function getUserProgress(page = 1, pageSize = 20) {
   const params = new URLSearchParams({
     page: page.toString(),
-    page_size: pageSize.toString()
+    page_size: pageSize.toString(),
   });
-  
-  const response = await fetch(`http://localhost:8000/api/user/progress/?${params}`, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-    }
-  });
-  
+
+  const response = await fetch(
+    `http://localhost:8000/api/user/progress/?${params}`,
+    {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
+  );
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to fetch user progress');
+    throw new Error(error.error?.message || "Failed to fetch user progress");
   }
-  
+
   return await response.json();
 }
 
@@ -3191,16 +3615,17 @@ try {
   const result = await getUserProgress(1, 20);
   console.log(`Completed: ${result.data.summary.completed_count}`);
   console.log(`In Progress: ${result.data.summary.in_progress_count}`);
-  
-  result.data.data.forEach(progress => {
+
+  result.data.data.forEach((progress) => {
     console.log(`${progress.resource_title}: ${progress.status}`);
   });
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Progress list is ordered by `last_accessed_at` (most recent first)
 - Summary counts are computed from all user's progress entries
 - Only resources the user has accessed or completed are included
@@ -3217,16 +3642,19 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource
 
 #### Response
 
 **Success (200 OK)** - With progress:
+
 ```json
 {
   "status": "ok",
@@ -3243,6 +3671,7 @@ Authorization: Bearer <token>
 ```
 
 **Success (200 OK)** - No progress (NOT_STARTED):
+
 ```json
 {
   "status": "ok",
@@ -3259,6 +3688,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (404 Not Found)** - Resource not found:
+
 ```json
 {
   "error": {
@@ -3269,6 +3699,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - No access to resource:
+
 ```json
 {
   "error": {
@@ -3279,44 +3710,51 @@ Authorization: Bearer <token>
 ```
 
 #### cURL Example
+
 ```bash
 curl http://localhost:8000/api/resources/8a7b5c3d-1234-5678-90ab-cdef12345678/progress/ \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function getResourceProgress(resourceId) {
   const response = await fetch(
     `http://localhost:8000/api/resources/${resourceId}/progress/`,
     {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to fetch resource progress');
+    throw new Error(
+      error.error?.message || "Failed to fetch resource progress",
+    );
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await getResourceProgress('8a7b5c3d-1234-5678-90ab-cdef12345678');
+  const result = await getResourceProgress(
+    "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  );
   console.log(`Status: ${result.data.status}`);
   if (result.data.completed_at) {
     console.log(`Completed at: ${result.data.completed_at}`);
   }
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Returns `NOT_STARTED` status if user has never accessed the resource
 - Progress is automatically created when user accesses a resource via `/api/resources/{id}/access/`
 - User must have access to the resource to view progress
@@ -3333,20 +3771,24 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `resource_id` (string, required): UUID of the resource
 
 **Query Parameters**:
+
 - `page` (integer, optional, default: 1): Page number
 - `page_size` (integer, optional, default: 20, max: 100): Items per page
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -3392,6 +3834,7 @@ Authorization: Bearer <token>
 **Error Responses**:
 
 - **403 Forbidden** (Not author or admin):
+
 ```json
 {
   "error": {
@@ -3402,6 +3845,7 @@ Authorization: Bearer <token>
 ```
 
 - **404 Not Found** (Resource not found):
+
 ```json
 {
   "error": {
@@ -3425,35 +3869,40 @@ async function getResourceUsersProgress(resourceId, page = 1, pageSize = 20) {
   const response = await fetch(
     `https://api.ressourcefy.com/api/resources/${resourceId}/users-progress/?page=${page}&page_size=${pageSize}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    }
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error.message);
   }
-  
+
   return await response.json();
 }
 
 // Usage
 try {
-  const result = await getResourceUsersProgress('8a7b5c3d-1234-5678-90ab-cdef12345678', 1, 20);
+  const result = await getResourceUsersProgress(
+    "8a7b5c3d-1234-5678-90ab-cdef12345678",
+    1,
+    20,
+  );
   console.log(`Total users: ${result.data.pagination.total_count}`);
-  result.data.progress_entries.forEach(entry => {
+  result.data.progress_entries.forEach((entry) => {
     console.log(`${entry.user_email}: ${entry.status}`);
   });
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Only resource authors (CONTRIBUTOR, MODERATOR, ADMIN, SUPERADMIN) can view progress on their resources
 - ADMIN and SUPERADMIN can view progress on any resource
 - Returns paginated list of all users who have progress on the resource
@@ -3470,11 +3919,13 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `resource_id` (UUID, optional): Filter by resource ID
 - `user_id` (UUID, optional): Filter by user ID
 - `page` (integer, optional, default: 1): Page number
@@ -3483,6 +3934,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -3523,6 +3975,7 @@ Authorization: Bearer <token>
 **Error Responses**:
 
 - **403 Forbidden** (Not admin):
+
 ```json
 {
   "error": {
@@ -3533,6 +3986,7 @@ Authorization: Bearer <token>
 ```
 
 - **404 Not Found** (Resource or user not found when filtering):
+
 ```json
 {
   "error": {
@@ -3566,25 +4020,25 @@ async function getAllProgress(filters = {}, page = 1, pageSize = 20) {
     page: page.toString(),
     page_size: pageSize.toString(),
     ...(filters.resource_id && { resource_id: filters.resource_id }),
-    ...(filters.user_id && { user_id: filters.user_id })
+    ...(filters.user_id && { user_id: filters.user_id }),
   });
-  
+
   const response = await fetch(
     `https://api.ressourcefy.com/api/admin/progress/?${params}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    }
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error.message);
   }
-  
+
   return await response.json();
 }
 
@@ -3593,18 +4047,23 @@ try {
   // Get all progress
   const allProgress = await getAllProgress({}, 1, 20);
   console.log(`Total entries: ${allProgress.data.pagination.total_count}`);
-  
+
   // Filter by resource
-  const resourceProgress = await getAllProgress({ resource_id: '8a7b5c3d-1234-5678-90ab-cdef12345678' });
-  
+  const resourceProgress = await getAllProgress({
+    resource_id: "8a7b5c3d-1234-5678-90ab-cdef12345678",
+  });
+
   // Filter by user
-  const userProgress = await getAllProgress({ user_id: '2b3c4d5e-6789-01ab-cdef-2345678901bc' });
+  const userProgress = await getAllProgress({
+    user_id: "2b3c4d5e-6789-01ab-cdef-2345678901bc",
+  });
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Only ADMIN and SUPERADMIN can access this endpoint
 - Supports optional filtering by `resource_id` and `user_id`
 - Returns all progress entries across all resources
@@ -3622,17 +4081,20 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `page` (integer, optional, default: 1): Page number
 - `page_size` (integer, optional, default: 20, max: 100): Items per page
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -3684,6 +4146,7 @@ Authorization: Bearer <token>
 **Error Responses**:
 
 - **400 Bad Request** (Invalid pagination parameters):
+
 ```json
 {
   "error": "Invalid pagination parameters. 'page' and 'page_size' must be integers."
@@ -3704,19 +4167,19 @@ async function getUserResources(page = 1, pageSize = 20) {
   const response = await fetch(
     `https://api.ressourcefy.com/api/user/resources/?page=${page}&page_size=${pageSize}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    }
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to fetch user resources');
+    throw new Error(error.error?.message || "Failed to fetch user resources");
   }
-  
+
   return await response.json();
 }
 
@@ -3724,15 +4187,16 @@ async function getUserResources(page = 1, pageSize = 20) {
 try {
   const result = await getUserResources(1, 20);
   console.log(`Total resources: ${result.pagination.total_count}`);
-  result.data.forEach(resource => {
+  result.data.forEach((resource) => {
     console.log(`${resource.title} (${resource.visibility})`);
   });
 } catch (error) {
-  console.error('Error:', error.message);
+  console.error("Error:", error.message);
 }
 ```
 
-**Note**: 
+**Note**:
+
 - Returns only resources created by the authenticated user
 - Includes all visibility types (public, premium, private)
 - Ordered by creation date (most recent first)
@@ -3750,16 +4214,19 @@ try {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>  (optional)
 ```
 
 **URL Parameters**:
+
 - `user_id` (string, required): UUID of the user
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "data": {
@@ -3788,6 +4255,7 @@ Authorization: Bearer <token>  (optional)
 ```
 
 **Error (404 Not Found)**:
+
 ```json
 {
   "error": "User not found."
@@ -3795,20 +4263,21 @@ Authorization: Bearer <token>  (optional)
 ```
 
 #### JavaScript Fetch Example
+
 ```javascript
 async function getAuthorProfile(userId) {
   const response = await fetch(`http://localhost:8000/api/authors/${userId}/`);
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch author profile');
+    throw new Error("Failed to fetch author profile");
   }
-  
+
   const data = await response.json();
   return data.data;
 }
 
 // Usage
-const author = await getAuthorProfile('1a2b3c4d-5678-90ab-cdef-1234567890ab');
+const author = await getAuthorProfile("1a2b3c4d-5678-90ab-cdef-1234567890ab");
 console.log(`${author.username} has ${author.stats.total_resources} resources`);
 ```
 
@@ -3827,6 +4296,7 @@ console.log(`${author.username} has ${author.stats.total_resources} resources`);
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Stripe-Signature: t=1234567890,v1=abc123...
@@ -3837,6 +4307,7 @@ Stripe-Signature: t=1234567890,v1=abc123...
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "received"
@@ -3854,6 +4325,7 @@ Stripe-Signature: t=1234567890,v1=abc123...
 **Description**: Basic ping to check if the server is running
 
 #### Response
+
 ```json
 {
   "status": "ok"
@@ -3869,6 +4341,7 @@ Stripe-Signature: t=1234567890,v1=abc123...
 #### Response
 
 **Healthy (200 OK)**:
+
 ```json
 {
   "status": "ok"
@@ -3876,6 +4349,7 @@ Stripe-Signature: t=1234567890,v1=abc123...
 ```
 
 **Unhealthy (503 Service Unavailable)**:
+
 ```json
 {
   "status": "unavailable"
@@ -3898,17 +4372,17 @@ All errors follow this structure:
 
 ### HTTP Status Codes
 
-| Code | Meaning | When to Expect |
-|------|---------|----------------|
-| 200 | OK | Successful GET/POST request |
-| 201 | Created | Resource successfully created |
-| 400 | Bad Request | Invalid input data (validation errors) |
-| 401 | Unauthorized | Missing or invalid authentication token |
-| 403 | Forbidden | Authenticated but lacks permission |
-| 404 | Not Found | Resource doesn't exist |
-| 422 | Unprocessable Entity | Business logic error (e.g., already voted) |
-| 500 | Internal Server Error | Server-side error |
-| 503 | Service Unavailable | Server is not ready (health check failed) |
+| Code | Meaning               | When to Expect                             |
+| ---- | --------------------- | ------------------------------------------ |
+| 200  | OK                    | Successful GET/POST request                |
+| 201  | Created               | Resource successfully created              |
+| 400  | Bad Request           | Invalid input data (validation errors)     |
+| 401  | Unauthorized          | Missing or invalid authentication token    |
+| 403  | Forbidden             | Authenticated but lacks permission         |
+| 404  | Not Found             | Resource doesn't exist                     |
+| 422  | Unprocessable Entity  | Business logic error (e.g., already voted) |
+| 500  | Internal Server Error | Server-side error                          |
+| 503  | Service Unavailable   | Server is not ready (health check failed)  |
 
 ### Validation Errors
 
@@ -3916,22 +4390,16 @@ Validation errors return field-specific messages:
 
 ```json
 {
-  "field_name": [
-    "Error message 1",
-    "Error message 2"
-  ]
+  "field_name": ["Error message 1", "Error message 2"]
 }
 ```
 
 **Example**:
+
 ```json
 {
-  "vote_value": [
-    "Ensure this value is either 1 or -1."
-  ],
-  "comment_id": [
-    "This field is required."
-  ]
+  "vote_value": ["Ensure this value is either 1 or -1."],
+  "comment_id": ["This field is required."]
 }
 ```
 
@@ -3943,74 +4411,75 @@ Validation errors return field-specific messages:
 
 ```jsx
 // api.js - API client
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 class RessourcefyAPI {
   constructor() {
     this.baseURL = API_BASE_URL;
   }
-  
+
   getAuthHeaders() {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem("authToken");
     return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
     };
   }
-  
+
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       ...options,
       headers: {
         ...this.getAuthHeaders(),
-        ...options.headers
-      }
+        ...options.headers,
+      },
     };
-    
+
     const response = await fetch(url, config);
-    
+
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Request failed');
+      throw new Error(error.error || "Request failed");
     }
-    
+
     return await response.json();
   }
-  
+
   // Resource Feed
   async getResourceFeed(page = 1, pageSize = 20) {
     const params = new URLSearchParams({ page, page_size: pageSize });
     const data = await this.request(`/feed/?${params}`);
     return data.data;
   }
-  
+
   // Resource Detail
   async getResourceDetail(resourceId) {
     const data = await this.request(`/resources/${resourceId}/detail/`);
     return data.data;
   }
-  
+
   // Vote on Comment
   async voteOnComment(commentId, value) {
-    return await this.request('/comments/vote/', {
-      method: 'POST',
+    return await this.request("/comments/vote/", {
+      method: "POST",
       body: JSON.stringify({
         comment_id: commentId,
-        vote_value: value
-      })
+        vote_value: value,
+      }),
     });
   }
-  
+
   // Create Checkout Session
   async createCheckoutSession(priceId, successUrl, cancelUrl) {
-    const data = await this.request('/billing/checkout/', {
-      method: 'POST',
+    const data = await this.request("/billing/checkout/", {
+      method: "POST",
       body: JSON.stringify({
         price_id: priceId,
         success_url: successUrl,
-        cancel_url: cancelUrl
-      })
+        cancel_url: cancelUrl,
+      }),
     });
     return data.data.sessionId;
   }
@@ -4023,18 +4492,18 @@ export default new RessourcefyAPI();
 
 ```javascript
 // plugins/api.js
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.VUE_APP_API_URL || 'http://localhost:8000/api',
+  baseURL: process.env.VUE_APP_API_URL || "http://localhost:8000/api",
   headers: {
-    'Content-Type': 'application/json'
-  }
+    "Content-Type": "application/json",
+  },
 });
 
 // Add auth token to requests
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken');
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -4043,42 +4512,42 @@ api.interceptors.request.use(config => {
 
 // Handle errors globally
 api.interceptors.response.use(
-  response => response,
-  error => {
+  (response) => response,
+  (error) => {
     if (error.response?.status === 401) {
       // Redirect to login
-      window.location.href = '/login';
+      window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default {
   // Resource operations
   getResourceFeed(page = 1, pageSize = 20) {
-    return api.get('/feed/', { params: { page, page_size: pageSize } });
+    return api.get("/feed/", { params: { page, page_size: pageSize } });
   },
-  
+
   getResourceDetail(resourceId) {
     return api.get(`/resources/${resourceId}/detail/`);
   },
-  
+
   // Voting
   voteOnComment(commentId, value) {
-    return api.post('/comments/vote/', {
+    return api.post("/comments/vote/", {
       comment_id: commentId,
-      vote_value: value
+      vote_value: value,
     });
   },
-  
+
   // Billing
   createCheckoutSession(priceId, successUrl, cancelUrl) {
-    return api.post('/billing/checkout/', {
+    return api.post("/billing/checkout/", {
       price_id: priceId,
       success_url: successUrl,
-      cancel_url: cancelUrl
+      cancel_url: cancelUrl,
     });
-  }
+  },
 };
 ```
 
@@ -4086,11 +4555,11 @@ export default {
 
 ```typescript
 // services/ressourcefy-api.service.ts
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { environment } from '../environments/environment';
+import { Injectable } from "@angular/core";
+import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
+import { environment } from "../environments/environment";
 
 interface ApiResponse<T> {
   status?: string;
@@ -4098,54 +4567,60 @@ interface ApiResponse<T> {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
 export class RessourcefyApiService {
-  private baseUrl = environment.apiUrl || 'http://localhost:8000/api';
-  
+  private baseUrl = environment.apiUrl || "http://localhost:8000/api";
+
   constructor(private http: HttpClient) {}
-  
+
   private getHeaders(): HttpHeaders {
-    const token = localStorage.getItem('authToken');
-    let headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    
+    const token = localStorage.getItem("authToken");
+    let headers = new HttpHeaders({ "Content-Type": "application/json" });
+
     if (token) {
-      headers = headers.set('Authorization', `Bearer ${token}`);
+      headers = headers.set("Authorization", `Bearer ${token}`);
     }
-    
+
     return headers;
   }
-  
+
   getResourceFeed(page: number = 1, pageSize: number = 20): Observable<any[]> {
     const params = new HttpParams()
-      .set('page', page.toString())
-      .set('page_size', pageSize.toString());
-    
-    return this.http.get<ApiResponse<any[]>>(`${this.baseUrl}/feed/`, { params })
-      .pipe(map(response => response.data));
+      .set("page", page.toString())
+      .set("page_size", pageSize.toString());
+
+    return this.http
+      .get<ApiResponse<any[]>>(`${this.baseUrl}/feed/`, { params })
+      .pipe(map((response) => response.data));
   }
-  
+
   getResourceDetail(resourceId: string): Observable<any> {
-    return this.http.get<ApiResponse<any>>(
-      `${this.baseUrl}/resources/${resourceId}/detail/`,
-      { headers: this.getHeaders() }
-    ).pipe(map(response => response.data));
+    return this.http
+      .get<
+        ApiResponse<any>
+      >(`${this.baseUrl}/resources/${resourceId}/detail/`, { headers: this.getHeaders() })
+      .pipe(map((response) => response.data));
   }
-  
+
   voteOnComment(commentId: string, value: number): Observable<any> {
     return this.http.post<ApiResponse<any>>(
       `${this.baseUrl}/comments/vote/`,
       { comment_id: commentId, vote_value: value },
-      { headers: this.getHeaders() }
+      { headers: this.getHeaders() },
     );
   }
-  
-  createCheckoutSession(priceId: string, successUrl: string, cancelUrl: string): Observable<string> {
-    return this.http.post<ApiResponse<{ sessionId: string }>>(
-      `${this.baseUrl}/billing/checkout/`,
-      { price_id: priceId, success_url: successUrl, cancel_url: cancelUrl },
-      { headers: this.getHeaders() }
-    ).pipe(map(response => response.data.sessionId));
+
+  createCheckoutSession(
+    priceId: string,
+    successUrl: string,
+    cancelUrl: string,
+  ): Observable<string> {
+    return this.http
+      .post<
+        ApiResponse<{ sessionId: string }>
+      >(`${this.baseUrl}/billing/checkout/`, { price_id: priceId, success_url: successUrl, cancel_url: cancelUrl }, { headers: this.getHeaders() })
+      .pipe(map((response) => response.data.sessionId));
   }
 }
 ```
@@ -4211,12 +4686,12 @@ The Ressourcefy backend sets HTTP cookies to support Next.js Edge Middleware for
 
 ### Cookies Set by Backend
 
-| Cookie Name | Purpose | HttpOnly | Secure | SameSite | Accessible By |
-|------------|---------|----------|--------|----------|---------------|
-| `access_token` | JWT access token | ✅ Yes | ✅ (prod) | Lax | Backend only |
-| `refresh_token` | JWT refresh token | ✅ Yes | ✅ (prod) | Lax | Backend only |
-| `activated` | Account activation status | ❌ No | ✅ (prod) | Lax | JS/Middleware |
-| `onboarding_step` | Onboarding progression | ❌ No | ✅ (prod) | Lax | JS/Middleware |
+| Cookie Name       | Purpose                   | HttpOnly | Secure    | SameSite | Accessible By |
+| ----------------- | ------------------------- | -------- | --------- | -------- | ------------- |
+| `access_token`    | JWT access token          | ✅ Yes   | ✅ (prod) | Lax      | Backend only  |
+| `refresh_token`   | JWT refresh token         | ✅ Yes   | ✅ (prod) | Lax      | Backend only  |
+| `activated`       | Account activation status | ❌ No    | ✅ (prod) | Lax      | JS/Middleware |
+| `onboarding_step` | Onboarding progression    | ❌ No    | ✅ (prod) | Lax      | JS/Middleware |
 
 ### Cookie Configuration
 
@@ -4251,6 +4726,7 @@ The Next.js middleware can read these cookies to:
 ### Frontend Requirements
 
 ⚠️ **Important**: The frontend should:
+
 - ✅ Use `credentials: 'include'` in fetch requests
 - ✅ Let middleware handle routing decisions
 - ✅ NOT store auth state in Zustand/Redux
@@ -4262,56 +4738,58 @@ The Next.js middleware can read these cookies to:
 
 ```typescript
 // middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const accessToken = request.cookies.get('access_token');
-  const activated = request.cookies.get('activated');
-  const onboardingStep = request.cookies.get('onboarding_step');
-  
+  const accessToken = request.cookies.get("access_token");
+  const activated = request.cookies.get("activated");
+  const onboardingStep = request.cookies.get("onboarding_step");
+
   // No token → login
   if (!accessToken) {
-    if (request.nextUrl.pathname.startsWith('/auth/')) {
+    if (request.nextUrl.pathname.startsWith("/auth/")) {
       return NextResponse.next();
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
-  
+
   // Not activated → activation required
-  if (activated?.value !== 'true') {
-    if (request.nextUrl.pathname.startsWith('/auth/activate')) {
+  if (activated?.value !== "true") {
+    if (request.nextUrl.pathname.startsWith("/auth/activate")) {
       return NextResponse.next();
     }
-    return NextResponse.redirect(new URL('/activation-required', request.url));
+    return NextResponse.redirect(new URL("/activation-required", request.url));
   }
-  
+
   // Onboarding incomplete → redirect to onboarding
-  if (onboardingStep?.value !== 'completed') {
-    if (request.nextUrl.pathname.startsWith('/onboarding/')) {
+  if (onboardingStep?.value !== "completed") {
+    if (request.nextUrl.pathname.startsWith("/onboarding/")) {
       return NextResponse.next();
     }
-    
-    if (onboardingStep?.value === 'profile') {
-      return NextResponse.redirect(new URL('/onboarding/profile', request.url));
+
+    if (onboardingStep?.value === "profile") {
+      return NextResponse.redirect(new URL("/onboarding/profile", request.url));
     }
-    if (onboardingStep?.value === 'interests') {
-      return NextResponse.redirect(new URL('/onboarding/interests', request.url));
+    if (onboardingStep?.value === "interests") {
+      return NextResponse.redirect(
+        new URL("/onboarding/interests", request.url),
+      );
     }
   }
-  
+
   // Dashboard access requires completed onboarding
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    if (onboardingStep?.value !== 'completed') {
-      return NextResponse.redirect(new URL('/onboarding/profile', request.url));
+  if (request.nextUrl.pathname.startsWith("/dashboard")) {
+    if (onboardingStep?.value !== "completed") {
+      return NextResponse.redirect(new URL("/onboarding/profile", request.url));
     }
   }
-  
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
 ```
 
@@ -4330,17 +4808,20 @@ export const config = {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `page` (integer, optional, default: 1): Page number
 - `page_size` (integer, optional, default: 20): Items per page
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "count": 100,
@@ -4368,6 +4849,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `id`: User UUID
 - `email`: User email address
 - `username`: Username from Profile (null if Profile doesn't exist)
@@ -4384,6 +4866,7 @@ Authorization: Bearer <token>
 - `updated_at`: Last update timestamp
 
 **Error (403 Forbidden)** - Not admin:
+
 ```json
 {
   "detail": "You do not have permission to perform this action."
@@ -4401,16 +4884,19 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): User UUID
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -4431,6 +4917,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `id`: User UUID
 - `email`: User email address
 - `username`: Username from Profile (null if Profile doesn't exist)
@@ -4457,12 +4944,14 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "is_active": false
@@ -4474,6 +4963,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -4495,6 +4985,7 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
@@ -4514,12 +5005,14 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "role": "ADMIN"
@@ -4527,6 +5020,7 @@ Authorization: Bearer <token>
 ```
 
 **Valid Roles**:
+
 - `SUPERADMIN`
 - `ADMIN`
 - `MODERATOR`
@@ -4536,6 +5030,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -4549,6 +5044,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Not superadmin:
+
 ```json
 {
   "detail": "You do not have permission to perform this action."
@@ -4556,6 +5052,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Invalid role:
+
 ```json
 {
   "error": {
@@ -4566,6 +5063,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Last superadmin:
+
 ```json
 {
   "error": {
@@ -4576,27 +5074,34 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function changeUserRole(userId, newRole) {
-  const response = await fetch(`http://localhost:8000/api/admin/users/${userId}/set_role/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+  const response = await fetch(
+    `http://localhost:8000/api/admin/users/${userId}/set_role/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+      body: JSON.stringify({ role: newRole }),
     },
-    body: JSON.stringify({ role: newRole })
-  });
-  
+  );
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || error.detail || 'Failed to change role');
+    throw new Error(
+      error.error?.message || error.detail || "Failed to change role",
+    );
   }
-  
+
   return await response.json();
 }
 ```
 
 **Security Notes**:
+
 - Only SUPERADMIN can assign ADMIN or SUPERADMIN roles
 - Regular admins cannot use this endpoint
 - All role changes are logged via AuditLog
@@ -4613,19 +5118,23 @@ async function changeUserRole(userId, newRole) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): User UUID
 
 **Query Parameters**:
+
 - `limit` (integer, optional, default: 50, max: 100): Maximum number of activities to return
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -4647,21 +5156,22 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function getUserActivity(userId, limit = 50) {
   const response = await fetch(
     `http://localhost:8000/api/admin/users/${userId}/activity/?limit=${limit}`,
     {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch user activity');
+    throw new Error("Failed to fetch user activity");
   }
-  
+
   return await response.json();
 }
 ```
@@ -4679,12 +5189,14 @@ async function getUserActivity(userId, limit = 50) {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Target user UUID
 
 **Body**: Empty (no body required)
@@ -4692,6 +5204,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -4711,6 +5224,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (403 Forbidden)** - Not superadmin:
+
 ```json
 {
   "detail": "You do not have permission to perform this action."
@@ -4718,6 +5232,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Cannot impersonate superadmin:
+
 ```json
 {
   "error": {
@@ -4728,30 +5243,33 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function impersonateUser(userId) {
   const response = await fetch(
     `http://localhost:8000/api/admin/users/${userId}/impersonate/`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || error.detail || 'Impersonation failed');
+    throw new Error(
+      error.error?.message || error.detail || "Impersonation failed",
+    );
   }
-  
+
   const data = await response.json();
-  
+
   // Store impersonation tokens
-  localStorage.setItem('impersonation_token', data.data.access_token);
-  localStorage.setItem('impersonation_user', JSON.stringify(data.data.user));
-  
+  localStorage.setItem("impersonation_token", data.data.access_token);
+  localStorage.setItem("impersonation_user", JSON.stringify(data.data.user));
+
   return data.data;
 }
 ```
@@ -4767,12 +5285,14 @@ async function impersonateUser(userId) {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): User UUID
 
 **Body**: Empty (no body required)
@@ -4780,6 +5300,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -4790,6 +5311,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Cannot reset superadmin password (unless actor is superadmin):
+
 ```json
 {
   "error": {
@@ -4800,24 +5322,25 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function resetUserPassword(userId) {
   const response = await fetch(
     `http://localhost:8000/api/admin/users/${userId}/reset_password/`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Password reset failed');
+    throw new Error(error.error?.message || "Password reset failed");
   }
-  
+
   return await response.json();
 }
 ```
@@ -4835,11 +5358,13 @@ async function resetUserPassword(userId) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `search` (string, optional): Search tags by name (case-insensitive)
 - `page` (integer, optional, default: 1): Page number
 - `page_size` (integer, optional, default: 20): Items per page
@@ -4847,6 +5372,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "count": 50,
@@ -4865,20 +5391,21 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
-async function listTags(search = '', page = 1) {
+async function listTags(search = "", page = 1) {
   const params = new URLSearchParams({ page, page_size: 20 });
-  if (search) params.append('search', search);
-  
+  if (search) params.append("search", search);
+
   const response = await fetch(
     `http://localhost:8000/api/admin/tags/?${params}`,
     {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   return await response.json();
 }
 ```
@@ -4894,16 +5421,19 @@ async function listTags(search = '', page = 1) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Tag UUID
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -4925,12 +5455,14 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "name": "Django"
@@ -4938,11 +5470,13 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `name` (string, required): Tag name (max 50 characters, will be slugified)
 
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -4955,6 +5489,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Tag already exists:
+
 ```json
 {
   "error": {
@@ -4965,22 +5500,23 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function createTag(name) {
-  const response = await fetch('http://localhost:8000/api/admin/tags/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/admin/tags/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
-    body: JSON.stringify({ name })
+    body: JSON.stringify({ name }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Tag creation failed');
+    throw new Error(error.error?.message || "Tag creation failed");
   }
-  
+
   return await response.json();
 }
 ```
@@ -4996,15 +5532,18 @@ async function createTag(name) {
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Tag UUID
 
 **Body**:
+
 ```json
 {
   "name": "Django Framework"
@@ -5014,6 +5553,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5036,16 +5576,19 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Tag UUID
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5066,12 +5609,14 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "source_tag_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -5080,12 +5625,14 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `source_tag_id` (string, required): UUID of tag to merge from
 - `target_tag_id` (string, required): UUID of tag to merge into
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5098,6 +5645,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Cannot merge into soft-deleted tag:
+
 ```json
 {
   "error": {
@@ -5108,25 +5656,26 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function mergeTags(sourceTagId, targetTagId) {
-  const response = await fetch('http://localhost:8000/api/admin/tags/merge/', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/api/admin/tags/merge/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     },
     body: JSON.stringify({
       source_tag_id: sourceTagId,
-      target_tag_id: targetTagId
-    })
+      target_tag_id: targetTagId,
+    }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Tag merge failed');
+    throw new Error(error.error?.message || "Tag merge failed");
   }
-  
+
   return await response.json();
 }
 ```
@@ -5144,11 +5693,13 @@ async function mergeTags(sourceTagId, targetTagId) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `author_id` (string, optional): Filter by author UUID
 - `visibility` (string, optional): Filter by visibility (`public`, `premium`, `private`)
 - `has_price` (boolean, optional): Filter by whether resource has a price (`true`/`false`)
@@ -5161,6 +5712,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "count": 100,
@@ -5198,29 +5750,31 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function listResources(filters = {}) {
   const params = new URLSearchParams();
-  if (filters.author_id) params.append('author_id', filters.author_id);
-  if (filters.visibility) params.append('visibility', filters.visibility);
-  if (filters.has_price !== undefined) params.append('has_price', filters.has_price);
-  if (filters.search) params.append('search', filters.search);
+  if (filters.author_id) params.append("author_id", filters.author_id);
+  if (filters.visibility) params.append("visibility", filters.visibility);
+  if (filters.has_price !== undefined)
+    params.append("has_price", filters.has_price);
+  if (filters.search) params.append("search", filters.search);
   if (filters.tag_ids) {
-    filters.tag_ids.forEach(id => params.append('tag_ids', id));
+    filters.tag_ids.forEach((id) => params.append("tag_ids", id));
   }
-  if (filters.include_deleted) params.append('include_deleted', 'true');
-  params.append('page', filters.page || 1);
-  params.append('page_size', filters.page_size || 20);
-  
+  if (filters.include_deleted) params.append("include_deleted", "true");
+  params.append("page", filters.page || 1);
+  params.append("page_size", filters.page_size || 20);
+
   const response = await fetch(
     `http://localhost:8000/api/admin/resources/?${params}`,
     {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   return await response.json();
 }
 ```
@@ -5236,16 +5790,19 @@ async function listResources(filters = {}) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Resource UUID
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "id": "8a7b5c3d-1234-5678-90ab-cdef12345678",
@@ -5273,12 +5830,14 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **Body**:
+
 ```json
 {
   "author_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -5291,6 +5850,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `author_id` (string, required): UUID of the user who will own this resource
 - `title` (string, required): Resource title (max 200 characters)
 - `description` (string, required): Resource description
@@ -5301,6 +5861,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -5323,15 +5884,18 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Resource UUID
 
 **Body** (all fields optional):
+
 ```json
 {
   "title": "Updated Title",
@@ -5345,6 +5909,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5367,16 +5932,19 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Resource UUID
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5397,15 +5965,18 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Resource UUID
 
 **Body**:
+
 ```json
 {
   "file_url": "https://cdn.ressourcefy.com/files/resource-v3.pdf"
@@ -5413,11 +5984,13 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `file_url` (string, required): Valid URL to the file
 
 #### Response
 
 **Success (201 Created)**:
+
 ```json
 {
   "status": "ok",
@@ -5430,25 +6003,26 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function addResourceVersion(resourceId, fileUrl) {
   const response = await fetch(
     `http://localhost:8000/api/admin/resources/${resourceId}/versions/`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
       },
-      body: JSON.stringify({ file_url: fileUrl })
-    }
+      body: JSON.stringify({ file_url: fileUrl }),
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to add version');
+    throw new Error(error.error?.message || "Failed to add version");
   }
-  
+
   return await response.json();
 }
 ```
@@ -5466,11 +6040,13 @@ async function addResourceVersion(resourceId, fileUrl) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `user_id` (string, optional): Filter by user UUID
 - `status` (string, optional): Filter by status (`active`, `canceled`, `past_due`, etc.)
 - `plan` (string, optional): Filter by plan (`free`, `premium`, etc.)
@@ -5480,6 +6056,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "count": 50,
@@ -5512,16 +6089,19 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Subscription UUID
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -5547,15 +6127,18 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Subscription UUID
 
 **Body** (all fields optional):
+
 ```json
 {
   "plan": "premium",
@@ -5565,6 +6148,7 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `plan` (string, optional): Subscription plan (`free`, `premium`, etc.)
 - `status` (string, optional): Subscription status (`active`, `canceled`, `past_due`, etc.)
 - `ends_at` (string, optional): ISO 8601 datetime string for subscription end date (null for no end date)
@@ -5572,6 +6156,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5594,11 +6179,13 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Subscription UUID
 
 **Body**: Empty (no body required)
@@ -5606,6 +6193,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5616,6 +6204,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Already canceled:
+
 ```json
 {
   "error": {
@@ -5626,23 +6215,24 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function cancelSubscription(subscriptionId) {
   const response = await fetch(
     `http://localhost:8000/api/admin/subscriptions/${subscriptionId}/cancel/`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to cancel subscription');
+    throw new Error(error.error?.message || "Failed to cancel subscription");
   }
-  
+
   return await response.json();
 }
 ```
@@ -5660,11 +6250,13 @@ async function cancelSubscription(subscriptionId) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `user_id` (string, optional): Filter by user UUID
 - `status` (string, optional): Filter by status (`completed`, `pending`, `failed`, `refunded`)
 - `page` (integer, optional, default: 1): Page number
@@ -5673,6 +6265,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "count": 100,
@@ -5704,16 +6297,19 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Payment UUID
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5742,15 +6338,18 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
 **URL Parameters**:
+
 - `id` (string, required): Payment UUID
 
 **Body** (optional):
+
 ```json
 {
   "amount_cents": 500
@@ -5758,11 +6357,13 @@ Authorization: Bearer <token>
 ```
 
 **Field Descriptions**:
+
 - `amount_cents` (integer, optional): Partial refund amount in cents. If omitted, full refund is processed.
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5774,6 +6375,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Payment already refunded:
+
 ```json
 {
   "error": {
@@ -5784,6 +6386,7 @@ Authorization: Bearer <token>
 ```
 
 **Error (400 Bad Request)** - Payment not completed:
+
 ```json
 {
   "error": {
@@ -5794,27 +6397,28 @@ Authorization: Bearer <token>
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function refundPayment(paymentId, amountCents = null) {
   const body = amountCents ? { amount_cents: amountCents } : {};
-  
+
   const response = await fetch(
     `http://localhost:8000/api/admin/payments/${paymentId}/refund/`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
       },
-      body: JSON.stringify(body)
-    }
+      body: JSON.stringify(body),
+    },
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Refund failed');
+    throw new Error(error.error?.message || "Refund failed");
   }
-  
+
   return await response.json();
 }
 ```
@@ -5832,6 +6436,7 @@ async function refundPayment(paymentId, amountCents = null) {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
@@ -5839,6 +6444,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5850,23 +6456,24 @@ Authorization: Bearer <token>
     "premium_resources": 100,
     "total_subscriptions": 200,
     "active_premium_subscriptions": 180,
-    "total_revenue_usd": 50000.00
+    "total_revenue_usd": 50000.0
   }
 }
 ```
 
 #### JavaScript Example
+
 ```javascript
 async function getDashboardOverview() {
   const response = await fetch(
-    'http://localhost:8000/api/admin/dashboard/overview/',
+    "http://localhost:8000/api/admin/dashboard/overview/",
     {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    }
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    },
   );
-  
+
   return await response.json();
 }
 ```
@@ -5882,16 +6489,19 @@ async function getDashboardOverview() {
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
+
 - `limit` (integer, optional, default: 50, max: 100): Maximum number of activities to return
 
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",
@@ -5923,6 +6533,7 @@ Authorization: Bearer <token>
 #### Request
 
 **Headers**:
+
 ```http
 Authorization: Bearer <token>
 ```
@@ -5930,6 +6541,7 @@ Authorization: Bearer <token>
 #### Response
 
 **Success (200 OK)**:
+
 ```json
 {
   "status": "ok",

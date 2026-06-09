@@ -23,25 +23,11 @@ import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { MessageCircle, Lock, Crown, ThumbsUp, ThumbsDown, FileText } from "lucide-react";
 import Image from "next/image";
+import { formatRelativeDate } from "../../../../utils/date-formatter";
 
 const STORAGE_KEY = "resources-tab-selection";
 
 type TabType = "all" | "followed";
-
-// Format date helper
-function formatDate(date: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (minutes < 1) return "À l'instant";
-  if (minutes < 60) return `Il y a ${minutes} min`;
-  if (hours < 24) return `Il y a ${hours}h`;
-  if (days < 7) return `Il y a ${days}j`;
-  return date.toLocaleDateString("fr-FR");
-}
 
 // Resource Card Component
 function ResourceCard({ resource }: { resource: UserResourceItem }) {
@@ -61,7 +47,7 @@ function ResourceCard({ resource }: { resource: UserResourceItem }) {
             <div>
               <p className="font-semibold">Mes ressources</p>
               <p className="text-sm text-muted-foreground">
-                {resource.created_at ? formatDate(new Date(resource.created_at)) : "Date inconnue"}
+                {formatRelativeDate(resource.created_at)}
               </p>
             </div>
           </div>
@@ -341,7 +327,7 @@ function FollowedResourcesTab() {
                   <p className="font-semibold">{resource.author_name || "Auteur inconnu"}</p>
                   <p className="text-sm text-muted-foreground">
                     {resource.last_accessed_at
-                      ? `Dernier accès: ${formatDate(new Date(resource.last_accessed_at))}`
+                      ? `Dernier accès: ${formatRelativeDate(resource.last_accessed_at)}`
                       : "Jamais accédé"}
                   </p>
                 </div>

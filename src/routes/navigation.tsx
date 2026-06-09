@@ -43,7 +43,7 @@ export const Navigation = () =>
       <header
         className={clsx(
           "fixed top-0 left-0 right-0 mt-10  max-w-7xl mx-auto  r rounded-full z-20 ",
-          { "bg-[#1c1d22] ": isScrolled }
+          { "bg-[#1c1d22] ": isScrolled },
         )}
       >
         <div className=" items-center justify-between p-5 md:flex hidden  max-w-7xl mx-auto">

@@ -48,5 +48,6 @@ export const ROUTES = {
     RESOURCES: "/admin/resources",
     SUBSCRIPTIONS: "/admin/subscriptions",
     PAYMENTS: "/admin/payments",
+    AUDIT: "/admin/audit",
   },
 } as const;

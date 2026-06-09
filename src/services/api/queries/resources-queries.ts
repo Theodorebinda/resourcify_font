@@ -19,6 +19,8 @@ export const resourceKeys = {
 // Types
 export interface ResourceFeedItem {
   id: string;
+  created_at: string;
+  updated_at: string;
   title: string;
   author_name: string;
   author_avatar: string | null;
@@ -35,6 +37,8 @@ export interface ResourceFeedItem {
 
 export interface ResourceDetail {
   id: string;
+  created_at: string;
+  updated_at: string;
   title: string;
   description: string;
   author_name: string;
@@ -112,6 +116,26 @@ export interface VoteOnResourceResponse {
   vote_id: string;
   resource_id: string;
   value: number;
+}
+
+export interface UpdateResourcePayload {
+  resource_id: string;
+  title?: string;
+  description?: string;
+  visibility?: "public" | "premium" | "private";
+  price_cents?: number | null;
+  tag_ids?: string[];
+}
+
+export interface UpdateResourceResponse {
+  resource_id: string;
+  title: string;
+  description: string;
+  visibility: "public" | "premium" | "private";
+  price_cents: number | null;
+  author_id: string;
+  tags: string[];
+  updated_at: string;
 }
 
 /**
@@ -335,6 +359,28 @@ export function useCreateResource() {
     },
     onSuccess: () => {
       // Invalidate feed to show new resource
+      queryClient.invalidateQueries({ queryKey: resourceKeys.all });
+    },
+  });
+}
+
+/**
+ * Update an existing resource
+ * The backend allows only the resource author to update their own resource
+ */
+export function useUpdateResource() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateResourceResponse, ApiError, UpdateResourcePayload>({
+    mutationFn: async ({ resource_id, ...payload }) => {
+      const response = await apiClient.patch<ApiResponse<UpdateResourceResponse>>(
+        API_ENDPOINTS.RESOURCES.UPDATE(resource_id),
+        payload
+      );
+      return response.data.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: resourceKeys.detail(data.resource_id) });
       queryClient.invalidateQueries({ queryKey: resourceKeys.all });
     },
   });

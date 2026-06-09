@@ -60,6 +60,7 @@ export const API_ENDPOINTS = {
   // Comment endpoints
   COMMENTS: {
     CREATE: "/comments/",
+    UPDATE: (id: string) => `/comments/${id}/`,
     VOTE: "/comments/vote/",
   },
 
@@ -83,6 +84,14 @@ export const API_ENDPOINTS = {
   HEALTH: {
     LIVE: "/health/live/",
     READY: "/health/ready/",
+  },
+
+  // Audit endpoints
+  AUDIT: {
+    LIST: "/audit/",
+    HISTORY: (tableName: string, rowId: string) => `/audit/${tableName}/${rowId}/`,
+    ENTRY: (auditId: string | number) => `/audit/entry/${auditId}/`,
+    RESTORE: "/audit/restore/",
   },
 
   // Admin endpoints

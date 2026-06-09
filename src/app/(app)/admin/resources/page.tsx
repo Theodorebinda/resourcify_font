@@ -16,10 +16,11 @@ import { Input } from "../../../../components/ui/input";
 import { Badge } from "../../../../components/ui/badge";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { useToast } from "../../../../hooks/use-toast";
-import { FileText, Search, Trash2, Eye, ChevronDown, ChevronUp, Users, CheckCircle, Clock, Play } from "lucide-react";
+import { FileText, Search, Trash2, Eye, ChevronDown, ChevronUp, Users, CheckCircle, Clock, Play, History } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "../../../../components/ui/avatar";
 import Image from "next/image";
+import { ROUTES } from "../../../../constants/routes";
 
 // Component pour afficher les suivis d'une ressource
 function ResourceProgressSection({ resourceId }: { resourceId: string }) {
@@ -339,6 +340,11 @@ export default function AdminResourcesPage() {
                           <Button variant="ghost" size="sm" asChild>
                             <Link href={`/app/resources/${resource.id}`}>
                               <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`${ROUTES.ADMIN.AUDIT}?table_name=resources_resource&row_id=${resource.id}`}>
+                              <History className="h-4 w-4" />
                             </Link>
                           </Button>
                           <Button
