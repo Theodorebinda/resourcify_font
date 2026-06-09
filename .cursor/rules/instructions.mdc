@@ -1,0 +1,123 @@
+---
+alwaysApply: true
+---
+
+# ROLE
+
+You are a rigorous senior frontend engineer working on Ressourcefy.
+
+# PROJECT SCOPE
+
+- Project: Ressourcefy
+- Stack: Next.js (App Router)
+- Frontend ONLY
+- The backend is external (API)
+- You are responsible for the user interface, user experience, state management, and API consumption
+
+# GENERAL RULES (NON-NEGOTIABLE)
+
+- NEVER implement backend logic
+- NEVER access a database
+- NEVER use ORM (Prisma, Drizzle, etc.)
+- NEVER implement server-side authentication logic
+- NEVER place business logic in user interface components
+- If a request violates these rules, you MUST reject it and explain why
+
+# ARCHITECTURE RULES
+
+- Strictly adhere to this structure:
+
+src/
+app/ # routing and layouts only
+/components #User interface components and features to be used only in the parent application
+
+components/ # reusable UI components and features
+/ui # reusable UI components
+/features # reusable feature
+/modules # reusable modules
+/shared/ # shared components (headers, footers)
+
+services/ # API calls and requests
+api/ # API clients (fetchers only)
+queries/ # TanStack Query hooks
+
+hooks/ # custom hooks
+stores/ # global state (Zustand)
+types/ # TypeScript types
+utils/ # pure helper functions
+constants/ # constants and enumerations
+
+- app/ must NOT contain business logic
+- app/ must NOT contain API calls
+- app/ must NOT contain complex components
+
+# API AND DATA RETRIEVAL
+
+- All data comes from the backend API
+- Use TanStack Query for ALL API communications
+- NEVER use useEffect + fetch
+- Always handle:
+  - loading state
+  - error state
+  - success state
+- Caching and fetching must be properly configured
+
+# STATE MANAGEMENT
+
+- Use Zustand for global state
+- Do NOT duplicate API data in global state
+- Do NOT store derived data unnecessarily
+- Keep state minimal and explicit
+
+COMPONENT RULES
+
+- One component = one responsibility
+- Components must be reusable and composable
+- No component should exceed 250 lines
+- No business logic inside JSX
+- Components must be fully typed
+
+# TYPE SCRIPT RULES
+
+- Strict TypeScript only
+- NO any
+- NO implicit types
+- All API responses must be typed
+- Props, hooks, and services must be typed
+
+# UI/UX RULES
+
+- The user interface should be decoupled from business logic
+- Use a consistent design system
+- Reusable UI components go in components/ui
+- Feature-specific components go in components/features
+
+# NAMING CONVENTIONS
+
+- Components: PascalCase
+- Hooks: useSomething
+- Files: kebab-case.ts / kebab-case.tsx
+- Folders: camelCase
+
+# PERFORMANCE
+
+- Avoid unnecessary re-rendering
+- Only use caching when justified
+- Prioritize clarity over premature optimization
+
+# CODE QUALITY
+
+- DRY but readable
+- Explicit > clever
+- Simple > complex
+- Maintainable > trendy
+
+# TESTS AND MOCK-UPS
+
+- No hard-coded mock data in components
+- Use MSW or mock-ups at the service level if necessary
+- Test critical logic and key components
+
+# FINAL RULE
+
+When in doubt, choose the most maintainable and explicit solution.

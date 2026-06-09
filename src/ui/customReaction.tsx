@@ -15,7 +15,7 @@ const CustomReaction: React.FC<CustomReactionProps> = ({ onReact }) => {
   const reactions = ["👍", "👎", "❤️", "🙏", "😂", "😕", "😥", "👀", "🚀"];
 
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-2 cursor-pointer">
       <DropdownMenu>
         <DropdownMenuTrigger asChild className="rounded-full p border-default">
           <Smile size={20} strokeWidth={0.8} />

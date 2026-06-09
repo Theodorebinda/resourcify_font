@@ -1,12 +1,7 @@
-import { MobileNavigation } from "./mobileNavigation";
+// import { MobileNavigation } from "./mobileNavigation";
 import { Navigation } from "./navigation";
 
-interface Props {
-  toggleTheme?: () => void;
-  currentTheme?: string;
-}
-
-const NavigationWrapper = ({ toggleTheme, currentTheme }: Props) => (
+const NavigationWrapper = () => (
   <>
     <Navigation
     // className="hidden lg:block"

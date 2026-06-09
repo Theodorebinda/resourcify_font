@@ -1,5 +1,6 @@
 import React from "react";
 import { User } from "../models/users";
+import Image from "next/image";
 
 interface HeroSectionProps {
   title?: string;
@@ -16,11 +17,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({ title, message, users }) => {
       <div className="flex items-center justify-center gap-2">
         <div className="flex flex-row space-x-[-20px]">
           {users.map((user) => (
-            <img
+            <Image
               key={user.id}
               src={user.image}
               alt={user.name}
-              className="w-12 h-12 rounded-full border-2 border-white"
+              width={48}
+              height={48}
+              className="rounded-full border-2 border-white"
             />
           ))}
         </div>
